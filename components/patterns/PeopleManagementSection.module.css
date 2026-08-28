@@ -1,0 +1,311 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+  height: 100%;
+  min-height: 260px;
+  padding: 24px;
+}
+
+@media (min-width: 1024px) {
+  .cardBody {
+    min-height: 288px;
+  }
+}
+
+.statBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cardLabel {
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-leading);
+}
+
+.cardLabel[data-theme="light"] {
+  color: var(--color-text-lt-default);
+}
+
+.cardLabel[data-theme="dark"] {
+  color: var(--color-text-dt-default);
+}
+
+.statRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.statValue {
+  font-family: var(--type-h1-family);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-leading);
+}
+
+.statValue[data-theme="light"] {
+  color: var(--color-text-lt-default);
+}
+
+.statValue[data-theme="dark"] {
+  color: var(--color-text-dt-default);
+}
+
+.statUnit {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+}
+
+.statUnit[data-theme="light"] {
+  color: var(--color-text-lt-default);
+}
+
+.statUnit[data-theme="dark"] {
+  color: var(--color-text-dt-default);
+}
+
+.statCaption {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-leading);
+}
+
+.statCaption[data-theme="light"] {
+  color: var(--color-text-lt-grey);
+}
+
+.statCaption[data-theme="dark"] {
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Clocked In: avatar stack ---------------- */
+
+.avatarStack {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  overflow: hidden;
+  list-style: none;
+}
+
+.avatarTile {
+  position: relative;
+  flex-shrink: 0;
+  width: clamp(48px, 9vw, 80px);
+  height: clamp(48px, 9vw, 80px);
+}
+
+.avatarImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 100px;
+  object-fit: cover;
+}
+
+.avatarDot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 22%;
+  height: 22%;
+  min-width: 10px;
+  min-height: 10px;
+  border-radius: 100px;
+  border: 2px solid;
+}
+
+.avatarDot[data-theme="light"] {
+  background-color: var(--color-text-lt-success);
+  border-color: var(--surface-lt-card);
+}
+
+.avatarDot[data-theme="dark"] {
+  background-color: var(--color-text-dt-success);
+  border-color: var(--surface-dt-card);
+}
+
+.footnote {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.footnoteIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 41px;
+  height: 41px;
+  border-radius: 16px;
+  background-color: var(--wash-sky-blue-15);
+  font-size: 20px;
+}
+
+.footnoteIcon[data-theme="light"] {
+  color: var(--color-primary-500);
+}
+
+.footnoteIcon[data-theme="dark"] {
+  color: var(--color-text-dt-blue);
+}
+
+.footnoteText {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  line-height: var(--type-body-sm-leading);
+}
+
+.footnoteText[data-theme="light"] {
+  color: var(--color-text-lt-grey);
+}
+
+.footnoteText[data-theme="dark"] {
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Hours Worked chart ---------------- */
+
+.chartStack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chartMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chartMetaLine {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-leading);
+}
+
+.chartMetaLine i {
+  font-size: 12px;
+  color: var(--color-primary-500);
+}
+
+.chartMetaLine[data-theme="light"] {
+  color: var(--color-text-lt-default);
+}
+
+.chartMetaLine[data-theme="dark"] {
+  color: var(--color-text-dt-default);
+}
+
+.chartMetaValue {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.chartMetaBig {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+}
+
+.chartMetaBig[data-theme="light"] {
+  color: var(--color-text-lt-default);
+}
+
+.chartMetaBig[data-theme="dark"] {
+  color: var(--color-text-dt-default);
+}
+
+.chartMetaSmall {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+}
+
+.chartMetaSmall[data-theme="light"] {
+  color: var(--color-text-lt-grey);
+}
+
+.chartMetaSmall[data-theme="dark"] {
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Turnover legend ---------------- */
+
+.legendRow {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 100px;
+  flex-shrink: 0;
+}
+
+.legendValue {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+}
+
+.legendValue[data-theme="light"] {
+  color: var(--color-text-lt-default);
+}
+
+.legendValue[data-theme="dark"] {
+  color: var(--color-text-dt-default);
+}
+
+.legendLabel {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+}
+
+.legendLabel[data-theme="light"] {
+  color: var(--color-text-lt-grey);
+}
+
+.legendLabel[data-theme="dark"] {
+  color: var(--color-text-dt-grey);
+}

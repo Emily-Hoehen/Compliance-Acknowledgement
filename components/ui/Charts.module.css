@@ -1,0 +1,232 @@
+/* ---------------- Shared month axis ---------------- */
+
+.axis {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.axisRule {
+  height: 1px;
+  width: 100%;
+}
+
+.axis[data-theme="light"] .axisRule {
+  background-color: var(--surface-lt-hairline);
+}
+
+.axis[data-theme="dark"] .axisRule {
+  background-color: var(--surface-dt-hairline);
+}
+
+.axisLabels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  line-height: var(--type-body-sm-leading);
+  white-space: nowrap;
+}
+
+.axis[data-theme="light"] .axisLabels {
+  color: var(--color-text-lt-grey);
+}
+
+.axis[data-theme="dark"] .axisLabels {
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Sparkline ---------------- */
+
+.sparkline {
+  display: block;
+  width: 100%;
+  height: 62px;
+}
+
+/* ---------------- Bar chart ---------------- */
+
+.barChart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.barGroups {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+}
+
+.barGroup {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 100%;
+  flex: 1;
+}
+
+.bar {
+  display: block;
+  flex: 1;
+  min-height: 2px;
+  border-radius: 1px;
+}
+
+/* ---------------- Safety streak ---------------- */
+
+.streak {
+  position: relative;
+  width: 100%;
+  padding-top: 12px;
+}
+
+.streakTrack {
+  height: 13px;
+  border-radius: 24px;
+  background: linear-gradient(
+    90deg,
+    var(--color-warning-100) 0%,
+    var(--color-warning-300) 32%,
+    var(--color-datavis-yellow-orange-500) 100%
+  );
+}
+
+.streakMarker {
+  position: absolute;
+  top: -4px;
+  transform: translateX(-50%);
+  color: var(--color-warning-300);
+  font-size: 20px;
+  filter: drop-shadow(0 1px 2px rgba(24, 30, 36, 0.35));
+}
+
+/* ---------------- Gauge ---------------- */
+
+.gauge {
+  display: block;
+  width: 148px;
+  height: 84px;
+}
+
+.gaugePointer {
+  fill: var(--color-neutral-100);
+  stroke: var(--color-primary-500);
+  stroke-width: 3;
+}
+
+/* ---------------- Progress row ---------------- */
+
+.progressRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.progressHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.progressLabel {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+}
+
+.progressRow[data-theme="light"] .progressLabel {
+  color: var(--color-text-lt-default);
+}
+
+.progressRow[data-theme="dark"] .progressLabel {
+  color: var(--color-text-dt-default);
+}
+
+.progressMeta {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.progressTotal {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-leading);
+}
+
+.progressRow[data-theme="light"] .progressTotal {
+  color: var(--color-text-lt-grey);
+}
+
+.progressRow[data-theme="dark"] .progressTotal {
+  color: var(--color-text-dt-grey);
+}
+
+.scoreChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-leading);
+}
+
+.scoreChip[data-theme="light"] {
+  background-color: var(--color-text-lt-success);
+  color: var(--color-text-lt-white);
+}
+
+.scoreChip[data-theme="dark"] {
+  background-color: var(--color-text-dt-success);
+  color: var(--color-text-dt-default-inverted);
+}
+
+.progressTrack {
+  height: 3px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressRow[data-theme="light"] .progressTrack {
+  background-color: var(--surface-lt-track);
+}
+
+.progressRow[data-theme="dark"] .progressTrack {
+  background-color: var(--surface-dt-track);
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.progressRow[data-theme="light"] .progressFill {
+  background-color: var(--color-text-lt-success);
+}
+
+.progressRow[data-theme="dark"] .progressFill {
+  background-color: var(--color-text-dt-success);
+}
+
+/* ---------------- Star rating ---------------- */
+
+.stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 20px;
+  color: var(--color-primary-700);
+}

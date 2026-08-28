@@ -1,0 +1,249 @@
+/* ============================================================
+   Button — DS2 | Web Core, "Button" component
+   Source: Figma fileKey 5lX9s52cSgMPq0IlkgIYIC, node 414:179
+   ("Button" — Complete button collection with all states).
+
+   Colors below are pulled directly from that component's Static
+   / Hover / Pressed / Disabled instances, for both Dark and
+   Light theme. Values that don't fit a clean step pattern (e.g.
+   light-theme Primary Disabled reusing the Hover step rather
+   than Static) are kept exactly as designed, not normalized.
+   ============================================================ */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+  white-space: nowrap;
+  transition:
+    background-color var(--duration, 120ms) ease,
+    color var(--duration, 120ms) ease;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  font-size: 14px;
+}
+
+/* Square, label-less shape shared by Primary/Secondary/Danger's
+   mobile variant and by Flat Icon (which is always icon-only). */
+.iconOnly {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  gap: 0;
+}
+
+.iconOnly .icon {
+  width: 24px;
+  height: 24px;
+  font-size: 20px;
+}
+
+/* ---------------- Primary ---------------- */
+
+.primary[data-theme="dark"] {
+  background-color: var(--color-primary-300);
+  color: var(--color-text-dt-default-inverted);
+}
+.primary[data-theme="dark"]:hover:not(:disabled) {
+  background-color: var(--color-primary-100);
+}
+.primary[data-theme="dark"]:active:not(:disabled) {
+  background-color: var(--color-primary-700);
+}
+
+.primary[data-theme="light"] {
+  background-color: var(--color-primary-500);
+  color: var(--color-text-lt-default-inverted);
+}
+.primary[data-theme="light"]:hover:not(:disabled) {
+  background-color: var(--color-primary-300);
+}
+.primary[data-theme="light"]:active:not(:disabled) {
+  background-color: var(--color-primary-900);
+}
+.primary[data-theme="light"]:disabled {
+  background-color: var(--color-primary-300);
+}
+
+/* ---------------- Alt Primary (ghost) ---------------- */
+
+.altPrimary[data-theme="dark"] {
+  background-color: var(--btn-ghost-dt-primary-static);
+  color: var(--color-text-dt-blue);
+}
+.altPrimary[data-theme="dark"]:hover:not(:disabled) {
+  background-color: var(--btn-ghost-dt-primary-hover);
+}
+.altPrimary[data-theme="dark"]:active:not(:disabled) {
+  background-color: var(--btn-ghost-dt-primary-static);
+}
+
+.altPrimary[data-theme="light"] {
+  background-color: var(--btn-ghost-lt-primary-static);
+  color: var(--color-text-lt-blue);
+}
+.altPrimary[data-theme="light"]:hover:not(:disabled) {
+  background-color: var(--btn-ghost-lt-primary-hover);
+}
+.altPrimary[data-theme="light"]:active:not(:disabled) {
+  background-color: var(--btn-ghost-lt-primary-pressed);
+}
+
+/* ---------------- Secondary (icon optional) ---------------- */
+
+.secondary[data-theme="dark"] {
+  background-color: var(--color-neutral-800);
+  color: var(--color-text-dt-blue);
+}
+.secondary[data-theme="dark"]:hover:not(:disabled) {
+  background-color: var(--color-neutral-600);
+}
+.secondary[data-theme="dark"]:active:not(:disabled) {
+  background-color: var(--color-neutral-700);
+  color: var(--color-primary-500);
+}
+
+.secondary[data-theme="light"] {
+  background-color: var(--color-neutral-100);
+  color: var(--color-text-lt-blue);
+}
+.secondary[data-theme="light"]:hover:not(:disabled) {
+  background-color: var(--color-neutral-100);
+  color: var(--color-primary-100);
+}
+.secondary[data-theme="light"]:active:not(:disabled) {
+  background-color: var(--color-neutral-300);
+  color: var(--color-text-lt-blue);
+}
+
+/* ---------------- Danger ---------------- */
+
+.danger[data-theme="dark"] {
+  background-color: var(--color-danger-300);
+  color: var(--color-text-dt-default-inverted);
+}
+.danger[data-theme="dark"]:hover:not(:disabled) {
+  background-color: var(--color-danger-100);
+}
+.danger[data-theme="dark"]:active:not(:disabled) {
+  background-color: var(--color-danger-700);
+}
+
+.danger[data-theme="light"] {
+  background-color: var(--color-danger-700);
+  color: var(--color-text-lt-default-inverted);
+}
+.danger[data-theme="light"]:hover:not(:disabled) {
+  background-color: var(--color-danger-300);
+}
+.danger[data-theme="light"]:active:not(:disabled) {
+  background-color: #8d0039; /* Core/Danger/900 — only used here; not in the pulled 100–700 scale */
+}
+
+/* ---------------- Alt Danger (ghost) ---------------- */
+
+.altDanger[data-theme="dark"] {
+  background-color: var(--btn-ghost-dt-danger-static);
+  color: var(--color-text-dt-danger);
+}
+.altDanger[data-theme="dark"]:hover:not(:disabled) {
+  background-color: var(--btn-ghost-dt-danger-hover);
+}
+.altDanger[data-theme="dark"]:active:not(:disabled) {
+  background-color: var(--btn-ghost-dt-danger-pressed);
+}
+
+.altDanger[data-theme="light"] {
+  background-color: var(--btn-ghost-lt-danger-static);
+  color: var(--color-text-lt-danger);
+}
+.altDanger[data-theme="light"]:hover:not(:disabled) {
+  background-color: var(--btn-ghost-lt-danger-hover);
+}
+.altDanger[data-theme="light"]:active:not(:disabled) {
+  background-color: var(--btn-ghost-lt-danger-pressed);
+}
+
+/* ---------------- Text Link ---------------- */
+
+.textLink {
+  height: auto;
+  padding: 0;
+  gap: 0;
+  background: none;
+  font-family: var(--type-h4-clickable-family);
+  font-size: var(--type-h4-clickable-size);
+  font-weight: var(--type-h4-clickable-weight);
+  line-height: var(--type-h4-clickable-leading);
+  letter-spacing: var(--type-h4-clickable-tracking);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.textLink[data-theme="dark"] {
+  color: var(--color-text-dt-blue);
+}
+.textLink[data-theme="dark"]:hover:not(:disabled) {
+  color: var(--color-primary-100);
+}
+.textLink[data-theme="dark"]:active:not(:disabled) {
+  color: var(--color-primary-500);
+}
+
+.textLink[data-theme="light"] {
+  color: var(--color-text-lt-blue);
+}
+.textLink[data-theme="light"]:hover:not(:disabled) {
+  color: var(--color-primary-300);
+}
+.textLink[data-theme="light"]:active:not(:disabled) {
+  color: var(--color-primary-700);
+}
+
+/* ---------------- Flat Icon (always icon-only, transparent) ---------------- */
+
+.flatIcon {
+  background: none;
+}
+
+.flatIcon[data-theme="dark"] {
+  color: var(--color-text-dt-grey);
+}
+.flatIcon[data-theme="dark"]:hover:not(:disabled) {
+  color: var(--color-text-dt-blue);
+}
+.flatIcon[data-theme="dark"]:active:not(:disabled) {
+  color: var(--color-primary-100);
+}
+
+.flatIcon[data-theme="light"] {
+  color: var(--color-text-lt-grey);
+}
+.flatIcon[data-theme="light"]:hover:not(:disabled) {
+  color: var(--color-text-dt-blue);
+}
+.flatIcon[data-theme="light"]:active:not(:disabled) {
+  color: var(--color-primary-100);
+}

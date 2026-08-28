@@ -1,0 +1,15 @@
+.card {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.card[data-theme="light"] {
+  background-color: var(--surface-lt-card);
+  box-shadow: var(--shadow-lt-card);
+}
+
+.card[data-theme="dark"] {
+  background-color: var(--surface-dt-card);
+  box-shadow: var(--shadow-dt-card);
+}

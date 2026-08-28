@@ -1,0 +1,271 @@
+/* ============================================================
+   SowTimeFirstPage — sixth Scope of Work exploration: the period
+   (Today / Yesterday / This week / This month / YTD) is the primary
+   nav — hierarchy becomes a filter you reach for ("Filter by space"),
+   not the thing you land on. The space filter gets its own bordered,
+   labeled control (not a bare select) and a plain-language "Viewing
+   X for Y" banner underneath, so which slice of data is on screen is
+   never just a value tucked into a corner dropdown.
+
+   Reuses SowPage.module.css for every primitive that carries over
+   (page shell, chips, stat tiles, tables) — this module only holds
+   what's new: the control bar, the space filter control, the viewing
+   banner, the trend header, the evidence showcase grid, status
+   badges, completion bars, and the service-gap status colors.
+   Light theme only.
+   ============================================================ */
+
+.controlBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.spaceFilterControl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-neutral-300);
+  border-radius: 8px;
+  background-color: var(--surface-lt-card);
+}
+
+/* Highlighted once a space is actually selected, so the control
+   itself signals "a filter is applied" at a glance. */
+.spaceFilterControlActive {
+  border-color: var(--color-primary-500);
+  background-color: var(--wash-primary-15);
+}
+
+.spaceFilterLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: 700;
+  color: var(--color-text-lt-grey);
+  white-space: nowrap;
+}
+
+.spaceFilterClear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 999px;
+  background-color: transparent;
+  color: var(--color-text-lt-grey);
+  cursor: pointer;
+}
+
+.spaceFilterClear:hover {
+  background-color: var(--color-neutral-200);
+}
+
+.viewingBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-grey);
+}
+
+.viewingBanner i {
+  color: var(--color-primary-500);
+}
+
+.emptyNote {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-grey);
+  padding: 12px 0;
+}
+
+.trendHeaderRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.trendValue {
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-leading);
+}
+
+.trendCaption {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-grey);
+}
+
+.gapStatusOpen {
+  font-weight: 700;
+  color: var(--color-warning-700);
+}
+
+.gapStatusResolved {
+  font-weight: 700;
+  color: var(--color-text-lt-success);
+}
+
+/* ---------------- Site performance by space: status + completion ---------------- */
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.statusBadgeOnTrack {
+  background-color: var(--wash-success-15);
+  color: var(--color-text-lt-success);
+}
+
+.statusBadgeAtRisk {
+  background-color: var(--wash-warning-15);
+  color: var(--color-warning-700);
+}
+
+.statusBadgeLowScore {
+  background-color: var(--wash-danger-15);
+  color: var(--color-danger-700);
+}
+
+.completionCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 140px;
+}
+
+.completionBarTrack {
+  flex: 1;
+  height: 8px;
+  border-radius: 100px;
+  overflow: hidden;
+  background-color: var(--color-neutral-300);
+}
+
+.completionBarFill {
+  display: block;
+  height: 100%;
+  border-radius: 100px;
+  background-color: var(--color-primary-500);
+}
+
+.completionValue {
+  width: 36px;
+  flex-shrink: 0;
+  text-align: right;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* ---------------- Evidence showcase grid ---------------- */
+
+.showcaseGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: 240px;
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .showcaseGrid {
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 280px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .showcaseGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.showcaseCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: var(--shadow-lt-card);
+}
+
+.showcasePhoto {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--type-body-sm-family);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-neutral-500);
+  background-color: var(--color-neutral-200);
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-neutral-300),
+    var(--color-neutral-300) 2px,
+    transparent 2px,
+    transparent 12px
+  );
+}
+
+.showcaseCaption {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: linear-gradient(to top, rgba(24, 30, 36, 0.72), rgba(24, 30, 36, 0));
+  color: #fff;
+}
+
+.showcaseTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.showcaseTag {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.showcaseScore {
+  font-weight: 700;
+}
+
+.showcasePerson {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.showcaseLocation {
+  font-size: 12px;
+  opacity: 0.85;
+}

@@ -1,0 +1,322 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   DESIGN TOKENS
+   Sourced from Figma "DS2 | Core Style Library"
+   (fileKey 3FthH0TAdchY00Irr9MyJK) — Colors, Text Styles, and
+   Box Shadow pages. Every value below is pulled directly from
+   that file's local variable/effect definitions, not
+   approximated. Only add tokens here that trace back to the
+   4Insite design system — nothing else belongs in this file.
+   Never use hardcoded values in component code.
+   ============================================================ */
+
+:root {
+  /* ------------------------------------------------------------
+     Colors — Colors page
+     ------------------------------------------------------------ */
+
+  /* -- Core / Primary -- */
+  --color-primary-100: #80c2ff;
+  --color-primary-300: #4aa8ff;
+  --color-primary-500: #0084ff;
+  --color-primary-700: #006acd;
+  --color-primary-900: #00509c;
+
+  /* -- Core / Secondary -- */
+  --color-secondary-100: #c8c5f6;
+  --color-secondary-300: #9a95e2;
+  --color-secondary-500: #827bdb;
+  --color-secondary-700: #635cbb;
+  --color-secondary-900: #4c469c;
+
+  /* -- Core / Success -- */
+  --color-success-100: #bfffe2;
+  --color-success-300: #66ffba;
+  --color-success-500: #00ff8d;
+  --color-success-700: #00cc70;
+  --color-success-900: #008649;
+
+  /* -- Core / Warning -- */
+  --color-warning-100: #ffecb3;
+  --color-warning-300: #ffd75e;
+  --color-warning-500: #ffc108;
+  --color-warning-700: #c29201;
+  --color-warning-900: #906d00;
+
+  /* -- Core / Danger -- */
+  --color-danger-100: #ffbfd9;
+  --color-danger-300: #ff7db1;
+  --color-danger-500: #ff0066;
+  --color-danger-700: #cc0052;
+
+  /* -- Core / Neutral -- */
+  --color-neutral-100: #fafbfc;
+  --color-neutral-200: #f0f3f5;
+  --color-neutral-300: #dfe3e6;
+  --color-neutral-400: #d0d5d9;
+  --color-neutral-500: #a7b1b9;
+  --color-neutral-600: #5b6671;
+  --color-neutral-700: #3a434d;
+  --color-neutral-800: #283038;
+  --color-neutral-850: #20272e;
+  --color-neutral-900: #181e24;
+
+  /* -- Datavis -- */
+  --color-datavis-bubblegum-100: #ff80e9;
+  --color-datavis-bubblegum-500: #ff05d3;
+  --color-datavis-bubblegum-700: #dc00b6;
+  --color-datavis-orange-100: #ffaf80;
+  --color-datavis-orange-500: #ff6e19;
+  --color-datavis-orange-700: #dd5709;
+  --color-datavis-pinkle-100: #d980ff;
+  --color-datavis-pinkle-500: #b70eff;
+  --color-datavis-pinkle-700: #a230d2;
+  --color-datavis-purple-100: #af99ff;
+  --color-datavis-purple-500: #734cff;
+  --color-datavis-purple-700: #5940b3;
+  --color-datavis-red-orange-100: #ff8a80;
+  --color-datavis-red-orange-500: #ff4333;
+  --color-datavis-red-orange-700: #c73125;
+  --color-datavis-sky-blue-100: #80e6ff;
+  --color-datavis-sky-blue-500: #00cdff;
+  --color-datavis-sky-blue-700: #00a3cb;
+  --color-datavis-teal-100: #80ffe7;
+  --color-datavis-teal-500: #01ffcf;
+  --color-datavis-teal-700: #01cca6;
+  --color-datavis-yellow-100: #fff299;
+  --color-datavis-yellow-500: #ffe533;
+  --color-datavis-yellow-700: #e5c800;
+  --color-datavis-yellow-orange-100: #ffc980;
+  --color-datavis-yellow-orange-500: #ff9d19;
+  --color-datavis-yellow-orange-700: #cc7a0c;
+
+  /* -- Semantic Text (Light Theme / "LT" mode) -- */
+  --color-text-lt-default: #181e24;
+  --color-text-lt-default-inverted: #fafbfc;
+  --color-text-lt-blue: #0084ff;
+  --color-text-lt-white: #fafbfc;
+  --color-text-lt-success: #008649;
+  --color-text-lt-danger: #cc0052;
+  --color-text-lt-warning: #cc7a0c;
+  --color-text-lt-grey: #5b6671;
+
+  /* -- Semantic Text (Dark Theme / "DT" mode) -- */
+  --color-text-dt-default: #fafbfc;
+  --color-text-dt-default-inverted: #181e24;
+  --color-text-dt-blue: #4aa8ff;
+  --color-text-dt-white: #fafbfc;
+  --color-text-dt-success: #66ffba;
+  --color-text-dt-danger: #ff7db1;
+  --color-text-dt-warning: #ffd75e;
+  --color-text-dt-grey: #a7b1b9;
+
+  /* -- Semantic Accent ("Opacity" variable collection, LT/DT modes) -- */
+  --color-accent-lt-primary: #0084ff;
+  --color-accent-lt-success: #008649;
+  --color-accent-lt-warning: #c29201;
+  --color-accent-lt-danger: #cc0052;
+  --color-accent-lt-neutral: #181e24;
+  --color-accent-lt-orange: #dd5709;
+  --color-accent-lt-pinkle: #a230d2;
+  --color-accent-lt-sky-blue: #00a3cb;
+  --color-accent-dt-primary: #4aa8ff;
+  --color-accent-dt-success: #66ffba;
+  --color-accent-dt-warning: #ffd75e;
+  --color-accent-dt-danger: #ff7db1;
+  --color-accent-dt-neutral-100: #dfe3e6;
+  --color-accent-dt-neutral-500: #a7b1b9;
+  --color-accent-dt-orange: #ffaf80;
+  --color-accent-dt-pinkle: #d980ff;
+  --color-accent-dt-purple: #af99ff;
+  --color-accent-dt-sky-blue: #80e6ff;
+
+  /* ------------------------------------------------------------
+     Typography — Text Styles page (nodes 513:7–513:14)
+     Letter-spacing is 0 across every style, so it isn't broken
+     out per style below. Font families resolve to the next/font
+     variables set on <html> in app/layout.tsx, with a literal
+     family name as fallback.
+     ------------------------------------------------------------ */
+
+  --font-family-display: var(--font-lato), "Lato", sans-serif; /* Headers/Data Point, H1, H2 */
+  --font-family-ui: var(--font-roboto), "Roboto", sans-serif; /* Headers/H3, H4, Body/* */
+
+  /* -- Headers/Data Point (48px / Black / auto leading) -- */
+  --type-data-point-family: var(--font-family-display);
+  --type-data-point-size: 3rem; /* 48px */
+  --type-data-point-weight: 900;
+  --type-data-point-leading: 1; /* 100% */
+
+  /* -- Headers/H1 (32px / Black / auto leading) -- */
+  --type-h1-family: var(--font-family-display);
+  --type-h1-size: 2rem; /* 32px */
+  --type-h1-weight: 900;
+  --type-h1-leading: 1; /* 100% */
+
+  /* -- Headers/H2 (20px / Black / auto leading) -- */
+  --type-h2-family: var(--font-family-display);
+  --type-h2-size: 1.25rem; /* 20px */
+  --type-h2-weight: 900;
+  --type-h2-leading: 1; /* 100% */
+
+  /* -- Headers/H3 (16px / Medium / 22px leading) -- */
+  --type-h3-family: var(--font-family-ui);
+  --type-h3-size: 1rem; /* 16px */
+  --type-h3-weight: 500;
+  --type-h3-leading: 1.375; /* 22px */
+
+  /* -- Headers/H4 (14px / Medium / 20px leading) -- */
+  --type-h4-family: var(--font-family-ui);
+  --type-h4-size: 0.875rem; /* 14px */
+  --type-h4-weight: 500;
+  --type-h4-leading: 1.4286; /* 20px */
+
+  /* -- Body/Large (16px / Regular / 24px leading) -- */
+  --type-body-lg-family: var(--font-family-ui);
+  --type-body-lg-size: 1rem; /* 16px */
+  --type-body-lg-weight: 400;
+  --type-body-lg-leading: 1.5; /* 24px */
+
+  /* -- Body/Medium (14px / Regular / 22px leading) -- */
+  --type-body-md-family: var(--font-family-ui);
+  --type-body-md-size: 0.875rem; /* 14px */
+  --type-body-md-weight: 400;
+  --type-body-md-leading: 1.5714; /* 22px */
+
+  /* -- Body/Small (12px / Regular / 18px leading) -- */
+  --type-body-sm-family: var(--font-family-ui);
+  --type-body-sm-size: 0.75rem; /* 12px */
+  --type-body-sm-weight: 400;
+  --type-body-sm-leading: 1.5; /* 18px */
+
+  /* ------------------------------------------------------------
+     Shadows / Elevation — Box Shadow page (canvas 577:8)
+     Each effect is a single DROP_SHADOW built from Core/Neutral
+     at varying opacity — kept as rgba() since CSS custom
+     properties can't carry per-use alpha on a hex token.
+     ------------------------------------------------------------ */
+
+  --shadow-lt-card: 0 4px 8px rgba(24, 30, 36, 0.04);
+  --shadow-lt-modal: 0 4px 8px rgba(24, 30, 36, 0.04);
+  --shadow-lt-popup-menu: 0 4px 24px rgba(24, 30, 36, 0.16);
+  --shadow-dt-card: 0 4px 8px rgba(24, 30, 36, 0.04);
+  --shadow-dt-modal: 0 4px 8px rgba(24, 30, 36, 0.04);
+  --shadow-dt-popup-menu: 0 4px 16px rgba(24, 30, 36, 0.75);
+
+  /* ------------------------------------------------------------
+     Headers/H4 Clickable — Web Core "Button" component
+     (fileKey 5lX9s52cSgMPq0IlkgIYIC, node 414:179). A 9th text
+     style, distinct from Headers/H4, used only by the Text Link
+     button type: same size/weight as H4 but 100% (auto) leading
+     and tight tracking, always underlined.
+     ------------------------------------------------------------ */
+  --type-h4-clickable-family: var(--font-family-ui);
+  --type-h4-clickable-size: 0.875rem; /* 14px */
+  --type-h4-clickable-weight: 500;
+  --type-h4-clickable-leading: 1; /* 100% */
+  --type-h4-clickable-tracking: -0.02em; /* -2 in Figma, ~-0.28px at 14px */
+
+  /* ------------------------------------------------------------
+     Button ghost-fill tints — Web Core "Button" component
+     Backgrounds for the Alt Primary / Alt Danger button types,
+     which fill with a translucent tint of a Core step rather
+     than a solid color. Named for the state that uses them.
+     ------------------------------------------------------------ */
+  --btn-ghost-dt-primary-static: rgba(74, 168, 255, 0.15); /* Primary/300 @15% */
+  --btn-ghost-dt-primary-hover: rgba(128, 194, 255, 0.08); /* Primary/100 @8% */
+  --btn-ghost-lt-primary-static: rgba(0, 132, 255, 0.15); /* Primary/500 @15% */
+  --btn-ghost-lt-primary-hover: rgba(128, 194, 255, 0.08); /* Primary/100 @8% */
+  --btn-ghost-lt-primary-pressed: rgba(0, 80, 156, 0.08); /* Primary/900 @8% */
+  --btn-ghost-dt-danger-static: rgba(255, 125, 177, 0.15); /* Danger/300 @15% */
+  --btn-ghost-dt-danger-hover: rgba(255, 125, 177, 0.08); /* Danger/300 @8% */
+  --btn-ghost-dt-danger-pressed: rgba(255, 0, 102, 0.08); /* Danger/500 @8% */
+  --btn-ghost-lt-danger-static: rgba(204, 0, 82, 0.15); /* Danger/700 @15% */
+  --btn-ghost-lt-danger-hover: rgba(204, 0, 82, 0.08); /* Danger/700 @8% */
+  --btn-ghost-lt-danger-pressed: rgba(141, 0, 57, 0.08); /* Danger/900 @8% */
+
+  /* ------------------------------------------------------------
+     Dashboard surfaces — "Single Site / Front Page" (fileKey
+     iu8cX5Ew8b1vh1LUC3NLwz, node 10719:694). Figma only shows a
+     light-theme version of this screen; the dark pairing below
+     extrapolates from the same page-vs-card relationship using
+     Core/Neutral steps already established by Nav/RosterDemo
+     (dark page = Neutral/900, dark surface = Neutral/800, dark
+     hairline = Neutral/700) rather than inventing new steps.
+     ------------------------------------------------------------ */
+  --surface-lt-page: var(--color-neutral-200);
+  --surface-lt-card: var(--color-neutral-100);
+  --surface-lt-card-sunken: var(--color-neutral-200);
+  --surface-lt-hairline: rgba(24, 30, 36, 0.15);
+  --surface-lt-track: var(--color-neutral-300);
+
+  --surface-dt-page: var(--color-neutral-900);
+  --surface-dt-card: var(--color-neutral-800);
+  --surface-dt-card-sunken: var(--color-neutral-850);
+  --surface-dt-hairline: rgba(250, 251, 252, 0.15);
+  --surface-dt-track: var(--color-neutral-700);
+
+  /* ------------------------------------------------------------
+     Dashboard opacity washes — the tinted card headers and tag
+     chips on the Front Page node above are all a Core/Datavis/
+     Accent hue laid over the card surface at a fixed alpha, not a
+     separate flat color. Named by source hue; reused wherever
+     that hue's wash repeats across People Management, Site
+     Performance and Communications.
+     ------------------------------------------------------------ */
+  --wash-primary-15: rgba(128, 194, 255, 0.15); /* Primary/100 @15% */
+  --wash-sky-blue-15: rgba(128, 230, 255, 0.15); /* Datavis Sky Blue/100 @15% */
+  --wash-sky-blue-dark-15: rgba(0, 163, 203, 0.15); /* Datavis Sky Blue/700 @15% */
+  --wash-purple-15: rgba(89, 64, 179, 0.15); /* Datavis Purple/700 @15% */
+  --wash-pinkle-15: rgba(162, 48, 210, 0.15); /* Datavis Pinkle/700 @15% */
+  --wash-warning-15: rgba(194, 146, 1, 0.15); /* Accent/Warning/700 @15% */
+  --wash-success-15: rgba(0, 134, 73, 0.15); /* Text/Success @15% */
+  --wash-danger-15: rgba(204, 0, 82, 0.15); /* Danger/700 @15% */
+}
+
+/* ============================================================
+   BASE RESET
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--color-neutral-900);
+  color: var(--color-text-dt-default);
+  font-family: var(--font-family-ui);
+  min-height: 100vh;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+   FOCUS STYLES
+   ============================================================ */
+
+:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 3px;
+}

@@ -1,0 +1,102 @@
+/* ============================================================
+   RosterDemo — example page wiring Button + Input + Nav together
+   with DS2 tokens and real sample data. Not itself a pulled
+   Figma component; layout only.
+   ============================================================ */
+
+.page {
+  min-height: 100vh;
+  background-color: var(--color-neutral-900);
+  color: var(--color-text-dt-default);
+}
+
+.heading {
+  font-family: var(--type-h1-family);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-leading);
+}
+
+.subheading {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: var(--type-body-md-weight);
+  line-height: var(--type-body-md-leading);
+  color: var(--color-text-dt-grey);
+}
+
+.searchInput {
+  width: 260px;
+}
+
+.tableWrap {
+  border: 1px solid var(--color-neutral-700);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  padding: 12px 16px;
+  background-color: var(--color-neutral-850);
+  color: var(--color-text-dt-grey);
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: 500;
+  line-height: var(--type-body-sm-leading);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 12px 16px;
+  border-top: 1px solid var(--color-neutral-700);
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: var(--type-body-md-weight);
+  line-height: var(--type-body-md-leading);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.personCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 100px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background-color: var(--color-neutral-700);
+}
+
+.personName {
+  color: var(--color-text-dt-default);
+}
+
+.personEmail {
+  color: var(--color-text-dt-grey);
+  font-size: var(--type-body-sm-size);
+}
+
+.muted {
+  color: var(--color-text-dt-grey);
+}
+
+.emptyState {
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--color-text-dt-grey);
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+}

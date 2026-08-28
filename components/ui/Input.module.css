@@ -1,0 +1,142 @@
+/* ============================================================
+   Input — NOT yet pulled from Figma.
+   The DS2 | Web Core file has a dedicated "Input" page (per the
+   page list in the root CLAUDE.md) but no URL/node-id for it was
+   available, and blind node-id guesses in this file mostly fail
+   (confirmed while building Button/Nav). Built instead from the
+   DS2 primitives already pulled into app/globals.css — same 40px
+   control height as Button and the Nav site pickers, Body/Medium
+   type. Re-pull from the real Input page and replace this file
+   when a node-id URL is available.
+   ============================================================ */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: 500;
+  line-height: var(--type-body-sm-leading);
+}
+
+.field[data-theme="dark"] .label {
+  color: var(--color-text-dt-grey);
+}
+.field[data-theme="light"] .label {
+  color: var(--color-text-lt-grey);
+}
+
+.inputWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+
+.field[data-theme="dark"] .inputWrap {
+  background-color: var(--color-neutral-800);
+  border-color: var(--color-neutral-600);
+}
+.field[data-theme="light"] .inputWrap {
+  background-color: var(--color-neutral-100);
+  border-color: var(--color-neutral-400);
+}
+
+.inputWrap:focus-within {
+  border-color: var(--color-primary-500);
+}
+
+.field[data-theme="dark"] .inputWrap:focus-within {
+  box-shadow: 0 0 0 2px var(--btn-ghost-dt-primary-static);
+}
+.field[data-theme="light"] .inputWrap:focus-within {
+  box-shadow: 0 0 0 2px var(--btn-ghost-lt-primary-static);
+}
+
+.field[data-error="true"][data-theme="dark"] .inputWrap {
+  border-color: var(--color-danger-300);
+}
+.field[data-error="true"][data-theme="light"] .inputWrap {
+  border-color: var(--color-danger-700);
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.field[data-theme="dark"] .icon {
+  color: var(--color-text-dt-grey);
+}
+.field[data-theme="light"] .icon {
+  color: var(--color-text-lt-grey);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  background: none;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: var(--type-body-md-weight);
+  line-height: var(--type-body-md-leading);
+}
+
+.input:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.input:focus {
+  outline: none;
+}
+
+.field[data-theme="dark"] .input {
+  color: var(--color-text-dt-default);
+}
+.field[data-theme="dark"] .input::placeholder {
+  color: var(--color-text-dt-grey);
+}
+
+.field[data-theme="light"] .input {
+  color: var(--color-text-lt-default);
+}
+.field[data-theme="light"] .input::placeholder {
+  color: var(--color-text-lt-grey);
+}
+
+.helperText {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: var(--type-body-sm-weight);
+  line-height: var(--type-body-sm-leading);
+}
+
+.field[data-theme="dark"] .helperText {
+  color: var(--color-text-dt-grey);
+}
+.field[data-theme="light"] .helperText {
+  color: var(--color-text-lt-grey);
+}
+
+.field[data-error="true"][data-theme="dark"] .helperText {
+  color: var(--color-text-dt-danger);
+}
+.field[data-error="true"][data-theme="light"] .helperText {
+  color: var(--color-text-lt-danger);
+}

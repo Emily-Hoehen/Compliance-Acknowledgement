@@ -1,0 +1,311 @@
+/* ============================================================
+   SowHierarchyPage — alternate Scope of Work exploration: site
+   hierarchy (Building > Area Type > Area) as a left sidebar
+   instead of top tabs, with the main pane showing the selected
+   node's contracted work and verification evidence. Reuses
+   SowPage.module.css for content primitives (cards, stat tiles,
+   photo placeholders, tags, tables) — this module only holds the
+   two-pane layout and sidebar tree specific to this variant.
+
+   Light theme only, same as SowPage. Deliberately grayscale/lofi —
+   no brand color, per the rest of this SOW exploration.
+   ============================================================ */
+
+.page {
+  min-height: 100vh;
+  background-color: var(--surface-lt-page);
+  color: var(--color-text-lt-default);
+}
+
+/* ---------------- Page header: title + date nav ---------------- */
+
+.pageHeaderBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  max-width: 1856px;
+  margin: 0 auto;
+  padding: 24px 16px 0;
+}
+
+@media (min-width: 768px) {
+  .pageHeaderBar {
+    padding: 32px 24px 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .pageHeaderBar {
+    padding: 40px 32px 0;
+  }
+}
+
+.pageHeaderTitle {
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-leading);
+}
+
+.dateNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dateNavArrow {
+  appearance: none;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  border: 1px solid var(--color-neutral-400);
+  background-color: var(--surface-lt-card);
+  color: var(--color-text-lt-default);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.dateNavArrow:disabled {
+  cursor: not-allowed;
+  color: var(--color-neutral-400);
+}
+
+.dateNavLabel {
+  min-width: 160px;
+  text-align: center;
+  border-radius: 4px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-neutral-400);
+  background-color: var(--surface-lt-card);
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: 600;
+}
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1856px;
+  margin: 0 auto;
+}
+
+@media (min-width: 900px) {
+  .layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+}
+
+/* ---------------- Sidebar ---------------- */
+
+.sidebar {
+  flex-shrink: 0;
+  width: 100%;
+  border-bottom: 1px solid var(--color-neutral-300);
+  padding: 20px 16px;
+}
+
+@media (min-width: 900px) {
+  .sidebar {
+    width: 420px;
+    min-height: calc(100vh - 56px);
+    border-bottom: none;
+    border-right: 1px solid var(--color-neutral-300);
+    padding: 24px 16px;
+    position: sticky;
+    top: 0;
+  }
+}
+
+.sidebarHeading {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+  margin-bottom: 16px;
+}
+
+.sidebarSearch {
+  margin-bottom: 12px;
+}
+
+.tree {
+  display: flex;
+  flex-direction: column;
+}
+
+.treeNodeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  appearance: none;
+  background: none;
+  border: none;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  padding: 8px 8px 8px 6px;
+  text-align: left;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-lt-default);
+}
+
+.treeNodeRow:hover {
+  background-color: var(--color-neutral-200);
+}
+
+.treeNodeActive {
+  border-left-color: var(--color-primary-500);
+  background-color: var(--wash-primary-15);
+  font-weight: 700;
+}
+
+.treeNodeSite {
+  font-weight: 700;
+  border-bottom: 1px solid var(--color-neutral-300);
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+}
+
+.treeNodeLogo {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.treeNodeBuilding {
+  font-weight: 600;
+}
+
+.treeNodeAreaType {
+  padding-left: 26px;
+}
+
+.treeNodeZone {
+  padding-left: 46px;
+}
+
+.treeNodeIcon {
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+  color: var(--color-neutral-500);
+}
+
+.treeNodeCaret {
+  flex-shrink: 0;
+  width: 10px;
+  display: inline-flex;
+  transition: transform 0.15s ease;
+  color: var(--color-neutral-500);
+}
+
+.treeNodeCaretOpen {
+  transform: rotate(90deg);
+}
+
+.treeNodeCaretSpacer {
+  flex-shrink: 0;
+  width: 10px;
+}
+
+.treeNodeMeta {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--color-text-lt-grey);
+}
+
+/* ---------------- Main content ---------------- */
+
+.content {
+  flex: 1;
+  min-width: 0;
+  padding: 24px 16px 56px;
+}
+
+@media (min-width: 768px) {
+  .content {
+    padding: 32px 24px 64px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .content {
+    padding: 40px 32px 72px;
+  }
+}
+
+.breadcrumb {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-lt-grey);
+  margin-bottom: 4px;
+}
+
+.breadcrumbCurrent {
+  color: var(--color-text-lt-default);
+  font-weight: 600;
+}
+
+.contentTitle {
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-leading);
+  margin-bottom: 24px;
+}
+
+.flatTaskList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 16px;
+}
+
+.emptyNote {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-grey);
+  padding: 24px 0;
+}
+
+/* ---------------- Trend chart ---------------- */
+
+.trendHeaderRow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.trendValue {
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-leading);
+}
+
+.trendCaption {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-grey);
+}
+
+.trendAxis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-lt-grey);
+}

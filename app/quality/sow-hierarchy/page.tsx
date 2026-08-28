@@ -1,0 +1,19 @@
+import { readFile } from "fs/promises";
+import path from "path";
+import { parseCsv, toRosterPeople } from "../../../lib/csv";
+import { SowHierarchyPage } from "../../../components/patterns/SowHierarchyPage";
+
+async function loadRoster(fileName: string) {
+  const filePath = path.join(process.cwd(), "data", fileName);
+  const text = await readFile(filePath, "utf-8");
+  return toRosterPeople(parseCsv(text));
+}
+
+export default async function QualitySowHierarchyPage() {
+  const [associates, managers] = await Promise.all([
+    loadRoster("associates.csv"),
+    loadRoster("managers.csv"),
+  ]);
+
+  return <SowHierarchyPage associates={associates} managers={managers} />;
+}

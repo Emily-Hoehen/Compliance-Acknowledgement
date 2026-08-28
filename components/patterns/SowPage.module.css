@@ -1,0 +1,1077 @@
+/* ============================================================
+   SowPage — consolidated Scope of Work view. Shared styles for the
+   page shell (SowPage.tsx) and all four tabs (SowOverviewTab /
+   SowFacilityTab / SowPeopleTab / SowContractTab), which import
+   this same module for their primitives (stat tiles, tree rows,
+   photo placeholders, etc.) rather than each carrying a
+   near-duplicate stylesheet.
+
+   Light theme only — `Nav`/`Card`/`Input` are reused as-is; only
+   `light` variants of the theme-branched rules here are ever
+   painted. A dark variant would just be reinstating the
+   `[data-theme="dark"]` rules alongside these, since every
+   selector below already branches on data-theme.
+   ============================================================ */
+
+.page {
+  min-height: 100vh;
+}
+
+.page[data-theme="light"] {
+  background-color: var(--surface-lt-page);
+  color: var(--color-text-lt-default);
+}
+
+.page[data-theme="dark"] {
+  background-color: var(--surface-dt-page);
+  color: var(--color-text-dt-default);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  max-width: 1856px;
+  margin: 0 auto;
+  padding: 24px 16px 56px;
+}
+
+@media (min-width: 768px) {
+  .main {
+    padding: 32px 24px 64px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .main {
+    padding: 40px 32px 72px;
+  }
+}
+
+/* ---------------- Page header ---------------- */
+
+.pageHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pageTitle {
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-leading);
+}
+
+.dateControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  appearance: none;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 8px 14px;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: 600;
+  line-height: var(--type-body-md-leading);
+}
+
+.page[data-theme="light"] .dateControl {
+  background-color: var(--surface-lt-card);
+  border: 1px solid var(--color-neutral-400);
+  color: var(--color-text-lt-default);
+}
+
+.page[data-theme="dark"] .dateControl {
+  background-color: var(--surface-dt-card);
+  border: 1px solid var(--color-neutral-600);
+  color: var(--color-text-dt-default);
+}
+
+/* ---------------- Tabs ----------------
+   A boxed segmented control (own background track, active tab lifted
+   on a card with a shadow) rather than an underline-only tab row —
+   every clickable control here should read as a button, not bare
+   text sitting on the page. */
+
+.tabBar {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.page[data-theme="light"] .tabBar {
+  background-color: var(--color-neutral-200);
+}
+
+.page[data-theme="dark"] .tabBar {
+  background-color: var(--color-neutral-700);
+}
+
+.tabButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  appearance: none;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 10px 18px;
+  white-space: nowrap;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: 600;
+  line-height: var(--type-body-md-leading);
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.page[data-theme="light"] .tabButton {
+  color: var(--color-text-lt-grey);
+}
+
+.page[data-theme="dark"] .tabButton {
+  color: var(--color-text-dt-grey);
+}
+
+.tabButtonActive[data-theme="light"],
+.page[data-theme="light"] .tabButtonActive {
+  color: var(--color-primary-700);
+  background-color: var(--surface-lt-card);
+  box-shadow: var(--shadow-lt-card);
+}
+
+.tabButtonActive[data-theme="dark"],
+.page[data-theme="dark"] .tabButtonActive {
+  color: var(--color-primary-100);
+  background-color: var(--surface-dt-card);
+  box-shadow: var(--shadow-dt-card);
+}
+
+/* ---------------- Section scaffolding ---------------- */
+
+.sectionStack {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sectionHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.sectionTitle {
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-leading);
+}
+
+.subheading {
+  font-family: var(--type-body-lg-family);
+  font-size: var(--type-body-lg-size);
+  font-weight: 600;
+  line-height: var(--type-body-lg-leading);
+  margin-bottom: 12px;
+}
+
+/* A small ghost button, not bare text — every link-styled control
+   here gets a visible box (background wash + border) so it reads as
+   clickable rather than floating on the page. */
+.textLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  appearance: none;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: 600;
+  transition: background-color 120ms ease;
+}
+
+.page[data-theme="light"] .textLink {
+  background-color: var(--btn-ghost-lt-primary-static);
+  border: 1px solid transparent;
+  color: var(--color-primary-700);
+}
+
+.page[data-theme="light"] .textLink:hover {
+  background-color: var(--btn-ghost-lt-primary-hover);
+}
+
+.page[data-theme="dark"] .textLink {
+  background-color: var(--btn-ghost-dt-primary-static);
+  border: 1px solid transparent;
+  color: var(--color-primary-100);
+}
+
+.page[data-theme="dark"] .textLink:hover {
+  background-color: var(--btn-ghost-dt-primary-hover);
+}
+
+/* A plain bordered/shadowed content wrapper — the Facility summary
+   banner, the adherence/gap cards on Overview, etc. Not specific
+   to any one section; just the shared "card with padding" shell. */
+.paddedCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+}
+
+.summaryText {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  line-height: 1.6;
+}
+
+.page[data-theme="dark"] .summaryText {
+  color: var(--color-text-dt-default);
+}
+
+/* ---------------- KPI boxes (Overview) ---------------- */
+
+.kpiBoxRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .kpiBoxRow {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.kpiBox {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+}
+
+.kpiBoxTitle {
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-leading);
+}
+
+.kpiList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.kpiItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 24px;
+  border-left: 1px solid var(--color-neutral-300);
+}
+
+.page[data-theme="dark"] .kpiItem {
+  border-left-color: var(--color-neutral-700);
+}
+
+.kpiItem:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+
+.kpiValue {
+  font-family: var(--type-h1-family);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-leading);
+}
+
+.kpiValueMuted {
+  font-size: var(--type-body-lg-size);
+  font-weight: 500;
+}
+
+.page[data-theme="light"] .kpiValueMuted {
+  color: var(--color-text-lt-grey);
+}
+
+.page[data-theme="dark"] .kpiValueMuted {
+  color: var(--color-text-dt-grey);
+}
+
+.kpiLabel {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  line-height: var(--type-body-sm-leading);
+}
+
+.page[data-theme="light"] .kpiLabel {
+  color: var(--color-text-lt-grey);
+}
+
+.page[data-theme="dark"] .kpiLabel {
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Stat tiles (Facility / People) ---------------- */
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .statGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .statGridWide {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.statTile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+}
+
+.statTileLabel {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  line-height: var(--type-body-sm-leading);
+}
+
+.page[data-theme="light"] .statTileLabel {
+  color: var(--color-text-lt-grey);
+}
+
+.page[data-theme="dark"] .statTileLabel {
+  color: var(--color-text-dt-grey);
+}
+
+.statTileValue {
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-leading);
+}
+
+/* ---------------- Photo / area grids ---------------- */
+
+.photoGrid,
+.areaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .photoGrid,
+  .areaGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .photoGrid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .areaGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.photoCard {
+  overflow: hidden;
+}
+
+.photoPlaceholder {
+  aspect-ratio: 4 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page[data-theme="light"] .photoPlaceholder {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-neutral-300),
+    var(--color-neutral-300) 8px,
+    var(--color-neutral-200) 8px,
+    var(--color-neutral-200) 16px
+  );
+  color: var(--color-neutral-500);
+}
+
+.page[data-theme="dark"] .photoPlaceholder {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-neutral-700),
+    var(--color-neutral-700) 8px,
+    var(--color-neutral-800) 8px,
+    var(--color-neutral-800) 16px
+  );
+  color: var(--color-neutral-500);
+}
+
+.photoBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+.photoArea {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: 600;
+  line-height: var(--type-body-sm-leading);
+}
+
+.photoMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  line-height: var(--type-body-sm-leading);
+}
+
+.page[data-theme="light"] .photoMeta {
+  color: var(--color-text-lt-grey);
+}
+
+.page[data-theme="dark"] .photoMeta {
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Recent-activity mosaic (Overview) ----------------
+   One large hero verification photo + four medium ones filling the
+   remaining 2x2 — same "featured + grid" shape as the Live View
+   feed's top block. Fixed-height rows (not aspect-ratio, like
+   .photoPlaceholder) so the hero can span 2 rows cleanly. */
+
+.activityGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: 180px;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .activityGrid {
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 200px;
+  }
+}
+
+.activityCard {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.activityHero {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.activityPhoto {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page[data-theme="light"] .activityPhoto {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-neutral-300),
+    var(--color-neutral-300) 8px,
+    var(--color-neutral-200) 8px,
+    var(--color-neutral-200) 16px
+  );
+  color: var(--color-neutral-500);
+}
+
+.page[data-theme="dark"] .activityPhoto {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-neutral-700),
+    var(--color-neutral-700) 8px,
+    var(--color-neutral-800) 8px,
+    var(--color-neutral-800) 16px
+  );
+  color: var(--color-neutral-500);
+}
+
+.typeTag {
+  border-radius: 100px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.page[data-theme="light"] .typeTag {
+  border: 1px solid var(--color-neutral-400);
+  color: var(--color-text-lt-default);
+}
+
+.page[data-theme="dark"] .typeTag {
+  border: 1px solid var(--color-neutral-600);
+  color: var(--color-text-dt-default);
+}
+
+.activityPerson {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.avatarSmall {
+  width: 18px;
+  height: 18px;
+  border-radius: 100px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background-color: var(--color-neutral-500);
+}
+
+/* A colored badge, not plain bold text — every score reads as a
+   small pill (like a status tag) rather than floating numerals. */
+.photoScore {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.page[data-theme="light"] .photoScore {
+  background-color: var(--wash-success-15);
+  color: var(--color-text-lt-success);
+}
+
+.page[data-theme="dark"] .photoScore {
+  background-color: var(--wash-success-15);
+  color: var(--color-text-dt-success);
+}
+
+/* ---------------- Toolbars: search + filters + view toggle ---------------- */
+
+.planToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.searchWrap {
+  flex: 1 1 260px;
+  min-width: 220px;
+}
+
+.chipRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  appearance: none;
+  cursor: pointer;
+  border-radius: 100px;
+  padding: 8px 16px;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.page[data-theme="light"] .chip {
+  border: 1px solid var(--color-neutral-400);
+  background: transparent;
+  color: var(--color-text-lt-default);
+}
+
+.page[data-theme="dark"] .chip {
+  border: 1px solid var(--color-neutral-600);
+  background: transparent;
+  color: var(--color-text-dt-default);
+}
+
+.page[data-theme="light"] .chipActive {
+  background: var(--color-primary-500);
+  border-color: var(--color-primary-500);
+  color: var(--color-text-lt-default-inverted);
+}
+
+.page[data-theme="dark"] .chipActive {
+  background: var(--color-primary-300);
+  border-color: var(--color-primary-300);
+  color: var(--color-text-dt-default-inverted);
+}
+
+.viewToggleGroup {
+  display: flex;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.page[data-theme="light"] .viewToggleGroup {
+  border: 1px solid var(--color-neutral-400);
+}
+
+.page[data-theme="dark"] .viewToggleGroup {
+  border: 1px solid var(--color-neutral-600);
+}
+
+.viewToggleButton {
+  appearance: none;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 8px 16px;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: 600;
+}
+
+.page[data-theme="light"] .viewToggleButton {
+  color: var(--color-text-lt-grey);
+}
+
+.page[data-theme="dark"] .viewToggleButton {
+  color: var(--color-text-dt-grey);
+}
+
+.page[data-theme="light"] .viewToggleButtonActive {
+  background: var(--color-primary-500);
+  color: var(--color-text-lt-default-inverted);
+}
+
+.page[data-theme="dark"] .viewToggleButtonActive {
+  background: var(--color-primary-300);
+  color: var(--color-text-dt-default-inverted);
+}
+
+.filterSelect {
+  appearance: auto;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: 600;
+}
+
+.page[data-theme="light"] .filterSelect {
+  background-color: var(--surface-lt-card);
+  border: 1px solid var(--color-neutral-400);
+  color: var(--color-text-lt-default);
+}
+
+.page[data-theme="dark"] .filterSelect {
+  background-color: var(--surface-dt-card);
+  border: 1px solid var(--color-neutral-600);
+  color: var(--color-text-dt-default);
+}
+
+.slicerRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.slicerLabel {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: 600;
+}
+
+.page[data-theme="light"] .slicerLabel {
+  color: var(--color-text-lt-grey);
+}
+
+.page[data-theme="dark"] .slicerLabel {
+  color: var(--color-text-dt-grey);
+}
+
+.iconLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.iconLabel i {
+  font-size: 12px;
+}
+
+.page[data-theme="light"] .iconLabel i {
+  color: var(--color-neutral-500);
+}
+
+.page[data-theme="dark"] .iconLabel i {
+  color: var(--color-neutral-500);
+}
+
+/* ---------------- Per-area verification drill-down (Facility) ---------------- */
+
+.rowToggle {
+  appearance: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: inline-flex;
+}
+
+/* Higher specificity than `.table td` (two classes beats class+type)
+   so this can override its padding/white-space without !important. */
+.table td.verificationCell {
+  padding: 0 16px 16px 48px;
+  white-space: normal;
+}
+
+.verificationList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.verificationRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--color-neutral-300);
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+}
+
+.page[data-theme="dark"] .verificationRow {
+  border-top-color: var(--color-neutral-700);
+}
+
+.verificationRow:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.verificationMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.page[data-theme="light"] .verificationMeta {
+  color: var(--color-text-lt-grey);
+}
+
+.page[data-theme="dark"] .verificationMeta {
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Contract tree ---------------- */
+
+.treeCard {
+  overflow: hidden;
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 16px;
+  cursor: pointer;
+  appearance: none;
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: var(--type-body-md-family);
+}
+
+.treeRow:not(:first-child) {
+  border-top: 1px solid var(--color-neutral-300);
+}
+
+.page[data-theme="dark"] .treeRow:not(:first-child) {
+  border-top-color: var(--color-neutral-700);
+}
+
+.treeRowAreaType {
+  padding-left: 40px;
+}
+
+.page[data-theme="light"] .treeRowAreaType {
+  background-color: var(--color-neutral-200);
+}
+
+.page[data-theme="dark"] .treeRowAreaType {
+  background-color: var(--color-neutral-850);
+}
+
+.treeLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--type-body-md-size);
+  font-weight: 600;
+  line-height: var(--type-body-md-leading);
+}
+
+.treeLabelSecondary {
+  font-weight: 500;
+}
+
+.treeCaret {
+  display: inline-flex;
+  width: 12px;
+  transition: transform 0.15s ease;
+}
+
+.treeCaretOpen {
+  transform: rotate(90deg);
+}
+
+.treeMeta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  flex-shrink: 0;
+}
+
+.page[data-theme="light"] .treeMeta {
+  color: var(--color-text-lt-grey);
+}
+
+.page[data-theme="dark"] .treeMeta {
+  color: var(--color-text-dt-grey);
+}
+
+.taskList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 16px 16px 72px;
+}
+
+.page[data-theme="light"] .taskList {
+  background-color: var(--color-neutral-200);
+}
+
+.page[data-theme="dark"] .taskList {
+  background-color: var(--color-neutral-850);
+}
+
+.taskRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  line-height: var(--type-body-sm-leading);
+}
+
+.taskLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.frequencyText {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.page[data-theme="light"] .frequencyText {
+  color: var(--color-text-lt-grey);
+}
+
+.page[data-theme="dark"] .frequencyText {
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Tables (People / Facility list view) ---------------- */
+
+.tableWrap {
+  overflow: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.page[data-theme="light"] .table th {
+  background-color: var(--color-neutral-200);
+  color: var(--color-text-lt-grey);
+}
+
+.page[data-theme="dark"] .table th {
+  background-color: var(--color-neutral-850);
+  color: var(--color-text-dt-grey);
+}
+
+.table td {
+  padding: 12px 16px;
+  border-top: 1px solid var(--color-neutral-300);
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.page[data-theme="dark"] .table td {
+  border-top-color: var(--color-neutral-700);
+}
+
+.personCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.personCellName {
+  display: flex;
+  flex-direction: column;
+  white-space: nowrap;
+}
+
+.personCellSub {
+  font-size: 12px;
+  color: var(--color-text-lt-grey);
+  font-weight: 400;
+}
+
+.page[data-theme="dark"] .personCellSub {
+  color: var(--color-text-dt-grey);
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 100px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background-color: var(--color-neutral-500);
+}
+
+/* ---------------- Score / adherence bars (Overview, Facility) ---------------- */
+
+.scoreList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.scoreRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.scoreName {
+  width: 130px;
+  flex-shrink: 0;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: 600;
+}
+
+.scoreTrack {
+  flex: 1;
+  height: 8px;
+  border-radius: 100px;
+  overflow: hidden;
+}
+
+.page[data-theme="light"] .scoreTrack {
+  background-color: var(--color-neutral-300);
+}
+
+.page[data-theme="dark"] .scoreTrack {
+  background-color: var(--color-neutral-700);
+}
+
+.scoreFill {
+  display: block;
+  height: 100%;
+  border-radius: 100px;
+}
+
+.page[data-theme="light"] .scoreFill {
+  background-color: var(--color-primary-500);
+}
+
+.page[data-theme="dark"] .scoreFill {
+  background-color: var(--color-primary-300);
+}
+
+.scoreValue {
+  width: 40px;
+  flex-shrink: 0;
+  text-align: right;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: 700;
+}
+
+.gapPositive {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: 600;
+}
