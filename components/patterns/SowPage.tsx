@@ -8,6 +8,7 @@ import { SowFacilityTab } from "./SowFacilityTab";
 import { SowPeopleTab } from "./SowPeopleTab";
 import { SowContractTab } from "./SowContractTab";
 import type { RosterPerson } from "../../lib/csv";
+import type { ContractBuilding } from "../../lib/sowContract";
 import styles from "./SowPage.module.css";
 
 /**
@@ -44,9 +45,10 @@ const TABS: { id: SowTab; label: string; icon: string }[] = [
 export type SowPageProps = {
   associates?: RosterPerson[];
   managers?: RosterPerson[];
+  contractBuildings?: ContractBuilding[];
 };
 
-export function SowPage({ associates = [], managers = [] }: SowPageProps) {
+export function SowPage({ associates = [], managers = [], contractBuildings = [] }: SowPageProps) {
   const [activeTab, setActiveTab] = useState<SowTab>("overview");
   const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
@@ -84,7 +86,7 @@ export function SowPage({ associates = [], managers = [] }: SowPageProps) {
         {activeTab === "overview" && <SowOverviewTab onNavigateTab={setActiveTab} />}
         {activeTab === "facility" && <SowFacilityTab />}
         {activeTab === "people" && <SowPeopleTab associates={associates} managers={managers} />}
-        {activeTab === "contract" && <SowContractTab />}
+        {activeTab === "contract" && <SowContractTab contractBuildings={contractBuildings} />}
       </main>
     </div>
   );

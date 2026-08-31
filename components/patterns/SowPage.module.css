@@ -420,6 +420,11 @@
   justify-content: center;
 }
 
+.photoPlaceholderImg {
+  width: 100%;
+  object-fit: cover;
+}
+
 .page[data-theme="light"] .photoPlaceholder {
   background-image: repeating-linear-gradient(
     45deg,
@@ -510,6 +515,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.activityPhotoImg {
+  width: 100%;
+  min-height: 0;
+  object-fit: cover;
 }
 
 .page[data-theme="light"] .activityPhoto {

@@ -14,6 +14,8 @@
  */
 
 import type { RosterPerson } from "./csv";
+import type { ContractAreaType } from "./sowContract";
+import { photoForLocation } from "./sowImages";
 
 export const siteContractStats = {
   buildings: 7,
@@ -74,6 +76,8 @@ export const buildings: BuildingSummary[] = [
 export type ContractTask = {
   label: string;
   frequency: string;
+  /** Which shifts this task applies to — only set for tasks sourced from the real SOW export (lib/sowContract.ts), not the older illustrative task lists. */
+  shifts?: string[];
 };
 
 export type AreaType = {
@@ -97,85 +101,36 @@ export function statusForAreaType(a: { percent: number; score: number }): AreaTy
 }
 
 /**
- * Sample of Concourse D's area types (it has ~29 in the source
- * data — trimmed here to a demonstrative handful). The other six
- * buildings follow the same shape in the real product. Coverage
- * figures carry the same values as areaTypeCoverage below where the
- * two happen to name the same area type (Break Rooms, Gates); the
- * rest are plausible estimates, scaled to each one's totalActions.
+ * Turns one real area type (from lib/sowContract.ts's parsed SOW
+ * export) into the same AreaType shape the rest of this file already
+ * generates day-varying stats against. name/tasks/totalActions are
+ * real; servicedToday/percent/captured/score are illustrative —
+ * deterministic per area type via hashSeed/scoreForDay, same spirit
+ * as every other "today's numbers" figure in this file, just now
+ * layered on top of a real task/area count instead of a guess.
  */
-export const concourseDAreaTypes: AreaType[] = [
-  {
-    name: "Baggage Claims",
-    totalActions: 14,
-    servicedToday: 2,
-    expectedServices: 14,
-    percent: 40,
-    captured: "1h 12m",
-    score: 4.92,
-    tasks: [
-      { label: "Collect trash and debris", frequency: "2x Daily" },
-      { label: "Disinfect handles, keypads, and buttons on equipment", frequency: "1x Daily" },
-      { label: "Keep all surfaces free of dust, dirt, and marks", frequency: "1x Daily" },
-      { label: "Substantially clean carpets, minor spots/stains only", frequency: "1x Daily" },
-    ],
-  },
-  {
-    name: "Break Rooms",
-    totalActions: 48,
-    servicedToday: 27,
-    expectedServices: 119,
-    percent: 43.69,
-    captured: "8h 21m",
-    score: 4.87,
-    tasks: [
-      { label: "Empty trash receptacles and replace liner", frequency: "3x Daily" },
-      { label: "Wipe, clean, and disinfect all chairs and tables", frequency: "3x Daily" },
-      { label: "Clean refrigerators and empty per posted directions", frequency: "1x Weekly" },
-    ],
-  },
-  {
-    name: "Restrooms (Passenger)",
-    totalActions: 24,
-    servicedToday: 15,
-    expectedServices: 24,
-    percent: 62.5,
-    captured: "3h 40m",
-    score: 4.76,
-    tasks: [
-      { label: "Restock paper products and soap", frequency: "8x Daily" },
-      { label: "Clean and disinfect all fixtures", frequency: "6x Daily" },
-      { label: "Mop and sanitize floors", frequency: "2x Daily" },
-    ],
-  },
-  {
-    name: "Gates",
-    totalActions: 22,
-    servicedToday: 38,
-    expectedServices: 342,
-    percent: 49.12,
-    captured: "32h 10m",
-    score: 4.93,
-    tasks: [
-      { label: "Collect trash and debris", frequency: "5x Daily" },
-      { label: "Clean seating and tray tables", frequency: "1x Daily" },
-      { label: "Spot-clean glass and signage", frequency: "1x Daily" },
-    ],
-  },
-  {
-    name: "Jet Bridges",
-    totalActions: 22,
-    servicedToday: 14,
-    expectedServices: 22,
-    percent: 63.6,
-    captured: "2h 45m",
-    score: 4.99,
-    tasks: [
-      { label: "Sweep and remove debris", frequency: "2x Daily" },
-      { label: "Wipe down handrails", frequency: "1x Daily" },
-    ],
-  },
-];
+export function areaTypeFromContract(at: ContractAreaType): AreaType {
+  const areaCount = at.areas.length;
+  const taskCount = at.tasks.length;
+  const totalActions = Math.max(1, areaCount * taskCount);
+  const expectedServices = totalActions;
+  const seedKey = `${at.building}-${at.name}`;
+  const servicedToday = Math.max(0, Math.round(expectedServices * scaleForDay(`${seedKey}-base`, 0, 0.35, 0.75)));
+  const percent = expectedServices > 0 ? Math.min(100, (servicedToday / expectedServices) * 100) : 0;
+  const capturedMinutes = 20 + (hashSeed(`${seedKey}-captured`) % 400);
+  const captured = `${Math.floor(capturedMinutes / 60)}h ${String(capturedMinutes % 60).padStart(2, "0")}m`;
+  const score = scoreForDay(`${seedKey}-score`, 0);
+  return {
+    name: at.name,
+    totalActions,
+    servicedToday,
+    expectedServices,
+    percent,
+    captured,
+    score,
+    tasks: at.tasks.map((t) => ({ label: t.label, frequency: t.frequency, shifts: t.shifts })),
+  };
+}
 
 export type AreaTypeCoverage = {
   name: string;
@@ -305,6 +260,62 @@ export function scaleForDay(seed: string, dayOffset: number, min = 0.82, max = 1
   return min + ((wobble + 1) / 2) * (max - min);
 }
 
+function formatHoursMinutes(totalMinutes: number): string {
+  return `${Math.floor(totalMinutes / 60)}h ${String(totalMinutes % 60).padStart(2, "0")}m`;
+}
+
+/** A deterministic, day-varying "hours captured vs. paid" read for a hierarchy node — same generator spirit as scoreForDay/scaleForDay, backing the Hours Captured metric card. */
+export function hoursCapturedForNode(seedKey: string, dayOffset: number): {
+  percent: number;
+  capturedLabel: string;
+  paidLabel: string;
+  deltaVsYesterday: number;
+} {
+  const paidMinutes = 180 + (hashSeed(`${seedKey}-paid`) % 300);
+  const percent = Math.min(100, Math.round(55 + scaleForDay(`${seedKey}-captured-pct`, dayOffset, 0, 40)));
+  const yesterdayPercent = Math.min(100, Math.round(55 + scaleForDay(`${seedKey}-captured-pct`, dayOffset + 1, 0, 40)));
+  const capturedMinutes = Math.round((paidMinutes * percent) / 100);
+  return {
+    percent,
+    capturedLabel: formatHoursMinutes(capturedMinutes),
+    paidLabel: formatHoursMinutes(paidMinutes),
+    deltaVsYesterday: percent - yesterdayPercent,
+  };
+}
+
+/** A deterministic audit summary (score + volume) for a hierarchy node, backing the Average Audit Score metric card. */
+export function auditSummaryForNode(seedKey: string, dayOffset: number): {
+  avgScore: number;
+  totalAudits: number;
+  jointAudits: number;
+  deltaVsLastWeek: number;
+} {
+  const avgScore = scoreForDay(`${seedKey}-audit-score`, dayOffset);
+  const lastWeekScore = scoreForDay(`${seedKey}-audit-score`, dayOffset + 7);
+  const totalAudits = 8 + (hashSeed(`${seedKey}-audit-count`) % 60);
+  const jointAudits = Math.max(1, Math.round(totalAudits * 0.2));
+  return {
+    avgScore,
+    totalAudits,
+    jointAudits,
+    deltaVsLastWeek: Number((avgScore - lastWeekScore).toFixed(2)),
+  };
+}
+
+/** Deterministic "on pace for X% by end of shift" projection layered on top of a current serviced/expected coverage percent, for the Service Coverage metric card. */
+export function projectedEndOfShiftPercent(seedKey: string, currentPercent: number, dayOffset: number): number {
+  const factor = 1.05 + scaleForDay(`${seedKey}-projection`, dayOffset, 0, 0.35);
+  return Math.min(100, Math.round(currentPercent * factor));
+}
+
+/** A short "captured time" reading for a single card-level unit (one service instance, area, or element) — "17m 11s" style, distinct from hoursCapturedForNode's hour-scale KPI reading. Deterministic per seed and day. */
+export function capturedDurationLabel(seedKey: string, dayOffset: number): string {
+  const totalSeconds = 60 + Math.round(scaleForDay(`${seedKey}-duration`, dayOffset, 0, 720));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+}
+
 /** A plausible time-of-day (7:00 AM–6:59 PM) for a past day's verification timestamp, since "X minutes ago" only makes sense for today. */
 export function timeOfDayForSeed(seed: string): string {
   const hash = hashSeed(seed);
@@ -385,6 +396,8 @@ export type ActivityItem = {
   /** Verifications only — audits don't carry a shift/position in this dataset. */
   position?: string;
   shift?: VerificationEvent["shift"];
+  /** The area type's supplied verification/audit photo (public/SOWimages, lib/sowImages.ts), resolved from `location`. Undefined when no photo was supplied for that area type. */
+  areaPhoto?: string;
 };
 
 export function verificationToActivity(v: VerificationEvent): ActivityItem {
@@ -398,6 +411,7 @@ export function verificationToActivity(v: VerificationEvent): ActivityItem {
     timeAgo: v.timeAgo,
     position: v.position,
     shift: v.shift,
+    areaPhoto: photoForLocation(v.location, `${v.location}|${v.personName}`),
   };
 }
 
@@ -410,6 +424,7 @@ export function auditToActivity(a: AuditEvent): ActivityItem {
     location: a.location,
     score: a.score,
     timeAgo: a.timeAgo,
+    areaPhoto: photoForLocation(a.location, `${a.location}|${a.auditorName}`),
   };
 }
 

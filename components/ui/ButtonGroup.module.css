@@ -1,0 +1,98 @@
+/* ============================================================
+   ButtonGroup — segmented pill buttons, one active at a time.
+   Design tokens only (colors, type all from app/globals.css).
+   ============================================================ */
+
+.group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 17px 0 16px;
+  border-radius: 8px;
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.group[data-theme="light"] .option {
+  background-color: var(--wash-neutral-15);
+  color: var(--color-text-lt-grey);
+}
+
+.group[data-theme="light"] .optionActive {
+  background-color: var(--btn-ghost-lt-primary-static);
+  color: var(--color-primary-700);
+}
+
+.group[data-theme="dark"] .option {
+  background-color: var(--color-neutral-800);
+  color: var(--color-text-dt-grey);
+}
+
+.group[data-theme="dark"] .optionActive {
+  background-color: var(--btn-ghost-dt-primary-static);
+  color: var(--color-text-dt-blue);
+}
+
+/* -- Segmented variant: one neutral track, a solid dark pill that
+   slides to the active option, flush (no gap) — Figma's
+   Snapshot/Trend control. The pill is a separate absolutely-positioned
+   .thumb (see ButtonGroup.tsx) that transitions position/width, rather
+   than each option's own background cross-fading — a shared shape in
+   motion reads as smooth, two boxes swapping color reads as a jump. */
+
+.group[data-variant="segmented"] {
+  position: relative;
+  gap: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.group[data-variant="segmented"] .option {
+  position: relative;
+  z-index: 1;
+  border-radius: 8px;
+  background-color: transparent;
+  transition: color 200ms ease;
+}
+
+.thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  height: 100%;
+  border-radius: 8px;
+  pointer-events: none;
+  transition: transform 220ms cubic-bezier(0.3, 0, 0.2, 1), width 220ms cubic-bezier(0.3, 0, 0.2, 1);
+}
+
+.group[data-theme="light"][data-variant="segmented"] {
+  background-color: var(--color-neutral-300);
+}
+
+.group[data-theme="light"][data-variant="segmented"] .option {
+  color: var(--color-text-lt-grey);
+}
+
+.group[data-theme="light"][data-variant="segmented"] .optionActive {
+  color: var(--color-text-lt-white);
+}
+
+.group[data-theme="light"][data-variant="segmented"] .thumb {
+  background-color: var(--color-neutral-900);
+}

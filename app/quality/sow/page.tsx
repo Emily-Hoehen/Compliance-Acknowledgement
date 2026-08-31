@@ -1,6 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { parseCsv, toRosterPeople } from "../../../lib/csv";
+import { loadContractBuildings } from "../../../lib/sowContractLoader";
 import { SowPage } from "../../../components/patterns/SowPage";
 
 async function loadRoster(fileName: string) {
@@ -10,10 +11,11 @@ async function loadRoster(fileName: string) {
 }
 
 export default async function QualitySowPage() {
-  const [associates, managers] = await Promise.all([
+  const [associates, managers, contractBuildings] = await Promise.all([
     loadRoster("associates.csv"),
     loadRoster("managers.csv"),
+    loadContractBuildings(),
   ]);
 
-  return <SowPage associates={associates} managers={managers} />;
+  return <SowPage associates={associates} managers={managers} contractBuildings={contractBuildings} />;
 }

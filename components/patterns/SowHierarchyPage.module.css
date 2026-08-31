@@ -5,10 +5,13 @@
    node's contracted work and verification evidence. Reuses
    SowPage.module.css for content primitives (cards, stat tiles,
    photo placeholders, tags, tables) — this module only holds the
-   two-pane layout and sidebar tree specific to this variant.
+   two-pane layout, sidebar tree, and node-detail widgets specific
+   to this variant.
 
-   Light theme only, same as SowPage. Deliberately grayscale/lofi —
-   no brand color, per the rest of this SOW exploration.
+   Light theme only, same as SowPage. Mid-fi: real primary blue for
+   the active/selected states and metric trend colors, per the
+   Figma "Area Types" exploration this was rebuilt from
+   (fileKey SWFMjlBJ4u9vSrVaomRe12, node 87:10576).
    ============================================================ */
 
 .page {
@@ -17,7 +20,7 @@
   color: var(--color-text-lt-default);
 }
 
-/* ---------------- Page header: title + date nav ---------------- */
+/* ---------------- Page header: title + schedule toggle + date nav ---------------- */
 
 .pageHeaderBar {
   display: flex;
@@ -28,61 +31,163 @@
   width: 100%;
   max-width: 1856px;
   margin: 0 auto;
-  padding: 24px 16px 0;
+  padding: 24px 16px;
+  border-bottom: 1px solid var(--color-neutral-400);
 }
 
 @media (min-width: 768px) {
   .pageHeaderBar {
-    padding: 32px 24px 0;
+    padding: 32px 24px;
   }
 }
 
 @media (min-width: 1024px) {
   .pageHeaderBar {
-    padding: 40px 32px 0;
+    padding: 40px 32px;
   }
 }
 
 .pageHeaderTitle {
-  font-family: var(--type-h2-family);
-  font-size: var(--type-h2-size);
-  font-weight: var(--type-h2-weight);
-  line-height: var(--type-h2-leading);
+  font-family: var(--type-h1-family);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-leading);
 }
 
-.dateNav {
+.headerControls {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Site Schedule toggle — decorative on this prototype (no scheduling
+   feature exists yet to drive), but a real, independently operable
+   switch rather than a static image, so it's honestly interactive. */
+.scheduleToggle {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-}
-
-.dateNavArrow {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 8px;
   appearance: none;
+  border: none;
   cursor: pointer;
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
-  border: 1px solid var(--color-neutral-400);
   background-color: var(--surface-lt-card);
   color: var(--color-text-lt-default);
-  font-size: 16px;
-  line-height: 1;
-}
-
-.dateNavArrow:disabled {
-  cursor: not-allowed;
-  color: var(--color-neutral-400);
-}
-
-.dateNavLabel {
-  min-width: 160px;
-  text-align: center;
-  border-radius: 4px;
-  padding: 8px 14px;
-  border: 1px solid var(--color-neutral-400);
-  background-color: var(--surface-lt-card);
   font-family: var(--type-body-md-family);
   font-size: var(--type-body-md-size);
+}
+
+.scheduleToggleTrack {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 20px;
+  border-radius: 100px;
+  background-color: var(--color-neutral-400);
+  transition: background-color 150ms ease;
+}
+
+.scheduleToggleTrackOn {
+  background-color: var(--color-primary-500);
+}
+
+.scheduleToggleThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 100%;
+  background-color: var(--surface-lt-card);
+  transition: transform 150ms ease;
+}
+
+.scheduleToggleThumbOn {
+  transform: translateX(20px);
+}
+
+/* Date picker — Figma's "Date Picker" component: one neutral-100
+   pill (rounded-8) holding the prev/next carets and the current
+   label. Clicking the label (not the carets) opens .dateMenu, a
+   preset list, instead of the old separate Today/Yesterday buttons. */
+.datePicker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background-color: var(--surface-lt-card);
+}
+
+.datePickerCaret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--color-primary-500);
+  cursor: pointer;
+}
+
+.datePickerCaret:disabled {
+  color: var(--color-neutral-400);
+  cursor: not-allowed;
+}
+
+.datePickerLabel {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-primary-500);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  white-space: nowrap;
+}
+
+.dateMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background-color: var(--surface-lt-card);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lt-card);
+  padding: 6px;
+  z-index: 20;
+}
+
+.dateMenuItem {
+  appearance: none;
+  border: none;
+  background: none;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-default);
+}
+
+.dateMenuItem:hover {
+  background-color: var(--color-neutral-200);
+}
+
+.dateMenuItemActive {
+  color: var(--color-primary-500);
   font-weight: 600;
 }
 
@@ -107,7 +212,17 @@
   flex-shrink: 0;
   width: 100%;
   border-bottom: 1px solid var(--color-neutral-300);
-  padding: 20px 16px;
+  padding: 24px 16px;
+}
+
+/* Top padding mirrors .content's own breakpoints (24 / 32 / 40) so the
+   site card and the main pane's breadcrumb/title line up under the nav
+   bar at every width, even though the sidebar itself switches to a
+   sticky column at 900px, in between. */
+@media (min-width: 768px) {
+  .sidebar {
+    padding-top: 32px;
+  }
 }
 
 @media (min-width: 900px) {
@@ -115,112 +230,226 @@
     width: 420px;
     min-height: calc(100vh - 56px);
     border-bottom: none;
-    border-right: 1px solid var(--color-neutral-300);
-    padding: 24px 16px;
     position: sticky;
     top: 0;
   }
 }
 
-.sidebarHeading {
-  font-family: var(--type-h4-family);
-  font-size: var(--type-h4-size);
-  font-weight: var(--type-h4-weight);
-  line-height: var(--type-h4-leading);
-  margin-bottom: 16px;
+@media (min-width: 1024px) {
+  .sidebar {
+    padding-top: 40px;
+  }
 }
 
 .sidebarSearch {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
-.tree {
-  display: flex;
-  flex-direction: column;
-}
+/* -- Site card -- standalone, above the search box, not a tree row. */
 
-.treeNodeRow {
+.siteCard {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
   appearance: none;
-  background: none;
   border: none;
-  border-left: 3px solid transparent;
   cursor: pointer;
-  padding: 8px 8px 8px 6px;
   text-align: left;
-  font-family: var(--type-body-sm-family);
-  font-size: var(--type-body-sm-size);
-  color: var(--color-text-lt-default);
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  background-color: var(--surface-lt-card);
+  box-shadow: var(--shadow-lt-card);
 }
 
-.treeNodeRow:hover {
-  background-color: var(--color-neutral-200);
-}
-
-.treeNodeActive {
-  border-left-color: var(--color-primary-500);
+.siteCardActive {
   background-color: var(--wash-primary-15);
-  font-weight: 700;
 }
 
-.treeNodeSite {
-  font-weight: 700;
-  border-bottom: 1px solid var(--color-neutral-300);
-  padding-bottom: 12px;
-  margin-bottom: 8px;
-}
-
-.treeNodeLogo {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
+.siteCardLogo {
+  width: 43px;
+  height: 43px;
+  border-radius: 10px;
   object-fit: cover;
   flex-shrink: 0;
 }
 
-.treeNodeBuilding {
-  font-weight: 600;
+.siteCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
-.treeNodeAreaType {
-  padding-left: 26px;
+.siteCardName {
+  font-family: var(--type-h1-family);
+  font-size: 1.25rem;
+  font-weight: var(--type-h1-weight);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.treeNodeZone {
-  padding-left: 46px;
+.siteCardSub {
+  font-family: var(--type-body-lg-family);
+  font-size: var(--type-body-lg-size);
+  color: var(--color-text-lt-grey);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.treeNodeIcon {
+/* -- Group by -- */
+
+.groupByRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.groupByLabel {
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  color: var(--color-text-lt-default);
   flex-shrink: 0;
-  width: 14px;
-  text-align: center;
-  color: var(--color-neutral-500);
 }
 
-.treeNodeCaret {
-  flex-shrink: 0;
-  width: 10px;
+/* -- Tree -- two-line rows: icon, name, and a Floors/Areas (or
+   Floor/Tasks) meta line underneath, per the Figma reference. */
+
+.tree {
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  appearance: none;
+  background-color: var(--surface-lt-card);
+  border: none;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid var(--color-neutral-300);
+  cursor: pointer;
+  padding: 14px 16px;
+  text-align: left;
+}
+
+.tree > div:last-child .treeRow,
+.treeRow:last-child {
+  border-bottom: none;
+}
+
+.treeRow:hover {
+  background-color: var(--color-neutral-200);
+}
+
+.treeRowActive {
+  border-left-color: var(--color-primary-500);
+  background-color: var(--wash-primary-15);
+}
+
+.treeRowIndent1 {
+  padding-left: 40px;
+}
+
+.treeRowIndent2 {
+  padding-left: 68px;
+}
+
+.treeIconChip {
   display: inline-flex;
-  transition: transform 0.15s ease;
-  color: var(--color-neutral-500);
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background-color: var(--wash-pinkle-light-15);
+  color: var(--color-datavis-pinkle-500);
+  font-size: 14px;
 }
 
-.treeNodeCaretOpen {
+.treeIconPlain {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.treeIconPrimary {
+  color: var(--color-primary-500);
+}
+
+.treeIconPurple {
+  color: var(--color-datavis-purple-500);
+}
+
+.treeRowBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.treeRowName {
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  color: var(--color-text-lt-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.treeRowMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-lt-grey);
+  white-space: nowrap;
+}
+
+.treeRowMetaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.treeRowCaret {
+  flex-shrink: 0;
+  color: var(--color-neutral-500);
+  transition: transform 0.15s ease;
+}
+
+.treeRowCaretOpen {
   transform: rotate(90deg);
 }
 
-.treeNodeCaretSpacer {
+.treeRowCaretSpacer {
   flex-shrink: 0;
-  width: 10px;
+  width: 12px;
 }
 
-.treeNodeMeta {
-  margin-left: auto;
-  flex-shrink: 0;
-  font-size: 12px;
+.treeEmptyNote {
+  padding: 12px 16px;
+  background-color: var(--surface-lt-card);
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
   color: var(--color-text-lt-grey);
 }
 
@@ -244,24 +473,92 @@
   }
 }
 
-.breadcrumb {
-  font-family: var(--type-body-sm-family);
-  font-size: var(--type-body-sm-size);
-  color: var(--color-text-lt-grey);
-  margin-bottom: 4px;
-}
-
-.breadcrumbCurrent {
-  color: var(--color-text-lt-default);
-  font-weight: 600;
+.contentHeaderRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
 }
 
 .contentTitle {
-  font-family: var(--type-h2-family);
-  font-size: var(--type-h2-size);
-  font-weight: var(--type-h2-weight);
-  line-height: var(--type-h2-leading);
+  font-family: var(--type-h1-family);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-leading);
+}
+
+.contentHeaderIdentity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.contentHeaderLogo {
+  width: 43px;
+  height: 43px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.contentHeaderIdentityBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.contentHeaderIdentityBody .contentTitle {
+  line-height: 1.2;
+}
+
+.contentHeaderSub {
+  font-family: var(--type-body-lg-family);
+  font-size: var(--type-body-lg-size);
+  color: var(--color-text-lt-grey);
+}
+
+.contentHeaderMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 48px;
+  font-family: var(--type-body-lg-family);
+  font-size: var(--type-body-lg-size);
+  color: var(--color-text-lt-grey);
+}
+
+.contentHeaderMeta i {
+  color: var(--color-neutral-500);
+}
+
+.breadcrumb {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  line-height: var(--type-body-sm-leading);
+  color: var(--color-text-lt-grey);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   margin-bottom: 24px;
+}
+
+/* Trims .sectionStack's default 32px section gap down for this page —
+   the Performance/Work-to-be-done/View-work-by stack reads tighter
+   with the header divider already doing the job of separating the
+   header from the content below. */
+.sectionStackTight {
+  gap: 38px;
+}
+
+/* Widens .section's default 16px gap for the Work section specifically —
+   its controls row (Activity/Team + filters) sits further from the
+   card grid below than a typical section-title-to-content gap. */
+.workSectionGap {
+  gap: 24px;
 }
 
 .flatTaskList {
@@ -271,6 +568,31 @@
   padding: 8px 16px;
 }
 
+/* -- Scope modal accordion headers -- */
+
+.scopeAccordionHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.scopeAccordionHeaderName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scopeAccordionHeaderMeta {
+  flex-shrink: 0;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: 400;
+  color: var(--color-text-lt-grey);
+}
+
 .emptyNote {
   font-family: var(--type-body-md-family);
   font-size: var(--type-body-md-size);
@@ -278,28 +600,350 @@
   padding: 24px 0;
 }
 
-/* ---------------- Trend chart ---------------- */
+/* ---------------- Metric cards: Service Coverage / Hours Captured / Average Audit Score ---------------- */
 
-.trendHeaderRow {
+.metricCardRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .metricCardRow {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.metricCard {
   display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 18px;
 }
 
-.trendValue {
-  font-family: var(--type-h2-family);
-  font-size: var(--type-h2-size);
-  font-weight: var(--type-h2-weight);
-  line-height: var(--type-h2-leading);
+.metricCardTop {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.trendCaption {
+.metricCardLabel {
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  color: var(--color-text-lt-default);
+}
+
+.metricCardValueRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 40px;
+}
+
+.metricCardValue {
+  font-family: var(--type-h1-family);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-leading);
+  color: var(--color-text-lt-default);
+}
+
+.metricCardScoreChip {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 9px;
+  line-height: 1;
+  border-radius: 8px;
+  background-color: var(--wash-success-15);
+  color: var(--color-text-lt-success);
+  font-family: var(--type-h1-family);
+  font-size: 1.75rem;
+  font-weight: var(--type-h1-weight);
+}
+
+.metricCardDescription {
   font-family: var(--type-body-md-family);
   font-size: var(--type-body-md-size);
   color: var(--color-text-lt-grey);
 }
+
+/* -- Trend view: value + inline delta, e.g. "85% ↑ +5% over last 7 days" -- */
+
+.metricCardTrendValueRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.metricCardTrendRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 2px;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+}
+
+.metricCardTrendIcon {
+  font-size: 20px;
+}
+
+.metricCardTrendUp {
+  color: var(--color-text-lt-success);
+}
+
+.metricCardTrendDown {
+  color: var(--color-warning-700);
+}
+
+/* ---------------- "View work by" controls ---------------- */
+
+.workControlsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.workControlsLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.workControlsLabel {
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  color: var(--color-text-lt-default);
+  flex-shrink: 0;
+}
+
+/* ---------------- Filter row: Type / Filter / Shifts / Sort ---------------- */
+
+.filterFieldGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ---------------- Work cards (Activity grid view) ---------------- */
+
+.workCardGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .workCardGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .workCardGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* No padding on the card itself — the photo bleeds edge-to-edge
+   (Card's own overflow:hidden + border-radius clips its corners to
+   match), and only the text content below gets inset via
+   .workCardBody's own padding. */
+.workCard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.workCardPhotoWrap {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  max-height: 263px;
+}
+
+.workCardPhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.workCardPhotoPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-neutral-300),
+    var(--color-neutral-300) 8px,
+    var(--color-neutral-200) 8px,
+    var(--color-neutral-200) 16px
+  );
+  color: var(--color-neutral-500);
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+}
+
+.workCardTimeBadge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: var(--color-neutral-200);
+  color: var(--color-text-lt-grey);
+  font-family: var(--type-h4-family);
+  font-size: 0.75rem;
+  font-weight: var(--type-h4-weight);
+}
+
+.workCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
+.workCardHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workCardTag {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  color: var(--color-text-lt-default);
+}
+
+.workCardScore {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 12px;
+  border-radius: 4px;
+  background-color: var(--color-success-100);
+  color: var(--color-text-lt-default);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+}
+
+/* -- Service variant: leading icon + stacked title/location, no progress bar -- */
+
+.workCardServiceHeaderRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.workCardServiceIcon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-lt-default);
+  font-size: 20px;
+}
+
+.workCardServiceTitleGroup {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.workCardSubLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  color: var(--color-text-lt-grey);
+}
+
+.workCardPerson {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-lt-grey);
+}
+
+.workCardFooterRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-default);
+}
+
+.workCardFooterRow i {
+  flex-shrink: 0;
+  color: var(--color-neutral-500);
+}
+
+.workCardProgressLine {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+}
+
+.workCardProgressLabel {
+  font-weight: 500;
+  color: var(--color-text-lt-default);
+}
+
+.workCardProgressPercent {
+  color: var(--color-text-lt-grey);
+}
+
+.workCardProgressTrack {
+  display: block;
+  width: 100%;
+  height: 4px;
+  border-radius: 100px;
+  background-color: var(--color-neutral-300);
+  overflow: hidden;
+}
+
+.workCardProgressFill {
+  display: block;
+  height: 100%;
+  border-radius: 100px;
+  background-color: var(--color-primary-500);
+}
+
+
+/* ---------------- Trend chart (Performance section's Trend view) ---------------- */
 
 .trendAxis {
   display: flex;

@@ -2,18 +2,30 @@
 
 import { useState } from "react";
 import { Card } from "../ui/Card";
-import { siteContractStats, buildings, concourseDAreaTypes, type ContractTask } from "../../lib/sowData";
+import { siteContractStats, buildings } from "../../lib/sowData";
+import type { ContractBuilding, ContractAreaType } from "../../lib/sowContract";
 import styles from "./SowPage.module.css";
+
+export type SowContractTabProps = {
+  contractBuildings?: ContractBuilding[];
+};
 
 /**
  * Contract — the static scope of work itself: what's contracted,
  * building by building, area type by area type, task by task, and
  * how often each is due. No live data (no coverage %, no due-today
  * status) — that lives on Overview and Facility instead.
+ *
+ * Every building's tree is the real exported SOW
+ * (data/SOW_DeltaLGA.csv — 714 areas, 40 area types, real
+ * frequencies across all 7 buildings) rather than a hand-picked
+ * sample. The top stat row (siteContractStats) isn't a rough guess
+ * layered on top of that — its figures were set to match this
+ * export's real totals exactly.
  */
-export function SowContractTab() {
+export function SowContractTab({ contractBuildings = [] }: SowContractTabProps) {
   const [openBuilding, setOpenBuilding] = useState<string | null>("Concourse D");
-  const [openAreaTypes, setOpenAreaTypes] = useState<Record<string, boolean>>({ "Baggage Claims": true });
+  const [openAreaTypes, setOpenAreaTypes] = useState<Record<string, boolean>>({ "Break Rooms": true });
 
   function toggleAreaType(name: string) {
     setOpenAreaTypes((prev) => ({ ...prev, [name]: !prev[name] }));
@@ -44,21 +56,26 @@ export function SowContractTab() {
         </Card>
       </div>
 
+      <p className={styles.summaryText}>
+        Every building below is the real exported SOW — expand any of the 7 for its actual area types, areas, and
+        contracted tasks.
+      </p>
+
       <Card theme="light" className={styles.treeCard}>
         {buildings.map((building) => {
-          const isConcourseD = building.name === "Concourse D";
+          const modeled = contractBuildings.find((cb) => cb.name === building.name);
           const isOpen = openBuilding === building.name;
           return (
             <div key={building.name}>
               <button
                 type="button"
                 className={styles.treeRow}
-                style={isConcourseD ? undefined : { cursor: "default" }}
-                onClick={isConcourseD ? () => setOpenBuilding(isOpen ? null : building.name) : undefined}
-                aria-expanded={isConcourseD ? isOpen : undefined}
+                style={modeled ? undefined : { cursor: "default" }}
+                onClick={modeled ? () => setOpenBuilding(isOpen ? null : building.name) : undefined}
+                aria-expanded={modeled ? isOpen : undefined}
               >
                 <span className={styles.treeLabel}>
-                  {isConcourseD && (
+                  {modeled && (
                     <span
                       className={[styles.treeCaret, isOpen ? styles.treeCaretOpen : ""].filter(Boolean).join(" ")}
                       aria-hidden="true"
@@ -69,13 +86,13 @@ export function SowContractTab() {
                   {building.name}
                 </span>
                 <span className={styles.treeMeta}>
-                  <span>{building.totalActions} total actions</span>
+                  <span>{modeled ? `${modeled.areaCount} areas` : `${building.totalActions} total actions`}</span>
                 </span>
               </button>
 
-              {isConcourseD &&
+              {modeled &&
                 isOpen &&
-                concourseDAreaTypes.map((areaType) => (
+                modeled.areaTypes.map((areaType) => (
                   <AreaTypeRow
                     key={areaType.name}
                     areaType={areaType}
@@ -96,7 +113,7 @@ function AreaTypeRow({
   open,
   onToggle,
 }: {
-  areaType: { name: string; totalActions: number; tasks: ContractTask[] };
+  areaType: ContractAreaType;
   open: boolean;
   onToggle: () => void;
 }) {
@@ -115,7 +132,8 @@ function AreaTypeRow({
           {areaType.name}
         </span>
         <span className={styles.treeMeta}>
-          <span>{areaType.totalActions} actions</span>
+          <span>{areaType.areas.length} areas</span>
+          <span>{areaType.tasks.length} tasks</span>
         </span>
       </button>
 
@@ -124,7 +142,10 @@ function AreaTypeRow({
           {areaType.tasks.map((task) => (
             <div key={task.label} className={styles.taskRow}>
               <span className={styles.taskLabel}>{task.label}</span>
-              <span className={styles.frequencyText}>{task.frequency}</span>
+              <span className={styles.frequencyText}>
+                {task.frequency}
+                {task.shifts.length < 3 && ` · ${task.shifts.join("/")}`}
+              </span>
             </div>
           ))}
         </div>

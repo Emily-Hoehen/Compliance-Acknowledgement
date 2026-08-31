@@ -11,7 +11,7 @@ import {
   performanceStats,
   facilitySummary,
   buildings,
-  concourseDAreaTypes,
+  areaTypeFromContract,
   allAreaVerifications,
   allAreaAudits,
   verificationToActivity,
@@ -24,8 +24,13 @@ import {
   type ActivityItem,
   type AreaTypeStatus,
 } from "../../lib/sowData";
+import type { ContractBuilding } from "../../lib/sowContract";
 import sharedStyles from "./SowPage.module.css";
 import styles from "./SowPlanEvidencePage.module.css";
+
+export type SowPlanEvidencePageProps = {
+  contractBuildings?: ContractBuilding[];
+};
 
 type PlanEvidenceTab = "performance" | "plan" | "evidence";
 type EvidenceViewMode = "showcase" | "dashboard";
@@ -96,9 +101,10 @@ const EVIDENCE_SORTS: { id: EvidenceSort; label: string }[] = [
  *    minimal chrome) and Dashboard (dense table) views of the same
  *    underlying verification/audit feed.
  *
- * Only Concourse D carries task-level commitments (same limitation
- * as the other SOW explorations), so Service Plan is scoped to it;
- * Site Performance and Evidence draw from site-wide data.
+ * Every building carries task-level commitments — the real exported
+ * SOW (data/SOW_DeltaLGA.csv) rather than a hand-picked sample — so
+ * Service Plan now spans all 7 buildings; Site Performance and
+ * Evidence draw from site-wide data too.
  *
  * The date nav actually drives the numbers here too, via the same
  * scoreForDay/scaleForDay generators as SowHierarchyPage and
@@ -111,7 +117,7 @@ const EVIDENCE_SORTS: { id: EvidenceSort; label: string }[] = [
  * the date nav, the promised/happening/attention trio, the
  * attention list, status badges, and the Showcase photo grid.
  */
-export function SowPlanEvidencePage() {
+export function SowPlanEvidencePage({ contractBuildings = [] }: SowPlanEvidencePageProps) {
   const [activeTab, setActiveTab] = useState<PlanEvidenceTab>("performance");
   const [dayOffset, setDayOffset] = useState(0);
 
@@ -146,28 +152,38 @@ export function SowPlanEvidencePage() {
     setActiveTab("evidence");
   }
 
-  // Every Concourse D area type's coverage, re-derived per day — same
-  // formulas as SowHierarchyDetailPage's dayAreaTypeRows, so all
-  // three SOW explorations agree on what "today" looks like.
+  // Every building's area types' coverage, re-derived per day — same
+  // formulas as SowHierarchyDetailPage's dayAreaTypeRows, so all the
+  // SOW explorations agree on what "today" looks like. Flattened
+  // across all 7 buildings, tagged with which building each row
+  // belongs to since many area type names repeat across buildings.
   const dayAreaTypeRows = useMemo(
     () =>
-      concourseDAreaTypes.map((at) => {
-        const dayServicedToday = Math.max(
-          0,
-          Math.round(at.servicedToday * scaleForDay(`${at.name}-serviced`, dayOffset))
-        );
-        const dayPercent = Math.min(100, (dayServicedToday / at.expectedServices) * 100);
-        const dayScore = scoreForDay(`${at.name}-score`, dayOffset);
-        return {
-          ...at,
-          dayServicedToday,
-          dayPercent,
-          dayScore,
-          status: statusForAreaType({ percent: dayPercent, score: dayScore }),
-        };
-      }),
-    [dayOffset]
+      contractBuildings.flatMap((cb) =>
+        cb.areaTypes.map((ct) => {
+          const at = areaTypeFromContract(ct);
+          const dayServicedToday = Math.max(
+            0,
+            Math.round(at.servicedToday * scaleForDay(`${cb.name}-${at.name}-serviced`, dayOffset))
+          );
+          const dayPercent = at.expectedServices > 0 ? Math.min(100, (dayServicedToday / at.expectedServices) * 100) : 0;
+          const dayScore = scoreForDay(`${cb.name}-${at.name}-score`, dayOffset);
+          return {
+            ...at,
+            building: cb.name,
+            dayServicedToday,
+            dayPercent,
+            dayScore,
+            status: statusForAreaType({ percent: dayPercent, score: dayScore }),
+          };
+        })
+      ),
+    [contractBuildings, dayOffset]
   );
+
+  function isModeledBuilding(name: string): boolean {
+    return contractBuildings.some((cb) => cb.name === name);
+  }
 
   const dayBuildingRows = useMemo(
     () =>
@@ -188,16 +204,18 @@ export function SowPlanEvidencePage() {
   const dayVerificationScore = scoreForDay("site-verification-score", dayOffset);
   const dayAuditScore = scoreForDay("site-audit-score", dayOffset);
 
-  // Needs attention: flagged Concourse D area types (full detail) plus
-  // any other building whose coverage alone is low enough to flag
-  // (the other six buildings don't have area-type detail modeled, so
-  // the building itself is as granular as this page can get for them).
+  // Needs attention: flagged area types (full detail) across every
+  // building, plus a building-level fallback for the rare case a
+  // building's rows didn't parse (isModeledBuilding false) — with
+  // the full export in place, every building normally has area-type
+  // detail, so that fallback list is expected to stay empty.
   const needsAttention = useMemo(() => {
     const areaTypeItems = dayAreaTypeRows
       .filter((a) => a.status !== "on-track")
       .map((a) => ({
         kind: "areaType" as const,
         name: a.name,
+        building: a.building,
         status: a.status,
         detail:
           a.status === "low-score"
@@ -205,23 +223,27 @@ export function SowPlanEvidencePage() {
             : `${a.dayPercent.toFixed(0)}% coverage — below expected`,
       }));
     const buildingItems = dayBuildingRows
-      .filter((b) => b.name !== "Concourse D" && b.status === "at-risk")
+      .filter((b) => !isModeledBuilding(b.name) && b.status === "at-risk")
       .map((b) => ({
         kind: "building" as const,
         name: b.name,
+        building: undefined as string | undefined,
         status: b.status as AreaTypeStatus | BuildingStatus,
         detail: `${b.dayPercent}% coverage — below expected`,
       }));
     return [...areaTypeItems, ...buildingItems];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dayAreaTypeRows, dayBuildingRows]);
 
-  // Service Plan: every Concourse D commitment flattened into one
-  // flat, searchable/sortable table instead of a per-area accordion.
+  // Service Plan: every Concourse D + Concourse E commitment
+  // flattened into one flat, searchable/sortable table instead of a
+  // per-area accordion.
   const planRows = useMemo(
     () =>
       dayAreaTypeRows.flatMap((at) =>
         at.tasks.map((task) => ({
           areaType: at.name,
+          building: at.building,
           task: task.label,
           frequency: task.frequency,
           percent: at.dayPercent,
@@ -235,7 +257,14 @@ export function SowPlanEvidencePage() {
   const filteredPlanRows = useMemo(() => {
     let rows = planRows;
     if (planStatusFilter !== "all") rows = rows.filter((r) => r.status === planStatusFilter);
-    if (planQ) rows = rows.filter((r) => r.areaType.toLowerCase().includes(planQ) || r.task.toLowerCase().includes(planQ));
+    if (planQ) {
+      rows = rows.filter(
+        (r) =>
+          r.areaType.toLowerCase().includes(planQ) ||
+          r.task.toLowerCase().includes(planQ) ||
+          r.building.toLowerCase().includes(planQ)
+      );
+    }
     const sorted = [...rows];
     switch (planSort) {
       case "completion-asc":
@@ -251,9 +280,10 @@ export function SowPlanEvidencePage() {
     return sorted;
   }, [planRows, planStatusFilter, planQ, planSort]);
 
-  const avgCompletion = Math.round(
-    dayAreaTypeRows.reduce((sum, a) => sum + a.dayPercent, 0) / dayAreaTypeRows.length
-  );
+  const avgCompletion =
+    dayAreaTypeRows.length > 0
+      ? Math.round(dayAreaTypeRows.reduce((sum, a) => sum + a.dayPercent, 0) / dayAreaTypeRows.length)
+      : 0;
 
   // Evidence: every verification + audit across every modeled area
   // type, site-wide (not scoped to Concourse D) — the fuller pool is
@@ -363,6 +393,7 @@ export function SowPlanEvidencePage() {
           <ServicePlanTab
             rows={filteredPlanRows}
             totalRows={planRows.length}
+            areaTypeCount={dayAreaTypeRows.length}
             avgCompletion={avgCompletion}
             search={planSearch}
             setSearch={setPlanSearch}
@@ -407,6 +438,7 @@ function StatusBadge({ status }: { status: AreaTypeStatus | BuildingStatus }) {
 type AttentionItem = {
   kind: "areaType" | "building";
   name: string;
+  building?: string;
   status: AreaTypeStatus | BuildingStatus;
   detail: string;
 };
@@ -502,10 +534,11 @@ function SitePerformanceTab({
         ) : (
           <Card theme="light" className={styles.attentionList}>
             {needsAttention.map((item) => (
-              <div key={`${item.kind}-${item.name}`} className={styles.attentionRow}>
+              <div key={`${item.kind}-${item.building ?? ""}-${item.name}`} className={styles.attentionRow}>
                 <span className={styles.attentionMain}>
                   <span className={styles.attentionName}>
                     <i className={`fa-solid ${item.kind === "building" ? "fa-building" : "fa-shapes"}`} aria-hidden="true" />{" "}
+                    {item.building ? `${item.building} — ` : ""}
                     {item.name}
                   </span>
                   <span className={styles.attentionDetail}>{item.detail}</span>
@@ -546,11 +579,12 @@ function SitePerformanceTab({
   );
 }
 
-type PlanRow = { areaType: string; task: string; frequency: string; percent: number; status: AreaTypeStatus };
+type PlanRow = { areaType: string; building: string; task: string; frequency: string; percent: number; status: AreaTypeStatus };
 
 function ServicePlanTab({
   rows,
   totalRows,
+  areaTypeCount,
   avgCompletion,
   search,
   setSearch,
@@ -562,6 +596,7 @@ function ServicePlanTab({
 }: {
   rows: PlanRow[];
   totalRows: number;
+  areaTypeCount: number;
   avgCompletion: number;
   search: string;
   setSearch: (v: string) => void;
@@ -584,7 +619,7 @@ function ServicePlanTab({
         </Card>
         <Card theme="light" className={sharedStyles.statTile}>
           <span className={sharedStyles.statTileLabel}>Area types modeled</span>
-          <span className={sharedStyles.statTileValue}>{concourseDAreaTypes.length}</span>
+          <span className={sharedStyles.statTileValue}>{areaTypeCount}</span>
         </Card>
         <Card theme="light" className={sharedStyles.statTile}>
           <span className={sharedStyles.statTileLabel}>Avg. completion</span>
@@ -593,7 +628,7 @@ function ServicePlanTab({
       </div>
 
       <p className={styles.emptyNote}>
-        Showing Concourse D — the only building with task-level commitments modeled in this exploration.
+        Showing all 7 buildings — the real exported SOW (data/SOW_DeltaLGA.csv).
       </p>
 
       <div className={sharedStyles.planToolbar}>
@@ -642,6 +677,7 @@ function ServicePlanTab({
           <table className={sharedStyles.table}>
             <thead>
               <tr>
+                <th>Building</th>
                 <th>Area type</th>
                 <th>Commitment</th>
                 <th>Frequency</th>
@@ -652,7 +688,8 @@ function ServicePlanTab({
             </thead>
             <tbody>
               {rows.map((r, i) => (
-                <tr key={`${r.areaType}-${r.task}-${i}`}>
+                <tr key={`${r.building}-${r.areaType}-${r.task}-${i}`}>
+                  <td>{r.building}</td>
                   <td>{r.areaType}</td>
                   <td>{r.task}</td>
                   <td>{r.frequency}</td>
@@ -782,9 +819,13 @@ function EvidenceTab({
         <div className={styles.showcaseGrid}>
           {items.map((item, i) => (
             <div key={`${item.location}-${i}`} className={styles.showcaseCard}>
-              <div className={styles.showcasePhoto} aria-hidden="true">
-                PHOTO
-              </div>
+              {item.areaPhoto ? (
+                <img src={item.areaPhoto} alt="" className={styles.showcasePhotoImg} />
+              ) : (
+                <div className={styles.showcasePhoto} aria-hidden="true">
+                  No photo
+                </div>
+              )}
               <div className={styles.showcaseCaption}>
                 <span className={styles.showcaseTopRow}>
                   <span className={styles.showcaseTag}>{item.tag}</span>

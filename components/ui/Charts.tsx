@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import styles from "./Charts.module.css";
 
 /**
@@ -37,11 +37,19 @@ type SparklineProps = {
   color: string;
   fillId?: string;
   height?: number;
+  /** Per-point label (e.g. "Aug 27"), same length/order as `values` — shown in the hover tooltip alongside its value. Only meaningful with `interactive`. */
+  labels?: string[];
+  /** Formats the hovered value for the tooltip; defaults to the raw number. */
+  valueFormatter?: (value: number) => string;
+  /** Opts into the pointer-follow tooltip + guideline. Default off, so existing call sites render exactly as before. */
+  interactive?: boolean;
 };
 
 /** Smoothed line + gradient area fill, e.g. Hours Worked's 7-day trend. */
-export function Sparkline({ values, color, height = 62 }: SparklineProps) {
+export function Sparkline({ values, color, height = 62, labels, valueFormatter, interactive = false }: SparklineProps) {
   const gradientId = useId();
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const width = 290;
   const max = Math.max(...values);
   const min = Math.min(...values);
@@ -56,22 +64,117 @@ export function Sparkline({ values, color, height = 62 }: SparklineProps) {
   const line = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
   const area = `${line} L${width},${height} L0,${height} Z`;
 
+  function updateHoverFromClientX(clientX: number) {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const xInViewBox = ((clientX - rect.left) / rect.width) * width;
+    let nearest = 0;
+    let nearestDist = Infinity;
+    points.forEach((p, i) => {
+      const dist = Math.abs(p.x - xInViewBox);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearest = i;
+      }
+    });
+    setHoverIndex(nearest);
+  }
+
+  function handlePointerMove(e: ReactPointerEvent<SVGSVGElement>) {
+    updateHoverFromClientX(e.clientX);
+  }
+
+  const hoverPoint = hoverIndex !== null ? points[hoverIndex] : null;
+
+  return (
+    <div className={styles.sparklineWrap}>
+      <svg
+        ref={svgRef}
+        className={[styles.sparkline, interactive ? styles.sparklineInteractive : ""].filter(Boolean).join(" ")}
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="none"
+        role="img"
+        aria-hidden="true"
+        onPointerMove={interactive ? handlePointerMove : undefined}
+        onPointerLeave={interactive ? () => setHoverIndex(null) : undefined}
+      >
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={area} fill={`url(#${gradientId})`} />
+        <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {hoverPoint && (
+          <>
+            <line
+              x1={hoverPoint.x}
+              y1={0}
+              x2={hoverPoint.x}
+              y2={height}
+              className={styles.sparklineGuide}
+              stroke={color}
+            />
+            <circle cx={hoverPoint.x} cy={hoverPoint.y} r={4} className={styles.sparklineDot} fill={color} />
+          </>
+        )}
+      </svg>
+      {interactive && hoverPoint && hoverIndex !== null && (
+        <div
+          className={styles.sparklineTooltip}
+          style={{ left: `${Math.min(94, Math.max(6, (hoverPoint.x / width) * 100))}%` }}
+        >
+          {labels?.[hoverIndex] && <span className={styles.sparklineTooltipLabel}>{labels[hoverIndex]}</span>}
+          <span className={styles.sparklineTooltipValue}>
+            {valueFormatter ? valueFormatter(values[hoverIndex]) : values[hoverIndex]}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type DonutRingProps = {
+  percent: number;
+  color: string;
+  trackColor?: string;
+  size?: number;
+  strokeWidth?: number;
+};
+
+/** Small ring progress indicator — e.g. a metric card's percent-complete glyph. */
+export function DonutRing({ percent, color, trackColor = "var(--color-neutral-300)", size = 40, strokeWidth = 6 }: DonutRingProps) {
+  const clamped = Math.min(100, Math.max(0, percent));
+  const r = (size - strokeWidth) / 2;
+  const c = size / 2;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference * (1 - clamped / 100);
+
   return (
     <svg
-      className={styles.sparkline}
-      viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
+      className={styles.donut}
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
       role="img"
-      aria-hidden="true"
+      aria-label={`${Math.round(clamped)}%`}
     >
-      <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={area} fill={`url(#${gradientId})`} />
-      <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={c} cy={c} r={r} fill="none" stroke={trackColor} strokeWidth={strokeWidth} />
+      <circle
+        cx={c}
+        cy={c}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        transform={`rotate(-90 ${c} ${c})`}
+      />
     </svg>
   );
 }

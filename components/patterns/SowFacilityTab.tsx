@@ -392,9 +392,13 @@ export function SowFacilityTab() {
 function ActivityCard({ item }: { item: AreaActivityItem }) {
   return (
     <Card theme="light" className={styles.photoCard}>
-      <div className={styles.photoPlaceholder} aria-hidden="true">
-        PHOTO
-      </div>
+      {item.areaPhoto ? (
+        <img src={item.areaPhoto} alt="" className={[styles.photoPlaceholder, styles.photoPlaceholderImg].join(" ")} />
+      ) : (
+        <div className={styles.photoPlaceholder} aria-hidden="true">
+          No photo
+        </div>
+      )}
       <div className={styles.photoBody}>
         <span className={styles.photoMeta}>
           <span className={styles.typeTag}>{item.tag}</span>

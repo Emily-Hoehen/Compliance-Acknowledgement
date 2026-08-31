@@ -232,9 +232,13 @@ export function SowAudienceOverviewTab({ onNavigateTab }: SowAudienceOverviewTab
                 theme="light"
                 className={[sharedStyles.activityCard, i === 0 ? sharedStyles.activityHero : ""].filter(Boolean).join(" ")}
               >
-                <div className={sharedStyles.activityPhoto} aria-hidden="true">
-                  PHOTO
-                </div>
+                {item.areaPhoto ? (
+                  <img src={item.areaPhoto} alt="" className={[sharedStyles.activityPhoto, sharedStyles.activityPhotoImg].join(" ")} />
+                ) : (
+                  <div className={sharedStyles.activityPhoto} aria-hidden="true">
+                    No photo
+                  </div>
+                )}
                 <div className={sharedStyles.photoBody}>
                   <span className={sharedStyles.photoMeta}>
                     <span className={sharedStyles.typeTag}>{item.tag}</span>
@@ -260,9 +264,13 @@ export function SowAudienceOverviewTab({ onNavigateTab }: SowAudienceOverviewTab
               <button type="button" className={styles.slideArrowLeft} onClick={goPrev} aria-label="Previous photo">
                 <i className="fa-solid fa-chevron-left" aria-hidden="true" />
               </button>
-              <div className={styles.slidePhoto} aria-hidden="true">
-                PHOTO
-              </div>
+              {current.areaPhoto ? (
+                <img src={current.areaPhoto} alt="" className={styles.slidePhotoImg} />
+              ) : (
+                <div className={styles.slidePhoto} aria-hidden="true">
+                  No photo
+                </div>
+              )}
               <button type="button" className={styles.slideArrowRight} onClick={goNext} aria-label="Next photo">
                 <i className="fa-solid fa-chevron-right" aria-hidden="true" />
               </button>
@@ -293,7 +301,11 @@ export function SowAudienceOverviewTab({ onNavigateTab }: SowAudienceOverviewTab
                   aria-label={`View photo ${i + 1}: ${item.location}`}
                   onClick={() => setIndex(i)}
                 >
-                  <span aria-hidden="true">PHOTO</span>
+                  {item.areaPhoto ? (
+                    <img src={item.areaPhoto} alt="" className={styles.thumbImg} />
+                  ) : (
+                    <span aria-hidden="true">No photo</span>
+                  )}
                 </button>
               ))}
             </div>

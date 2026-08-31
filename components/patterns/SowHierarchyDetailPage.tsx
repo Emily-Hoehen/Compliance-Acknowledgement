@@ -10,9 +10,9 @@ import { siteInfo } from "../../lib/homeDashboardData";
 import {
   siteContractStats,
   buildings,
-  concourseDAreaTypes,
   verificationsForArea,
   auditsForArea,
+  areaTypeFromContract,
   taskTypes,
   facilitySummary,
   recentVerifications,
@@ -31,6 +31,7 @@ import {
   type TeamMember,
   type AreaTypeStatus,
 } from "../../lib/sowData";
+import type { ContractArea, ContractBuilding } from "../../lib/sowContract";
 import type { RosterPerson } from "../../lib/csv";
 import sharedStyles from "./SowPage.module.css";
 import layoutStyles from "./SowHierarchyPage.module.css";
@@ -39,14 +40,13 @@ import detailStyles from "./SowHierarchyDetailPage.module.css";
 export type SowHierarchyDetailPageProps = {
   associates: RosterPerson[];
   managers: RosterPerson[];
+  contractBuildings: ContractBuilding[];
 };
-
-const ZONES = ["Zone 1", "Zone 2", "Zone 3"];
 
 type Selection = {
   buildingName: string | null; // null = site level (nothing under it selected)
   areaTypeName: string | null;
-  zoneName: string | null;
+  areaId: string | null; // a real area's area_id, from the leaf level of the tree
 };
 
 type TrendRange = "week" | "month";
@@ -55,6 +55,14 @@ type ProofFilterId = "all" | VerificationEvent["type"] | "audit";
 type AreaTypeSort = "coverage-asc" | "coverage-desc" | "score-asc" | "score-desc" | "name";
 type ProofSort = "recent" | "score-desc" | "score-asc";
 type AreaTypeGroupBy = "areaType" | "status";
+
+type DayAreaTypeRow = ReturnType<typeof areaTypeFromContract> & {
+  areaCount: number;
+  dayServicedToday: number;
+  dayPercent: number;
+  dayScore: number;
+  status: AreaTypeStatus;
+};
 
 function formatDateLabel(offset: number): string {
   const d = new Date();
@@ -135,16 +143,20 @@ const PROOF_SORTS: { id: ProofSort; label: string }[] = [
  *    serviced/expected count, and score, and can be filtered by
  *    status (At risk / On track / Low score) and sorted (coverage,
  *    score, name) — a ranked "contracted vs. delivered" list nested
- *    inside the tree instead of a plain text row.
+ *    inside the tree instead of a plain text row. The filter/sort
+ *    controls apply to whichever building is currently selected.
  *  - The main pane's Evidence section becomes a fuller
- *    "Verification proof" panel: a summary line (areas serviced,
+ *    "Verification proof" panel: a summary line (areas in this type,
  *    last activity), a live count of what's showing vs. available,
  *    and its own search + service-type filter + sort on top of the
  *    same verification/audit cards.
  *
- * Only Concourse D carries full area-type/zone detail (same
- * limitation as the other SOW explorations) — the other six
- * buildings are selectable at the building level only.
+ * Every building carries full area-type/area detail — the real
+ * exported SOW (data/SOW_DeltaLGA.csv), same as SowHierarchyPage,
+ * across all 7 buildings. The tree's leaf level is each area type's
+ * real areas; selecting one doesn't fabricate per-room evidence, it
+ * just identifies which physical space you're looking at within that
+ * area type's shared tasks/evidence.
  *
  * Reuses SowHierarchyPage.module.css for the page header/date nav,
  * two-pane layout, and tree primitives, and SowPage.module.css for
@@ -155,15 +167,15 @@ const PROOF_SORTS: { id: ProofSort; label: string }[] = [
  * is a pattern reference (rows with bars/badges, filter + sort
  * pills), not a color reference.
  */
-export function SowHierarchyDetailPage({ associates }: SowHierarchyDetailPageProps) {
+export function SowHierarchyDetailPage({ associates, contractBuildings }: SowHierarchyDetailPageProps) {
   const [search, setSearch] = useState("");
   const [selection, setSelection] = useState<Selection>({
     buildingName: null,
     areaTypeName: null,
-    zoneName: null,
+    areaId: null,
   });
   const [expandedBuildings, setExpandedBuildings] = useState<Record<string, boolean>>({ "Concourse D": true });
-  const [expandedAreaTypes, setExpandedAreaTypes] = useState<Record<string, boolean>>({ "Baggage Claims": true });
+  const [expandedAreaTypes, setExpandedAreaTypes] = useState<Record<string, boolean>>({ "Break Rooms": true });
 
   const [statusFilter, setStatusFilter] = useState<"all" | AreaTypeStatus>("all");
   const [areaTypeSort, setAreaTypeSort] = useState<AreaTypeSort>("coverage-asc");
@@ -185,65 +197,73 @@ export function SowHierarchyDetailPage({ associates }: SowHierarchyDetailPagePro
   // rotation, same as SowHierarchyPage.
   const roster = associates;
 
+  function isModeled(buildingName: string): boolean {
+    return contractBuildings.some((cb) => cb.name === buildingName);
+  }
+
   const q = search.trim().toLowerCase();
   const searching = q.length > 0;
 
   function selectSite() {
-    setSelection({ buildingName: null, areaTypeName: null, zoneName: null });
+    setSelection({ buildingName: null, areaTypeName: null, areaId: null });
   }
 
   function selectBuilding(name: string) {
-    setSelection({ buildingName: name, areaTypeName: null, zoneName: null });
-    if (name === "Concourse D") {
+    setSelection({ buildingName: name, areaTypeName: null, areaId: null });
+    if (isModeled(name)) {
       setExpandedBuildings((prev) => ({ ...prev, [name]: !prev[name] }));
     }
   }
 
   function selectAreaType(buildingName: string, areaTypeName: string) {
-    setSelection({ buildingName, areaTypeName, zoneName: null });
+    setSelection({ buildingName, areaTypeName, areaId: null });
     setExpandedAreaTypes((prev) => ({ ...prev, [areaTypeName]: !prev[areaTypeName] }));
   }
 
-  function selectZone(buildingName: string, areaTypeName: string, zoneName: string) {
-    setSelection({ buildingName, areaTypeName, zoneName });
+  function selectArea(buildingName: string, areaTypeName: string, areaId: string) {
+    setSelection({ buildingName, areaTypeName, areaId });
   }
 
   const isSiteLevel = !selection.buildingName;
   const selectedBuilding = selection.buildingName ? buildings.find((b) => b.name === selection.buildingName)! : null;
+  const selectedBuildingContract = selection.buildingName
+    ? contractBuildings.find((cb) => cb.name === selection.buildingName)
+    : undefined;
 
-  // Every Concourse D area type's coverage, re-derived per day — the
-  // same formulas SowHierarchyPage uses for whichever one is
-  // selected, generalized to all five so the sidebar can rank and
-  // status-filter by them too, and so a selected row's stats always
-  // match what its sidebar entry showed.
-  const dayAreaTypeRows = useMemo(
-    () =>
-      concourseDAreaTypes.map((at) => {
-        const dayServicedToday = Math.max(
-          0,
-          Math.round(at.servicedToday * scaleForDay(`${at.name}-serviced`, dayOffset))
-        );
-        const dayPercent = Math.min(100, (dayServicedToday / at.expectedServices) * 100);
-        const dayScore = scoreForDay(`${at.name}-score`, dayOffset);
-        return {
-          ...at,
-          dayServicedToday,
-          dayPercent,
-          dayScore,
-          status: statusForAreaType({ percent: dayPercent, score: dayScore }),
-        };
-      }),
-    [dayOffset]
-  );
+  // Whichever building is currently selected — its real area types,
+  // re-derived per day. Status filter/sort/group-by (in the sidebar)
+  // apply to this list; a different, incidentally-still-expanded
+  // building in the tree just shows its area types in plain order.
+  const dayAreaTypeRows: DayAreaTypeRow[] = useMemo(() => {
+    if (!selectedBuildingContract) return [];
+    return selectedBuildingContract.areaTypes.map((ct) => {
+      const at = areaTypeFromContract(ct);
+      const dayServicedToday = Math.max(0, Math.round(at.servicedToday * scaleForDay(`${at.name}-serviced`, dayOffset)));
+      const dayPercent = at.expectedServices > 0 ? Math.min(100, (dayServicedToday / at.expectedServices) * 100) : 0;
+      const dayScore = scoreForDay(`${at.name}-score`, dayOffset);
+      return {
+        ...at,
+        areaCount: ct.areas.length,
+        dayServicedToday,
+        dayPercent,
+        dayScore,
+        status: statusForAreaType({ percent: dayPercent, score: dayScore }),
+      };
+    });
+  }, [selectedBuildingContract, dayOffset]);
 
   const selectedAreaTypeRow = selection.areaTypeName
     ? (dayAreaTypeRows.find((a) => a.name === selection.areaTypeName) ?? null)
     : null;
+  const selectedContractAreaType = selectedBuildingContract?.areaTypes.find((at) => at.name === selection.areaTypeName);
+  const selectedArea: ContractArea | undefined = selectedContractAreaType?.areas.find((a) => a.areaId === selection.areaId);
 
   const visibleAreaTypeRows = useMemo(() => {
     let rows = dayAreaTypeRows;
     if (statusFilter !== "all") rows = rows.filter((r) => r.status === statusFilter);
-    if (searching) rows = rows.filter((r) => "concourse d".includes(q) || r.name.toLowerCase().includes(q));
+    if (searching && selection.buildingName) {
+      rows = rows.filter((r) => selection.buildingName!.toLowerCase().includes(q) || r.name.toLowerCase().includes(q));
+    }
     const sorted = [...rows];
     switch (areaTypeSort) {
       case "coverage-asc":
@@ -263,7 +283,7 @@ export function SowHierarchyDetailPage({ associates }: SowHierarchyDetailPagePro
         break;
     }
     return sorted;
-  }, [dayAreaTypeRows, statusFilter, searching, q, areaTypeSort]);
+  }, [dayAreaTypeRows, statusFilter, searching, q, areaTypeSort, selection.buildingName]);
 
   // "Group by: Status" splits the same filtered/sorted rows into
   // labeled sections instead of one flat list — "Area Type" (the
@@ -276,22 +296,18 @@ export function SowHierarchyDetailPage({ associates }: SowHierarchyDetailPagePro
     })).filter((g) => g.rows.length > 0);
   }, [areaTypeGroupBy, visibleAreaTypeRows]);
 
-  // Verification proof pool for whatever's selected — same
-  // zone/area-type scoping as SowHierarchyPage's Evidence, plus this
-  // page's own search / service-type filter / sort.
-  const evidenceVerificationsBase = useMemo(() => {
-    if (!selectedAreaTypeRow) return [];
-    let base = verificationsForArea(selectedAreaTypeRow.name);
-    if (selection.zoneName) base = base.filter((v) => v.location.endsWith(selection.zoneName as string));
-    return base;
-  }, [selectedAreaTypeRow, selection.zoneName]);
-
-  // Audits aren't modeled per-zone in this dataset, so they only show
-  // up when a whole area type (not a specific zone) is selected.
-  const evidenceAuditsBase = useMemo(() => {
-    if (selection.zoneName || !selectedAreaTypeRow) return [];
-    return auditsForArea(selectedAreaTypeRow.name);
-  }, [selectedAreaTypeRow, selection.zoneName]);
+  // Verification proof pool for whatever's selected. Real areas don't
+  // carry per-area evidence in this dataset — selecting a specific
+  // area still shows its area type's full evidence pool, just with
+  // that area's identity called out above the panel.
+  const evidenceVerificationsBase = useMemo(
+    () => (selectedAreaTypeRow ? verificationsForArea(selectedAreaTypeRow.name) : []),
+    [selectedAreaTypeRow]
+  );
+  const evidenceAuditsBase = useMemo(
+    () => (selectedAreaTypeRow ? auditsForArea(selectedAreaTypeRow.name) : []),
+    [selectedAreaTypeRow]
+  );
 
   const evidenceActivityAll = useMemo(
     () => [...evidenceVerificationsBase.map(verificationToActivity), ...evidenceAuditsBase.map(auditToActivity)],
@@ -323,14 +339,10 @@ export function SowHierarchyDetailPage({ associates }: SowHierarchyDetailPagePro
     return arr;
   }, [filteredEvidenceActivity, proofSort]);
 
-  const areaCount = selection.zoneName ? 1 : ZONES.length;
+  const areaCount = selectedContractAreaType?.areas.length ?? 0;
   const lastActivityLabel = dayAllEvidenceActivity[0]?.timeAgo ?? "no activity yet";
 
-  const trendSeedKey = isSiteLevel
-    ? "site"
-    : selection.zoneName
-      ? `${selection.areaTypeName}-${selection.zoneName}`
-      : (selection.areaTypeName ?? selection.buildingName ?? "site");
+  const trendSeedKey = isSiteLevel ? "site" : (selection.areaTypeName ?? selection.buildingName ?? "site");
   const trendDays = trendRange === "week" ? 7 : 30;
   const trend = useMemo(
     () => trendSeries(trendSeedKey, trendDays, dayOffset),
@@ -435,10 +447,10 @@ export function SowHierarchyDetailPage({ associates }: SowHierarchyDetailPagePro
           </div>
 
           {/* Area-type filters live here, at the top level, rather than
-              nested under Concourse D in the tree below — they still only
-              affect Concourse D's rows (the one building with area-type
-              depth modeled), but read as a persistent filter bar instead
-              of something you have to expand a building to find. */}
+              nested under a building in the tree below — they apply to
+              whichever building is currently selected/expanded, but read
+              as a persistent filter bar instead of something you have to
+              expand a building to find. */}
           <div className={detailStyles.filterPanel}>
             <div className={detailStyles.statusPillRow}>
               {STATUS_FILTERS.map((f) => (
@@ -501,13 +513,26 @@ export function SowHierarchyDetailPage({ associates }: SowHierarchyDetailPagePro
             </button>
 
             {buildings.map((building) => {
-              const isConcourseD = building.name === "Concourse D";
+              const modeled = contractBuildings.find((cb) => cb.name === building.name);
               const buildingMatches = building.name.toLowerCase().includes(q);
-              const childMatches = isConcourseD && concourseDAreaTypes.some((a) => a.name.toLowerCase().includes(q));
+              const childMatches = !!modeled && modeled.areaTypes.some((a) => a.name.toLowerCase().includes(q));
               if (searching && !buildingMatches && !childMatches) return null;
 
               const buildingOpen = searching ? true : !!expandedBuildings[building.name];
               const buildingSelected = selection.buildingName === building.name && !selection.areaTypeName;
+              const isSelectedBuilding = selection.buildingName === building.name;
+              // The currently selected building's rows are already
+              // status-filtered/sorted/grouped; any other modeled building
+              // that's incidentally still expanded just shows its area
+              // types in plain, unfiltered order.
+              const rowsForThisBuilding: DayAreaTypeRow[] = isSelectedBuilding
+                ? visibleAreaTypeRows
+                : (modeled?.areaTypes ?? [])
+                    .filter((at) => !searching || buildingMatches || at.name.toLowerCase().includes(q))
+                    .map((ct) => ({ ...areaTypeFromContract(ct), areaCount: ct.areas.length, dayServicedToday: 0, dayPercent: 0, dayScore: areaTypeFromContract(ct).score, status: statusForAreaType({ percent: 0, score: areaTypeFromContract(ct).score }) }));
+              const groupsForThisBuilding = isSelectedBuilding
+                ? groupedAreaTypeRows
+                : [{ label: null as string | null, rows: rowsForThisBuilding }];
 
               return (
                 <div key={building.name}>
@@ -521,9 +546,9 @@ export function SowHierarchyDetailPage({ associates }: SowHierarchyDetailPagePro
                       .filter(Boolean)
                       .join(" ")}
                     onClick={() => selectBuilding(building.name)}
-                    aria-expanded={isConcourseD ? buildingOpen : undefined}
+                    aria-expanded={modeled ? buildingOpen : undefined}
                   >
-                    {isConcourseD ? (
+                    {modeled ? (
                       <span
                         className={[layoutStyles.treeNodeCaret, buildingOpen ? layoutStyles.treeNodeCaretOpen : ""]
                           .filter(Boolean)
@@ -537,20 +562,23 @@ export function SowHierarchyDetailPage({ associates }: SowHierarchyDetailPagePro
                     )}
                     <i className="fa-solid fa-building" aria-hidden="true" />
                     {building.name}
-                    <span className={layoutStyles.treeNodeMeta}>{building.totalActions}</span>
+                    <span className={layoutStyles.treeNodeMeta}>{modeled ? modeled.areaCount : building.totalActions}</span>
                   </button>
 
-                  {isConcourseD && buildingOpen && (
+                  {modeled && buildingOpen && (
                     <>
-                      {visibleAreaTypeRows.length === 0 ? (
+                      {rowsForThisBuilding.length === 0 ? (
                         <p className={detailStyles.coverageEmptyNote}>No area types match these filters.</p>
                       ) : (
-                        groupedAreaTypeRows.map((group, groupIndex) => (
+                        groupsForThisBuilding.map((group, groupIndex) => (
                           <div key={group.label ?? `group-${groupIndex}`}>
                             {group.label && <p className={detailStyles.groupLabel}>{group.label}</p>}
                             {group.rows.map((areaType) => {
                               const areaTypeOpen = searching ? true : !!expandedAreaTypes[areaType.name];
-                              const areaTypeSelected = selection.areaTypeName === areaType.name && !selection.zoneName;
+                              const areaTypeSelected =
+                                isSelectedBuilding && selection.areaTypeName === areaType.name && !selection.areaId;
+                              const contractAreas =
+                                modeled.areaTypes.find((at) => at.name === areaType.name)?.areas ?? [];
                               return (
                                 <div key={areaType.name}>
                                   <button
@@ -578,7 +606,7 @@ export function SowHierarchyDetailPage({ associates }: SowHierarchyDetailPagePro
                                       </span>
                                       <i className="fa-solid fa-shapes" aria-hidden="true" />
                                       <span className={detailStyles.coverageRowName}>
-                                        {areaType.name} ({ZONES.length})
+                                        {areaType.name} ({areaType.areaCount})
                                       </span>
                                       <span
                                         className={[sharedStyles.photoScore, detailStyles.coverageRowScore].join(" ")}
@@ -606,24 +634,24 @@ export function SowHierarchyDetailPage({ associates }: SowHierarchyDetailPagePro
                                   </button>
 
                                   {areaTypeOpen &&
-                                    ZONES.map((zone) => (
+                                    contractAreas.map((area) => (
                                       <button
-                                        key={zone}
+                                        key={area.areaId}
                                         type="button"
                                         className={[
                                           layoutStyles.treeNodeRow,
                                           layoutStyles.treeNodeZone,
-                                          selection.zoneName === zone && selection.areaTypeName === areaType.name
+                                          selection.areaId === area.areaId && selection.areaTypeName === areaType.name
                                             ? layoutStyles.treeNodeActive
                                             : "",
                                         ]
                                           .filter(Boolean)
                                           .join(" ")}
-                                        onClick={() => selectZone(building.name, areaType.name, zone)}
+                                        onClick={() => selectArea(building.name, areaType.name, area.areaId)}
                                       >
                                         <span className={layoutStyles.treeNodeCaretSpacer} aria-hidden="true" />
                                         <i className="fa-solid fa-location-dot" aria-hidden="true" />
-                                        {zone}
+                                        {area.displayName}
                                       </button>
                                     ))}
                                 </div>
@@ -650,10 +678,10 @@ export function SowHierarchyDetailPage({ associates }: SowHierarchyDetailPagePro
               <>
                 {siteInfo.client} — {siteInfo.siteName} / {selection.buildingName}
                 {selectedAreaTypeRow && <> / {selectedAreaTypeRow.name}</>}
-                {selection.zoneName && (
+                {selectedArea && (
                   <>
                     {" "}
-                    / <span className={layoutStyles.breadcrumbCurrent}>{selection.zoneName}</span>
+                    / <span className={layoutStyles.breadcrumbCurrent}>{selectedArea.displayName}</span>
                   </>
                 )}
               </>
@@ -662,7 +690,7 @@ export function SowHierarchyDetailPage({ associates }: SowHierarchyDetailPagePro
           <h1 className={layoutStyles.contentTitle}>
             {isSiteLevel
               ? `${siteInfo.client} — ${siteInfo.siteName}`
-              : (selection.zoneName ?? selectedAreaTypeRow?.name ?? selectedBuilding!.name)}
+              : (selectedArea?.displayName ?? selectedAreaTypeRow?.name ?? selectedBuilding!.name)}
           </h1>
 
           <div className={sharedStyles.sectionStack}>
@@ -802,9 +830,17 @@ export function SowHierarchyDetailPage({ associates }: SowHierarchyDetailPagePro
                               .filter(Boolean)
                               .join(" ")}
                           >
-                            <div className={sharedStyles.activityPhoto} aria-hidden="true">
-                              PHOTO
-                            </div>
+                            {item.areaPhoto ? (
+                              <img
+                                src={item.areaPhoto}
+                                alt=""
+                                className={[sharedStyles.activityPhoto, sharedStyles.activityPhotoImg].join(" ")}
+                              />
+                            ) : (
+                              <div className={sharedStyles.activityPhoto} aria-hidden="true">
+                                No photo
+                              </div>
+                            )}
                             <div className={sharedStyles.photoBody}>
                               <span className={sharedStyles.photoMeta}>
                                 <span className={sharedStyles.typeTag}>{item.tag}</span>
@@ -865,36 +901,46 @@ export function SowHierarchyDetailPage({ associates }: SowHierarchyDetailPagePro
                 <div className={sharedStyles.section}>
                   <h2 className={sharedStyles.sectionTitle}>Work to be done</h2>
                   {selectedAreaTypeRow ? (
-                    <Card theme="light" className={sharedStyles.treeCard}>
-                      <div className={layoutStyles.flatTaskList}>
-                        {selectedAreaTypeRow.tasks.map((task) => (
-                          <div key={task.label} className={sharedStyles.taskRow}>
-                            <span className={sharedStyles.taskLabel}>{task.label}</span>
-                            <span className={sharedStyles.frequencyText}>{task.frequency}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </Card>
-                  ) : selection.buildingName === "Concourse D" ? (
+                    <>
+                      {selectedArea && (
+                        <p className={layoutStyles.emptyNote}>
+                          {selectedArea.displayName} · Floor {selectedArea.floor} ({selectedArea.floorDescription}) —
+                          same contracted tasks as every {selectedAreaTypeRow.name} area.
+                        </p>
+                      )}
+                      <Card theme="light" className={sharedStyles.treeCard}>
+                        <div className={layoutStyles.flatTaskList}>
+                          {selectedAreaTypeRow.tasks.map((task) => (
+                            <div key={task.label} className={sharedStyles.taskRow}>
+                              <span className={sharedStyles.taskLabel}>{task.label}</span>
+                              <span className={sharedStyles.frequencyText}>
+                                {task.frequency}
+                                {task.shifts && task.shifts.length > 0 && task.shifts.length < 3 && ` · ${task.shifts.join("/")}`}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </Card>
+                    </>
+                  ) : selectedBuildingContract ? (
                     <Card theme="light" className={sharedStyles.treeCard}>
                       {dayAreaTypeRows.map((at) => (
                         <button
                           key={at.name}
                           type="button"
                           className={sharedStyles.treeRow}
-                          onClick={() => selectAreaType("Concourse D", at.name)}
+                          onClick={() => selectAreaType(selection.buildingName!, at.name)}
                         >
                           <span className={sharedStyles.treeLabel}>{at.name}</span>
                           <span className={sharedStyles.treeMeta}>
+                            <span>{at.areaCount} areas</span>
                             <span>{at.tasks.length} contracted tasks</span>
                           </span>
                         </button>
                       ))}
                     </Card>
                   ) : (
-                    <p className={layoutStyles.emptyNote}>
-                      No detailed task list for this building yet — select Concourse D for the full example.
-                    </p>
+                    <p className={layoutStyles.emptyNote}>No detailed task list available for this building.</p>
                   )}
                 </div>
 
@@ -904,16 +950,14 @@ export function SowHierarchyDetailPage({ associates }: SowHierarchyDetailPagePro
                     <div className={detailStyles.proofHeaderRow}>
                       <h2 className={sharedStyles.sectionTitle}>
                         Verification proof ·{" "}
-                        {selection.zoneName
-                          ? `${selectedAreaTypeRow.name} — ${selection.zoneName}`
-                          : selectedAreaTypeRow.name}
+                        {selectedArea ? `${selectedAreaTypeRow.name} — ${selectedArea.displayName}` : selectedAreaTypeRow.name}
                       </h2>
                       <span className={detailStyles.proofCount}>
                         Showing {sortedEvidenceActivity.length} of {dayAllEvidenceActivity.length} today
                       </span>
                     </div>
                     <p className={detailStyles.proofSubtitle}>
-                      {areaCount} of {areaCount} areas serviced today · last activity {lastActivityLabel}
+                      {areaCount} area{areaCount === 1 ? "" : "s"} in this type · last activity {lastActivityLabel}
                     </p>
 
                     <div className={sharedStyles.planToolbar}>
@@ -964,9 +1008,17 @@ export function SowHierarchyDetailPage({ associates }: SowHierarchyDetailPagePro
                       <div className={sharedStyles.areaGrid}>
                         {sortedEvidenceActivity.map((item, i) => (
                           <Card key={`${item.location}-${i}`} theme="light" className={sharedStyles.photoCard}>
-                            <div className={sharedStyles.photoPlaceholder} aria-hidden="true">
-                              PHOTO
-                            </div>
+                            {item.areaPhoto ? (
+                              <img
+                                src={item.areaPhoto}
+                                alt=""
+                                className={[sharedStyles.photoPlaceholder, sharedStyles.photoPlaceholderImg].join(" ")}
+                              />
+                            ) : (
+                              <div className={sharedStyles.photoPlaceholder} aria-hidden="true">
+                                No photo
+                              </div>
+                            )}
                             <div className={sharedStyles.photoBody}>
                               <span className={sharedStyles.photoMeta}>
                                 <span className={sharedStyles.typeTag}>{item.tag}</span>

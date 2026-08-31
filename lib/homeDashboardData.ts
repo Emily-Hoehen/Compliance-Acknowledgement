@@ -19,7 +19,7 @@ export type DashboardPerson = {
 export const siteInfo = {
   siteName: "LGA-LaGuardia, NY",
   client: "Delta",
-  logo: "/homepage/site-logo.png",
+  logo: "/deltalogo.png",
   heroImages: [
     "/homepage/hero-1.png",
     "/homepage/hero-2.png",

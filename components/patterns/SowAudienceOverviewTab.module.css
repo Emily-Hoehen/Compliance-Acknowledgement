@@ -77,6 +77,14 @@
   );
 }
 
+.slidePhotoImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .slideArrowLeft,
 .slideArrowRight {
   position: absolute;
@@ -196,4 +204,10 @@
    the rest aren't. */
 .thumbActive {
   border-color: var(--color-primary-500);
+}
+
+.thumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }

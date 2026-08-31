@@ -1,105 +1,585 @@
 /* ============================================================
-   SowTimeFirstPage — sixth Scope of Work exploration: the period
-   (Today / Yesterday / This week / This month / YTD) is the primary
-   nav — hierarchy becomes a filter you reach for ("Filter by space"),
-   not the thing you land on. The space filter gets its own bordered,
-   labeled control (not a bare select) and a plain-language "Viewing
-   X for Y" banner underneath, so which slice of data is on screen is
-   never just a value tucked into a corner dropdown.
-
-   Reuses SowPage.module.css for every primitive that carries over
-   (page shell, chips, stat tiles, tables) — this module only holds
-   what's new: the control bar, the space filter control, the viewing
-   banner, the trend header, the evidence showcase grid, status
-   badges, completion bars, and the service-gap status colors.
-   Light theme only.
+   SowTimeFirstPage — period-first Scope of Work exploration.
+   Reuses SowPage.module.css for the page shell/section scaffolding
+   and components/ui (ButtonGroup, DsSelect) plus AreaCard for the
+   evidence grid — this module only holds what's new: the breadcrumb,
+   period/schedule row, site identity block, the 5 KPI cards (with
+   their linear meter bars), the feature tabs, and the space/stat
+   pill row. Light theme only, same mid-fi treatment as the rest of
+   this exploration (fileKey SWFMjlBJ4u9vSrVaomRe12, node 105:6728).
    ============================================================ */
 
-.controlBar {
+.breadcrumb {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  line-height: var(--type-body-sm-leading);
+  color: var(--color-text-lt-grey);
+}
+
+.breadcrumbCurrent {
+  color: var(--color-text-lt-default);
+  font-weight: 600;
+}
+
+/* ---------------- Period / schedule row ---------------- */
+
+.periodRow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
 }
 
-.spaceFilterControl {
+.scheduleToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 8px;
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  background-color: var(--surface-lt-card);
+  color: var(--color-text-lt-default);
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+}
+
+.scheduleToggleTrack {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 20px;
+  border-radius: 100px;
+  background-color: var(--color-neutral-400);
+  transition: background-color 150ms ease;
+}
+
+.scheduleToggleTrackOn {
+  background-color: var(--color-primary-500);
+}
+
+.scheduleToggleThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 100%;
+  background-color: var(--surface-lt-card);
+  transition: transform 150ms ease;
+}
+
+.scheduleToggleThumbOn {
+  transform: translateX(20px);
+}
+
+/* ---------------- Site identity ---------------- */
+
+.identityRow {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
-  border: 1px solid var(--color-neutral-300);
-  border-radius: 8px;
-  background-color: var(--surface-lt-card);
 }
 
-/* Highlighted once a space is actually selected, so the control
-   itself signals "a filter is applied" at a glance. */
-.spaceFilterControlActive {
-  border-color: var(--color-primary-500);
-  background-color: var(--wash-primary-15);
+.identityLogo {
+  width: 43px;
+  height: 43px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
-.spaceFilterLabel {
+.identityName {
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-leading);
+  color: var(--color-text-lt-default);
+}
+
+.periodHeading {
+  font-family: var(--type-h1-family);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-leading);
+  color: var(--color-text-lt-default);
+}
+
+.snapshotControlRow {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--type-body-sm-family);
-  font-size: var(--type-body-sm-size);
-  font-weight: 700;
-  color: var(--color-text-lt-grey);
-  white-space: nowrap;
+  justify-content: flex-end;
 }
 
-.spaceFilterClear {
+/* ---------------- KPI cards ---------------- */
+
+.kpiRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .kpiRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .kpiRow {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.kpiCard {
   display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 18px;
+}
+
+.kpiLabel {
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  color: var(--color-text-lt-default);
+}
+
+.kpiValue {
+  font-family: var(--type-h1-family);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-leading);
+}
+
+.kpiScoreChip {
+  display: inline-flex;
+  align-self: flex-start;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border: none;
-  border-radius: 999px;
-  background-color: transparent;
-  color: var(--color-text-lt-grey);
-  cursor: pointer;
+  padding: 10px 9px;
+  line-height: 1;
+  border-radius: 8px;
+  background-color: var(--wash-success-15);
+  color: var(--color-text-lt-success);
+  font-family: var(--type-h1-family);
+  font-size: 1.75rem;
+  font-weight: var(--type-h1-weight);
 }
 
-.spaceFilterClear:hover {
-  background-color: var(--color-neutral-200);
+.kpiMeterTrack {
+  display: block;
+  width: 100%;
+  height: 8px;
+  border-radius: 8px;
+  background-color: var(--color-neutral-300);
+  overflow: hidden;
 }
 
-.viewingBanner {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.kpiMeterFill {
+  display: block;
+  height: 100%;
+  border-radius: 8px;
+}
+
+.kpiDescription {
   font-family: var(--type-body-md-family);
   font-size: var(--type-body-md-size);
   color: var(--color-text-lt-grey);
 }
 
-.viewingBanner i {
+/* ---------------- Feature tabs ---------------- */
+
+.tabRow {
+  display: flex;
+  gap: 24px;
+}
+
+.tabButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.tabButton > i {
+  font-size: 20px;
+  color: var(--color-neutral-500);
+}
+
+.tabButtonActive > i {
   color: var(--color-primary-500);
 }
 
-.emptyNote {
+.tabLabelGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.tabLabelText {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-grey);
+}
+
+.tabButtonActive .tabLabelText {
+  color: var(--color-text-lt-default);
+}
+
+.tabUnderline {
+  display: block;
+  width: 100%;
+  height: 2px;
+  border-radius: 2px;
+  background-color: transparent;
+}
+
+.tabButtonActive .tabUnderline {
+  background-color: var(--color-primary-500);
+}
+
+/* ---------------- Space + stat pill row ---------------- */
+
+/* ---------------- Headcount & Occupancy table ---------------- */
+
+.compliancePillGood,
+.compliancePillBad {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.compliancePillGood {
+  background-color: var(--wash-success-15);
+  color: var(--color-text-lt-success);
+}
+
+.compliancePillBad {
+  background-color: var(--wash-danger-15);
+  color: var(--color-text-lt-danger);
+}
+
+.rowArrow {
+  color: var(--color-primary-500);
+}
+
+/* ---------------- Scope & Frequency tab ---------------- */
+
+.scopeStatRow {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.scopeStatCard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 18px;
+  width: 170px;
+}
+
+.scopeStatValueRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scopeStatValue {
+  font-family: var(--type-h1-family);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.scopeSearchWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.scopeSearchWrap i {
+  position: absolute;
+  left: 12px;
+  color: var(--color-neutral-500);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.scopeSearchInput {
+  height: 40px;
+  min-width: 200px;
+  padding: 0 12px 0 32px;
+  border-radius: 4px;
+  border: 1px solid var(--color-neutral-400);
+  background-color: var(--surface-lt-card);
+  color: var(--color-text-lt-default);
   font-family: var(--type-body-md-family);
   font-size: var(--type-body-md-size);
-  color: var(--color-text-lt-grey);
-  padding: 12px 0;
 }
+
+.scopeSearchInput:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.scopeTableHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 16px;
+}
+
+.scopeTableHeadTask {
+  flex: 1 0 0;
+  min-width: 0;
+}
+
+.scopeTableHeadCol {
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.scopeTableHeadTask,
+.scopeTableHeadCol,
+.scopeTableHeadCoverage {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-grey);
+}
+
+.scopeTableHeadCoverage {
+  flex: 1 0 0;
+  min-width: 0;
+}
+
+.scopeExpandAllBtn {
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-primary-700);
+}
+
+.scopeTable {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--color-neutral-300);
+}
+
+.scopeGroup {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.scopeGroup + .scopeGroup {
+  border-top: 1px solid var(--color-neutral-300);
+}
+
+.scopeGroupHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  border: none;
+  background-color: var(--surface-lt-card);
+  cursor: pointer;
+  text-align: left;
+}
+
+.scopeGroupChevron {
+  flex-shrink: 0;
+  color: var(--color-text-lt-grey);
+  font-size: 12px;
+  transition: transform 150ms ease;
+}
+
+.scopeGroupChevronOpen {
+  transform: rotate(90deg);
+}
+
+.scopeGroupIcon {
+  flex-shrink: 0;
+  color: var(--color-primary-500);
+}
+
+.scopeGroupTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.scopeGroupTitle {
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  color: var(--color-text-lt-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scopeGroupMeta {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-lt-grey);
+}
+
+.scopeTaskBlock {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.scopeTaskRow {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 16px 16px 44px;
+  background-color: var(--surface-lt-card);
+  border-top: 1px solid var(--color-neutral-200);
+}
+
+.scopeTaskLabelCell {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1 0 0;
+  min-width: 0;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-default);
+}
+
+.scopeTaskLabelCell i {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--color-datavis-orange-500);
+}
+
+.scopeTaskCol {
+  width: 120px;
+  flex-shrink: 0;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-default);
+}
+
+.scopeTaskCoverage {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 0 0;
+  min-width: 0;
+}
+
+.scopeCoverageValue {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-default);
+}
+
+.scopeCoverageTrack {
+  display: block;
+  width: 100%;
+  max-width: 200px;
+  height: 8px;
+  border-radius: 8px;
+  background-color: var(--color-neutral-300);
+  overflow: hidden;
+}
+
+.scopeCoverageFill {
+  display: block;
+  height: 100%;
+  border-radius: 8px;
+  background-color: var(--color-text-lt-success);
+}
+
+.scopeTaskToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-primary-700);
+}
+
+.scopeTaskToggle i {
+  font-size: 12px;
+  transition: transform 150ms ease;
+}
+
+.scopeEvidencePanel {
+  padding: 24px 44px;
+  background-color: var(--surface-lt-card);
+  border-top: 1px solid var(--color-neutral-200);
+}
+
+/* ---------------- Controls row: Filter / Shifts / Sort + Grid/List ---------------- */
+
+.workControlsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.workControlsRow > :last-child {
+  flex-shrink: 0;
+}
+
+.filterFieldGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+/* ---------------- Score trend (Trend view) ---------------- */
 
 .trendHeaderRow {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  margin-bottom: 12px;
 }
 
 .trendValue {
-  font-family: var(--type-h2-family);
-  font-size: var(--type-h2-size);
-  font-weight: var(--type-h2-weight);
-  line-height: var(--type-h2-leading);
+  font-family: var(--type-h1-family);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-leading);
+  color: var(--color-text-lt-default);
 }
 
 .trendCaption {
@@ -108,164 +588,18 @@
   color: var(--color-text-lt-grey);
 }
 
-.gapStatusOpen {
-  font-weight: 700;
-  color: var(--color-warning-700);
-}
-
-.gapStatusResolved {
-  font-weight: 700;
-  color: var(--color-text-lt-success);
-}
-
-/* ---------------- Site performance by space: status + completion ---------------- */
-
-.statusBadge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 6px;
-  padding: 3px 10px;
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.statusBadgeOnTrack {
-  background-color: var(--wash-success-15);
-  color: var(--color-text-lt-success);
-}
-
-.statusBadgeAtRisk {
-  background-color: var(--wash-warning-15);
-  color: var(--color-warning-700);
-}
-
-.statusBadgeLowScore {
-  background-color: var(--wash-danger-15);
-  color: var(--color-danger-700);
-}
-
-.completionCell {
+.trendAxis {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 140px;
-}
-
-.completionBarTrack {
-  flex: 1;
-  height: 8px;
-  border-radius: 100px;
-  overflow: hidden;
-  background-color: var(--color-neutral-300);
-}
-
-.completionBarFill {
-  display: block;
-  height: 100%;
-  border-radius: 100px;
-  background-color: var(--color-primary-500);
-}
-
-.completionValue {
-  width: 36px;
-  flex-shrink: 0;
-  text-align: right;
-  font-weight: 700;
-  font-size: 13px;
-}
-
-/* ---------------- Evidence showcase grid ---------------- */
-
-.showcaseGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  grid-auto-rows: 240px;
-  gap: 12px;
-}
-
-@media (min-width: 768px) {
-  .showcaseGrid {
-    grid-template-columns: repeat(3, 1fr);
-    grid-auto-rows: 280px;
-  }
-}
-
-@media (min-width: 1200px) {
-  .showcaseGrid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-.showcaseCard {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  overflow: hidden;
-  border-radius: 8px;
-  box-shadow: var(--shadow-lt-card);
-}
-
-.showcasePhoto {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--type-body-sm-family);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--color-neutral-500);
-  background-color: var(--color-neutral-200);
-  background-image: repeating-linear-gradient(
-    45deg,
-    var(--color-neutral-300),
-    var(--color-neutral-300) 2px,
-    transparent 2px,
-    transparent 12px
-  );
-}
-
-.showcaseCaption {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px;
-  background: linear-gradient(to top, rgba(24, 30, 36, 0.72), rgba(24, 30, 36, 0));
-  color: #fff;
-}
-
-.showcaseTopRow {
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  margin-top: 8px;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-lt-grey);
 }
 
-.showcaseTag {
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.showcaseScore {
-  font-weight: 700;
-}
-
-.showcasePerson {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.showcaseLocation {
-  font-size: 12px;
-  opacity: 0.85;
+.emptyNote {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-grey);
+  padding: 24px 0;
 }

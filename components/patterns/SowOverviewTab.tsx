@@ -101,9 +101,13 @@ export function SowOverviewTab({ onNavigateTab }: SowOverviewTabProps) {
               theme="light"
               className={[styles.activityCard, i === 0 ? styles.activityHero : ""].filter(Boolean).join(" ")}
             >
-              <div className={styles.activityPhoto} aria-hidden="true">
-                PHOTO
-              </div>
+              {item.areaPhoto ? (
+                <img src={item.areaPhoto} alt="" className={[styles.activityPhoto, styles.activityPhotoImg].join(" ")} />
+              ) : (
+                <div className={styles.activityPhoto} aria-hidden="true">
+                  No photo
+                </div>
+              )}
               <div className={styles.photoBody}>
                 <span className={styles.photoMeta}>
                   <span className={styles.typeTag}>{item.tag}</span>
