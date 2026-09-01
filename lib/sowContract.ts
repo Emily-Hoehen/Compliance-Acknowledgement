@@ -83,6 +83,8 @@ export type ContractTaskDef = {
   frequency: string;
   /** Which shifts this task applies to (Day/Swing/Graveyard) — a task's frequency never varies by shift in this export, so one row covers all its shifts. */
   shifts: string[];
+  /** Real freq_count from the export (e.g. 3 for "3x Daily") — how many times this task recurs per its own cycle. Null for frequencies with no fixed count (e.g. "As Needed"). */
+  freqCount: number | null;
 };
 
 /**
@@ -161,7 +163,7 @@ export function buildContractBuildings(rows: SowContractRow[]): ContractBuilding
 
     const existingTask = acc.tasks.get(row.taskName);
     if (!existingTask) {
-      acc.tasks.set(row.taskName, { label: row.taskName, frequency: row.frequencyRaw, shifts: [row.shift] });
+      acc.tasks.set(row.taskName, { label: row.taskName, frequency: row.frequencyRaw, shifts: [row.shift], freqCount: row.freqCount });
     } else if (row.shift && !existingTask.shifts.includes(row.shift)) {
       existingTask.shifts.push(row.shift);
     }

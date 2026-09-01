@@ -619,23 +619,30 @@
 .flatTaskList {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px 16px;
+  padding: 0 16px;
 }
 
-/* One contracted task's label/frequency line, plus — only when it's
-   actually due for the page's current date-range preset — a
-   completed-vs-expected progress bar underneath (same visual language
-   as the Area Type/Area list tables' Expected Services bar). */
+/* One contracted task's icon/label/frequency, plus — for a task
+   that's due (or, for "As Needed" tasks, always) — a completed pill
+   and "View" toggle for its linked evidence, all on one wrapping row
+   (Figma fileKey SWFMjlBJ4u9vSrVaomRe12, node 118:19385). */
 .scopeTaskRow {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-bottom: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 16px;
+  row-gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid var(--color-neutral-300);
 }
 
-.scopeTaskRow:last-child {
-  padding-bottom: 0;
+.scopeTaskRow:first-child {
+  border-top: none;
+}
+
+.scopeTaskLabelBlock {
+  flex: 1 1 320px;
+  min-width: 220px;
 }
 
 /* -- Scope modal accordion headers -- */
@@ -796,6 +803,20 @@
   flex-wrap: wrap;
 }
 
+/* Read-only stand-in for the Week/Month toggle once the date scope up
+   top already fixes the trend's span — states the exact range instead
+   of offering a control that would just fight with it. */
+.trendRangeLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: 600;
+  color: var(--color-text-lt-grey);
+  white-space: nowrap;
+}
+
 /* The toggle link lives in the content header (right-aligned, under
    "View Scope for this Area") rather than inside the Performance
    section itself — Figma fileKey SWFMjlBJ4u9vSrVaomRe12, node
@@ -841,6 +862,125 @@
 
 .performanceToggleButton i {
   font-size: 12px;
+}
+
+/* One contracted task's icon/label/frequency, plus — for a task
+   that's due (or, for "As Needed" tasks, always) — a completed
+   pill and a "View" toggle for its linked evidence, all on one row
+   per Figma's Contracted Scope layout. */
+.scopeTaskIcon {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--color-datavis-orange-500);
+}
+
+.scopeTaskCompletionGroup {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+  width: 232px;
+}
+
+.scopeTaskCompletionGroup .areaTypeTableProgressTrack {
+  width: 200px;
+}
+
+/* The completed pill's own "View" toggle for its linked evidence —
+   separate from the pill itself (Figma keeps them as two distinct
+   elements), so the pill stays a plain read-only indicator. */
+.scopeTaskViewToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-lt-blue);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+}
+
+.scopeTaskViewToggle i {
+  font-size: 10px;
+}
+
+/* The task's linked verifications/audits, revealed by its "View"
+   toggle — a flat nested list (own indent, hairline dividers)
+   rather than a boxed callout, matching Figma's plain sub-rows. */
+.linkedEvidenceList {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-top: 4px;
+  padding-left: 30px;
+}
+
+.linkedEvidenceRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--color-neutral-300);
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: var(--type-body-sm-weight);
+  line-height: var(--type-body-sm-leading);
+}
+
+.linkedEvidenceThumb,
+.linkedEvidenceThumbPlaceholder {
+  flex-shrink: 0;
+  width: 50px;
+  height: 50px;
+  border-radius: 4px;
+  object-fit: cover;
+  background-color: var(--color-neutral-400);
+}
+
+.linkedEvidenceTag {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-lt-default);
+  font-family: var(--type-h4-family);
+  font-weight: var(--type-h4-weight);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linkedEvidencePerson {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  width: 180px;
+  color: var(--color-text-lt-default);
+  font-family: var(--type-h4-family);
+  font-weight: var(--type-h4-weight);
+}
+
+.linkedEvidenceAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 100px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background-color: var(--color-neutral-500);
+}
+
+.linkedEvidenceTime {
+  flex-shrink: 0;
+  min-width: 90px;
+  text-align: right;
+  color: var(--color-text-lt-default);
+  font-family: var(--type-h4-family);
+  font-weight: var(--type-h4-weight);
 }
 
 .workControlsLabel {
@@ -978,19 +1118,8 @@
 
 .workCardServiceHeaderRow {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.workCardServiceIcon {
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  color: var(--color-text-lt-default);
-  font-size: 20px;
+  gap: 8px;
 }
 
 .workCardServiceTitleGroup {
@@ -1214,18 +1343,14 @@
   gap: 8px;
 }
 
-.serviceTypeIcon {
-  flex-shrink: 0;
-  font-size: 20px;
-}
-
 .serviceTypeLabel {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--type-body-md-family);
-  font-size: var(--type-body-md-size);
-  font-weight: var(--type-body-md-weight);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
   color: var(--color-text-lt-default);
 }
 
@@ -1283,7 +1408,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  color: var(--color-primary-700);
+  color: var(--color-text-lt-blue);
   font-family: var(--type-h4-family);
   font-size: var(--type-h4-size);
   font-weight: var(--type-h4-weight);
@@ -1341,14 +1466,14 @@
 }
 
 .areaTypeTableNameSub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--type-body-sm-family);
   font-size: var(--type-body-sm-size);
   font-weight: var(--type-body-sm-weight);
   line-height: var(--type-body-sm-leading);
   color: var(--color-text-lt-grey);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .areaTypeTableCellText {
@@ -1430,6 +1555,240 @@
   width: 24px;
   height: 24px;
   color: var(--color-primary-500);
+}
+
+/* ---------------- "Tasks" view (Grid/List/Tasks) — Figma fileKey
+   SWFMjlBJ4u9vSrVaomRe12, node 122:23031 ---------------- */
+
+/* A trailing chevron column bookends the 4 header labels (no header
+   cell of its own — same "fixed width, no header" convention as
+   AreaTypeListTable's trailing arrow column) — Task/Shift/Frequency
+   stay flexible (this app's content column is narrower than Figma's
+   1310px canvas), Completed Services is Figma's real fixed 200px
+   pill. The task icon lives inside the Task column itself (see
+   .taskListNameCell) rather than its own track, so the "Task" header
+   text starts flush with the icon below it without a grid-span hack. */
+.colsTasks {
+  grid-template-columns: 2.2fr 0.6fr 0.6fr 200px 24px;
+}
+
+/* Each task is its own gapped, shadowed card — same card language as
+   AreaTypeListTable/AreaListTable's rows — rather than one continuous
+   bordered block. Its (optional) expanded evidence rows live inside
+   the same card, separated by hairline dividers, so the card grows
+   to fit them instead of floating a second disconnected block. */
+.taskListRows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.taskCard {
+  background-color: var(--surface-lt-card);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lt-card);
+  overflow: hidden;
+}
+
+.taskListRow {
+  display: grid;
+  align-items: center;
+  gap: 24px;
+  padding: 16px;
+}
+
+.taskListRow > * {
+  min-width: 0;
+}
+
+/* The task icon sits inside the Task column with its own explicit
+   12px gap to the label — independent of the row's own 24px column
+   gap, which is for spacing between columns, not within one. */
+.taskListNameCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.taskListIcon {
+  flex-shrink: 0;
+  font-size: 20px;
+  color: var(--color-datavis-yellow-orange-500);
+}
+
+.taskListLabel {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+  color: var(--color-text-lt-default);
+}
+
+.taskListValue {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: var(--type-body-md-weight);
+  line-height: var(--type-body-md-leading);
+  color: var(--color-text-lt-default);
+}
+
+.taskCompletionPillTrack {
+  width: 200px;
+  flex-shrink: 0;
+  justify-self: end;
+}
+
+/* The row's own expand/collapse control — a bare chevron, no "View
+   Completed" label (Figma dropped the text, keeping just the icon). */
+.taskListChevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-lt-blue);
+  font-size: 14px;
+}
+
+/* One task's linked evidence row — photo, icon-badge + tag, person
+   (name + position|shift), time, score, then a "view" eye icon
+   (Figma's exact column order and content), indented further than
+   the task row above it with a hairline divider in place of a
+   border. */
+/* Grid, not flex — the icon/tag, person, time, and score columns
+   get one equal share each, so they spread evenly across the row's
+   full width instead of clumping left with a dead gap before the
+   eye icon (a flex row with fixed-width children can't do that). */
+.taskEvidenceRow {
+  display: grid;
+  grid-template-columns: 50px repeat(4, 1fr) 80px;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 16px 16px 64px;
+  border-top: 1px solid var(--color-neutral-300);
+  cursor: pointer;
+}
+
+.taskEvidenceRow > * {
+  min-width: 0;
+}
+
+.taskEvidenceRow:hover {
+  background-color: var(--color-neutral-200);
+}
+
+.taskEvidenceRow:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: -2px;
+}
+
+.taskEvidenceThumb,
+.taskEvidenceThumbPlaceholder {
+  flex-shrink: 0;
+  width: 50px;
+  height: 50px;
+  border-radius: 2px;
+  object-fit: cover;
+  background-color: var(--color-neutral-400);
+}
+
+.taskEvidenceIconTag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Shared circular tint badge behind a service-type icon — every
+   place a service-tag icon appears (Tasks view evidence rows, the
+   Scope modal's linked evidence, ServiceListTable, WorkCard's Grid
+   "Service" variant) uses this same badge instead of a bare glyph. */
+.serviceIconBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 100px;
+  font-size: 16px;
+}
+
+.taskEvidenceTagText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+  color: var(--color-text-lt-default);
+}
+
+.taskEvidencePerson {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.taskEvidenceAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 100px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background-color: var(--color-neutral-500);
+}
+
+.taskEvidencePersonInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.taskEvidencePersonName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-default);
+}
+
+.taskEvidencePersonRole {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: var(--type-body-sm-weight);
+  line-height: var(--type-body-sm-leading);
+  color: var(--color-text-lt-grey);
+}
+
+.taskEvidenceTime {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-default);
+}
+
+.taskEvidenceScoreCell {
+  display: flex;
+  align-items: center;
 }
 
 /* ---------------- Trend chart (Performance section's Trend view) ---------------- */

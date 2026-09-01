@@ -29,6 +29,7 @@ import { photoForAreaType } from "../../lib/sowImages";
 import {
   frequencyPeriod,
   isTaskDueForPeriod,
+  FREQ_CYCLE_DAYS,
   type ContractArea,
   type ContractAreaType,
   type ContractBuilding,
@@ -552,8 +553,8 @@ export function SowTimeFirstPage({ associates = [], managers = [], contractBuild
   const verificationCoveragePercent =
     verificationsExpected > 0 ? Math.min(100, (verificationsCompleted / verificationsExpected) * 100) : 0;
 
-  const hoursCaptured = hoursCapturedForNode(`period-${period}`, 0);
-  const auditSummary = auditSummaryForNode(`period-${period}`, 0);
+  const hoursCaptured = hoursCapturedForNode(`period-${period}`, 0, periodConfig.days);
+  const auditSummary = auditSummaryForNode(`period-${period}`, 0, periodConfig.days);
 
   const teamMembersCount = associatesWorkedCount + managersWorkedCount;
   const teamMembersDescription =
@@ -593,7 +594,13 @@ export function SowTimeFirstPage({ associates = [], managers = [], contractBuild
 
   function areaCardsForAreaType(at: ContractAreaType): AreaCardData[] {
     const converted = areaTypeFromContract(at);
-    const perAreaExpected = Math.max(1, Math.round(converted.expectedServices / Math.max(1, at.areas.length)));
+    // Scales with the selected period so a longer range shows a
+    // realistically larger total instead of repeating a single day's
+    // count — percent stays period-independent.
+    const perAreaExpected = Math.max(
+      1,
+      Math.round((converted.expectedServices / Math.max(1, at.areas.length)) * periodConfig.days)
+    );
     return at.areas.map((area) => {
       const seedKey = `${area.areaId}-period-${period}`;
       const servicedToday = Math.max(0, Math.round(perAreaExpected * scaleForDay(`${seedKey}-serviced`, 0, 0.2, 0.95)));
@@ -614,8 +621,9 @@ export function SowTimeFirstPage({ associates = [], managers = [], contractBuild
   function areaTypeCard(at: ContractAreaType): AreaCardData {
     const converted = areaTypeFromContract(at);
     const seedKey = `${at.building}-${at.name}-period-${period}`;
-    const servicedToday = Math.max(0, Math.round(converted.expectedServices * scaleForDay(`${seedKey}-serviced`, 0, 0.2, 0.95)));
-    const percent = converted.expectedServices > 0 ? Math.min(100, (servicedToday / converted.expectedServices) * 100) : 0;
+    const expected = Math.round(converted.expectedServices * periodConfig.days);
+    const servicedToday = Math.max(0, Math.round(expected * scaleForDay(`${seedKey}-serviced`, 0, 0.2, 0.95)));
+    const percent = expected > 0 ? Math.min(100, (servicedToday / expected) * 100) : 0;
     return {
       key: seedKey,
       photo: photoForAreaType(at.name, seedKey),
@@ -623,7 +631,7 @@ export function SowTimeFirstPage({ associates = [], managers = [], contractBuild
       title: at.name,
       subtitle: `${at.building} · ${at.areas.length} area${at.areas.length === 1 ? "" : "s"}`,
       score: scoreForDay(`${seedKey}-score`, 0),
-      progress: { servicedToday, expected: converted.expectedServices, percent },
+      progress: { servicedToday, expected, percent },
       capturedLabel: `${capturedDurationLabel(seedKey, 0)} Captured`,
     };
   }
@@ -767,15 +775,21 @@ export function SowTimeFirstPage({ associates = [], managers = [], contractBuild
   }
 
   // Expected/Completed Tasks KPI cards: real due-task-instances (one per
-  // area a due task applies to) for the whole site this period — a fixed
-  // summary independent of the grid's grouping/search/frequency/shift
-  // narrowing below, same as the other KPI cards on this page.
+  // area a due task applies to, times how many of the task's own cycles
+  // actually fit in the selected period — a Daily task viewed over "This
+  // Month" is ~30 instances per area, not 1) for the whole site this
+  // period — a fixed summary independent of the grid's grouping/search/
+  // frequency/shift narrowing below, same as the other KPI cards on this
+  // page.
   const scopeExpectedInstances = useMemo(() => {
     let total = 0;
     contractBuildings.forEach((cb) =>
       cb.areaTypes.forEach((at) => {
         at.tasks.forEach((task) => {
-          if (isTaskDueForPeriod(task.frequency, periodConfig.days)) total += at.areas.length;
+          if (!isTaskDueForPeriod(task.frequency, periodConfig.days)) return;
+          const cycleDays = FREQ_CYCLE_DAYS[frequencyPeriod(task.frequency)];
+          const cyclesInPeriod = cycleDays ? Math.max(1, Math.round(periodConfig.days / cycleDays)) : 1;
+          total += at.areas.length * cyclesInPeriod;
         });
       })
     );
@@ -875,7 +889,8 @@ export function SowTimeFirstPage({ associates = [], managers = [], contractBuild
                   <span className={styles.kpiLabel}>Average Audit Score</span>
                   <span className={styles.kpiScoreChip}>{auditSummary.avgScore.toFixed(2)}</span>
                   <span className={styles.kpiDescription}>
-                    Across {auditSummary.totalAudits} audits · {auditSummary.jointAudits} joint with {siteInfo.client}
+                    Across {auditSummary.totalAudits.toLocaleString()} audits · {auditSummary.jointAudits.toLocaleString()} joint with{" "}
+                    {siteInfo.client}
                   </span>
                 </Card>
 

@@ -57,7 +57,7 @@ export function AreaCard({ data }: { data: AreaCardData }) {
 
         <div className={styles.areaCardProgressLine}>
           <span className={styles.areaCardProgressLabel}>
-            {data.progress.servicedToday} of {data.progress.expected} Expected Services
+            {data.progress.servicedToday.toLocaleString()} of {data.progress.expected.toLocaleString()} Expected Services
           </span>
           <span className={styles.areaCardProgressPercent}>{Math.round(data.progress.percent)}%</span>
         </div>
@@ -160,7 +160,8 @@ export function AreaCardList({ items }: { items: AreaCardData[] }) {
                 {item.subtitle && <span className={styles.evidenceCardSubtitle}> — {item.subtitle}</span>}
               </td>
               <td>
-                {item.progress.servicedToday} of {item.progress.expected} ({Math.round(item.progress.percent)}%)
+                {item.progress.servicedToday.toLocaleString()} of {item.progress.expected.toLocaleString()} (
+                {Math.round(item.progress.percent)}%)
               </td>
               <td>{item.score.toFixed(2)}</td>
               <td>{item.capturedLabel}</td>

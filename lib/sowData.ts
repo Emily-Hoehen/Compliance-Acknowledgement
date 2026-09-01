@@ -111,8 +111,14 @@ export function statusForAreaType(a: { percent: number; score: number }): AreaTy
  */
 export function areaTypeFromContract(at: ContractAreaType): AreaType {
   const areaCount = at.areas.length;
-  const taskCount = at.tasks.length;
-  const totalActions = Math.max(1, areaCount * taskCount);
+  // Real per-day instance count — each task's own freq_count (e.g. 2
+  // for "2x Daily"), not just how many distinct tasks exist, so an
+  // area with several multiple-times-a-day tasks realistically shows
+  // more daily activity than an area with the same task count done
+  // once each. Falls back to 1 for tasks with no fixed count (e.g.
+  // "As Needed").
+  const dailyTaskInstances = at.tasks.reduce((sum, t) => sum + (t.freqCount ?? 1), 0);
+  const totalActions = Math.max(1, areaCount * dailyTaskInstances);
   const expectedServices = totalActions;
   const seedKey = `${at.building}-${at.name}`;
   const servicedToday = Math.max(0, Math.round(expectedServices * scaleForDay(`${seedKey}-base`, 0, 0.35, 0.75)));
@@ -225,12 +231,46 @@ const ASSOCIATE_POOL = [
   { name: "Bonnie Foley", avatar: "https://cdn.4insite.com/assets/6fa34aa76bd24c7f9e02f22bd04fc227_ChinhQuang2_t.jpg", position: "CSR, Exterior" },
 ];
 
-/** Illustrative per-area verification samples — three associates rotated (seeded per area name) out of the full ASSOCIATE_POOL. */
-export function verificationsForArea(areaName: string): VerificationEvent[] {
+/**
+ * "5 minutes ago" only reads right for today's own feed — anything
+ * else (Yesterday, a week, a month...) shows a real calendar date
+ * instead, spread across the selected range (oldest items near the
+ * start of the range, newest near dayOffset) so a month's worth of
+ * rows actually look like they happened on different days.
+ */
+function timeAgoForIndex(i: number, count: number, dayOffset: number, periodDays: number, seed: string): string {
+  const isToday = dayOffset === 0 && periodDays <= 1;
+  if (isToday || count <= 1) return `${5 + i * 12} minutes ago`;
+  const daysAgo =
+    periodDays <= 1 ? dayOffset : dayOffset + Math.min(periodDays - 1, Math.floor(((i + 0.5) / count) * periodDays));
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  const hour = 6 + (hashSeed(`${seed}-${i}-hr`) % 14); // 6am–7pm, plausible service hours
+  const minute = hashSeed(`${seed}-${i}-min`) % 60;
+  d.setHours(hour, minute, 0, 0);
+  return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+/**
+ * Illustrative per-area verification samples — associates rotated
+ * (seeded per area name) out of the full ASSOCIATE_POOL. `count`
+ * defaults to 3 (the original flat sample, still used by callers with
+ * no date range — allAreaVerifications, the Scope view's linked-
+ * evidence pool); callers scoped to a specific area/period pass a
+ * real period-derived count (see evidenceVerifications in
+ * SowHierarchyPage.tsx) so "This Month" actually shows a month's
+ * worth of rows instead of always the same 3.
+ */
+export function verificationsForArea(
+  areaName: string,
+  count: number = 3,
+  periodDays: number = 1,
+  dayOffset: number = 0
+): VerificationEvent[] {
   const types: VerificationEvent["type"][] = ["Spot Clean", "Full Service", "Periodic"];
   const seed = hashSeed(areaName);
   const start = seed % ASSOCIATE_POOL.length;
-  return Array.from({ length: 3 }, (_, i) => {
+  return Array.from({ length: count }, (_, i) => {
     const person = ASSOCIATE_POOL[(start + i) % ASSOCIATE_POOL.length];
     return {
       type: types[(seed + i) % types.length],
@@ -238,9 +278,9 @@ export function verificationsForArea(areaName: string): VerificationEvent[] {
       personAvatar: person.avatar,
       position: person.position,
       shift: SHIFTS[(seed + i) % SHIFTS.length],
-      location: `${areaName} — Zone ${i + 1}`,
+      location: `${areaName} — Zone ${(i % 40) + 1}`,
       score: Number((4.7 + ((seed + i) % 3) * 0.1).toFixed(2)),
-      timeAgo: `${5 + i * 12} minutes ago`,
+      timeAgo: timeAgoForIndex(i, count, dayOffset, periodDays, areaName),
     };
   });
 }
@@ -300,14 +340,31 @@ function formatHoursMinutes(totalMinutes: number): string {
   return `${Math.floor(totalMinutes / 60)}h ${String(totalMinutes % 60).padStart(2, "0")}m`;
 }
 
-/** A deterministic, day-varying "hours captured vs. paid" read for a hierarchy node — same generator spirit as scoreForDay/scaleForDay, backing the Hours Captured metric card. */
-export function hoursCapturedForNode(seedKey: string, dayOffset: number): {
+/**
+ * A deterministic, day-varying "hours captured vs. paid" read for a
+ * hierarchy node — same generator spirit as scoreForDay/scaleForDay,
+ * backing the Hours Captured metric card. `periodDays` (default 1,
+ * for callers with no date-range selector) scales paidMinutes/
+ * capturedMinutes so a longer selected range shows a realistically
+ * larger total instead of the same one-day number — percent and the
+ * day-to-day delta stay day-based, since a ratio/trend shouldn't
+ * scale with period length the way a raw total should.
+ */
+export function hoursCapturedForNode(
+  seedKey: string,
+  dayOffset: number,
+  periodDays: number = 1
+): {
   percent: number;
   capturedLabel: string;
   paidLabel: string;
   deltaVsYesterday: number;
 } {
-  const paidMinutes = 180 + (hashSeed(`${seedKey}-paid`) % 300);
+  // Averages ~400 paid min/day (~6.7h) so that at ~75% avg capture
+  // (the percent band below), a 30-day month centers on ~150h
+  // captured per area, per the calibration target.
+  const paidMinutesPerDay = 220 + (hashSeed(`${seedKey}-paid`) % 360);
+  const paidMinutes = paidMinutesPerDay * periodDays;
   const percent = Math.min(100, Math.round(55 + scaleForDay(`${seedKey}-captured-pct`, dayOffset, 0, 40)));
   const yesterdayPercent = Math.min(100, Math.round(55 + scaleForDay(`${seedKey}-captured-pct`, dayOffset + 1, 0, 40)));
   const capturedMinutes = Math.round((paidMinutes * percent) / 100);
@@ -319,8 +376,17 @@ export function hoursCapturedForNode(seedKey: string, dayOffset: number): {
   };
 }
 
-/** A deterministic audit summary (score + volume) for a hierarchy node, backing the Average Audit Score metric card. */
-export function auditSummaryForNode(seedKey: string, dayOffset: number): {
+/**
+ * A deterministic audit summary (score + volume) for a hierarchy
+ * node, backing the Average Audit Score metric card. `periodDays`
+ * (default 1) scales totalAudits/jointAudits the same way — avgScore
+ * is an average, not a total, so it stays period-independent.
+ */
+export function auditSummaryForNode(
+  seedKey: string,
+  dayOffset: number,
+  periodDays: number = 1
+): {
   avgScore: number;
   totalAudits: number;
   jointAudits: number;
@@ -328,7 +394,8 @@ export function auditSummaryForNode(seedKey: string, dayOffset: number): {
 } {
   const avgScore = scoreForDay(`${seedKey}-audit-score`, dayOffset);
   const lastWeekScore = scoreForDay(`${seedKey}-audit-score`, dayOffset + 7);
-  const totalAudits = 8 + (hashSeed(`${seedKey}-audit-count`) % 60);
+  const auditsPerDay = 8 + (hashSeed(`${seedKey}-audit-count`) % 60);
+  const totalAudits = Math.max(1, Math.round(auditsPerDay * periodDays));
   const jointAudits = Math.max(1, Math.round(totalAudits * 0.2));
   return {
     avgScore,
@@ -448,19 +515,30 @@ const AUDITOR_POOL = [
   { name: "Cortez Cook", avatar: "https://cdn.4insite.com/assets/4a3cd2e66af74e67a86f8141db8a8c50_20240429_174001_t.jpg" },
 ];
 
-/** Illustrative per-area audit samples — two auditors rotated (seeded per area name) out of the full AUDITOR_POOL. */
-export function auditsForArea(areaName: string): AuditEvent[] {
+/**
+ * Illustrative per-area audit samples — auditors rotated (seeded per
+ * area name) out of the full AUDITOR_POOL. `count` defaults to 2 (the
+ * original flat sample); callers scoped to a specific area/period
+ * pass a real period-derived count — see verificationsForArea's doc
+ * comment, same convention.
+ */
+export function auditsForArea(
+  areaName: string,
+  count: number = 2,
+  periodDays: number = 1,
+  dayOffset: number = 0
+): AuditEvent[] {
   const seed = hashSeed(areaName);
   const start = seed % AUDITOR_POOL.length;
-  return Array.from({ length: 2 }, (_, i) => {
+  return Array.from({ length: count }, (_, i) => {
     const auditor = AUDITOR_POOL[(start + i) % AUDITOR_POOL.length];
     return {
       auditType: AUDIT_TYPES[(seed + i) % AUDIT_TYPES.length],
       auditorName: auditor.name,
       auditorAvatar: auditor.avatar,
-      location: `${areaName} — Inspection ${i + 1}`,
+      location: `${areaName} — Inspection ${(i % 40) + 1}`,
       score: Number((4.6 + ((seed + i) % 3) * 0.12).toFixed(2)),
-      timeAgo: `${2 + i * 3} hours ago`,
+      timeAgo: timeAgoForIndex(i, count, dayOffset, periodDays, `${areaName}-audit`),
     };
   });
 }

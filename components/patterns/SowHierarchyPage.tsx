@@ -37,6 +37,8 @@ import {
 import {
   findContractAreaType,
   isTaskDueForPeriod,
+  frequencyPeriod,
+  FREQ_CYCLE_DAYS,
   type ContractBuilding,
   type ContractAreaType,
   type ContractArea,
@@ -66,7 +68,7 @@ type Selection = {
 type TrendRange = "week" | "month";
 type StatsView = "snapshot" | "trend";
 type GroupBy = "building" | "areaType";
-type ViewMode = "grid" | "list";
+type ViewMode = "grid" | "list" | "tasks";
 type SortOrder = "recent" | "score-desc" | "score-asc";
 
 /** Which unit each evidence card represents — Figma's "View by" dropdown (Area / Area Type / Element / Service, fileKey SWFMjlBJ4u9vSrVaomRe12, node 100:21953). */
@@ -178,6 +180,35 @@ function withForcedArea<T>(events: T[], areaDisplayName: string, areaTypeName: s
   return events.map((e) => ({ ...e, areaDisplayName, areaTypeName }));
 }
 
+/**
+ * The verification (service) pool "linked" to one area type's (or,
+ * with `forcedArea`, one specific area's) contracted tasks — same
+ * generators and area-tagging convention as the page's own evidence
+ * feed (verificationsForArea + withAreaTagging/withForcedArea), just
+ * called directly for a given node instead of only the currently-
+ * selected one. Audits are deliberately excluded — the Contracted
+ * Scope view (Figma fileKey SWFMjlBJ4u9vSrVaomRe12, node 118:19385)
+ * links tasks to the services performed against them, not to audit
+ * inspections. This dataset has no real per-task-instance tracking,
+ * so a task's "linked evidence" is a deterministic seeded sample of
+ * this pool (see pickLinkedEvidence) rather than an exhaustive, exact
+ * match — illustrative, same as the completed-count itself.
+ */
+function buildScopeEvidence(areaType: ContractAreaType, forcedArea?: ContractArea): ActivityItem[] {
+  const verifications = forcedArea
+    ? withForcedArea(verificationsForArea(areaType.name), forcedArea.displayName, areaType.name)
+    : withAreaTagging(verificationsForArea(areaType.name), areaType);
+  return verifications.map(verificationToActivity);
+}
+
+/** Deterministic, stable-per-task sample of `count` items from `pool` (seeded by `seedKey`, rotating so different tasks surface different items from the same small pool) — the "linked evidence" shown under a due task's completed-vs-expected bar. */
+function pickLinkedEvidence(pool: ActivityItem[], seedKey: string, count: number): ActivityItem[] {
+  if (pool.length === 0) return [];
+  const start = hashSeed(seedKey) % pool.length;
+  const n = Math.min(count, pool.length);
+  return Array.from({ length: n }, (_, i) => pool[(start + i) % pool.length]);
+}
+
 function colorForServiceTag(tag: string): string {
   if (tag.includes("Audit")) return "var(--color-datavis-sky-blue-700)";
   if (tag === "Full Service") return "var(--color-datavis-purple-500)";
@@ -185,6 +216,16 @@ function colorForServiceTag(tag: string): string {
   if (tag === "Periodic") return "var(--color-datavis-sky-blue-500)";
   if (tag === "Quality Check") return "var(--color-datavis-teal-700)";
   return "var(--color-datavis-bubblegum-500)"; // Detail Work and any other stand-in category
+}
+
+/** The Tasks view's circular icon badge behind each linked service's icon — that same hue's 100-shade at 25% opacity (Figma fileKey SWFMjlBJ4u9vSrVaomRe12, node 122:23091), computed from the existing token via color-mix rather than a one-off hardcoded tint. */
+function badgeColorForServiceTag(tag: string): string {
+  if (tag.includes("Audit")) return "color-mix(in srgb, var(--color-datavis-sky-blue-100) 25%, transparent)";
+  if (tag === "Full Service") return "color-mix(in srgb, var(--color-datavis-purple-100) 25%, transparent)";
+  if (tag === "Spot Clean") return "color-mix(in srgb, var(--color-datavis-pinkle-100) 25%, transparent)";
+  if (tag === "Periodic") return "color-mix(in srgb, var(--color-datavis-sky-blue-100) 25%, transparent)";
+  if (tag === "Quality Check") return "color-mix(in srgb, var(--color-datavis-teal-100) 25%, transparent)";
+  return "color-mix(in srgb, var(--color-datavis-bubblegum-100) 25%, transparent)";
 }
 
 /* ---------------- Click-to-sort column headers, shared by AreaTypeListTable/AreaListTable/ServiceListTable ---------------- */
@@ -310,6 +351,143 @@ function periodDaysForDatePreset(preset: DatePreset): number {
   return 365; // 1year
 }
 
+/**
+ * One area/area-type's contracted task list, each with a real
+ * contract-derived expected count (areaCount — one due instance per
+ * area, same convention SowTimeFirstPage's Scope & Frequency tab
+ * uses) alongside a deterministic seeded completed count (same
+ * scaleForDay generator family as every other coverage number on this
+ * page). Only rendered for tasks actually due within the page's
+ * current date-range preset — a Weekly/Monthly task viewed on "Today"
+ * just shows its frequency text, same as before, rather than a
+ * misleading 0-of-something for a task that isn't due yet. Shared by
+ * the Scope modal's accordion and the inline "Contracted Scope"
+ * disclosure on each Work grid card / list row, so both agree on the
+ * same numbers for the same node. Each due task's completed-vs-
+ * expected bar is itself an expand toggle (ScopeTaskRow) surfacing
+ * the specific verifications/audits "linked" to it, so the evidence
+ * behind a task's numbers is one click away instead of only living
+ * in the separate Work evidence feed.
+ */
+function renderTaskScopeList(
+  tasks: ContractTaskDef[],
+  seedPrefix: string,
+  areaCount: number,
+  periodDays: number,
+  dayOffset: number,
+  evidence: ActivityItem[]
+) {
+  return (
+    <div className={styles.flatTaskList}>
+      {tasks.map((task) => (
+        <ScopeTaskRow
+          key={task.label}
+          task={task}
+          seedKey={`${seedPrefix}-${task.label}`}
+          areaCount={areaCount}
+          periodDays={periodDays}
+          dayOffset={dayOffset}
+          evidence={evidence}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ScopeTaskRow({
+  task,
+  seedKey,
+  areaCount,
+  periodDays,
+  dayOffset,
+  evidence,
+}: {
+  task: ContractTaskDef;
+  seedKey: string;
+  areaCount: number;
+  periodDays: number;
+  dayOffset: number;
+  evidence: ActivityItem[];
+}) {
+  const [open, setOpen] = useState(false);
+  // "As Needed" tasks have no fixed cycle to be "due" within, so Figma
+  // shows them differently from a scheduled task: a flat seeded
+  // completed count (no expected total, filled solid green) instead of
+  // a blue X-of-Y ratio bar. A task on a schedule that simply hasn't
+  // come due within the page's current date range (e.g. Monthly,
+  // viewed on "Today") still shows neither — same conservative choice
+  // as before, rather than a misleading 0-of-something.
+  const isAsNeeded = frequencyPeriod(task.frequency) === "As Needed";
+  const dueScheduled = !isAsNeeded && isTaskDueForPeriod(task.frequency, periodDays);
+  const expected = areaCount;
+  const completed = isAsNeeded
+    ? 1 + (hashSeed(`${seedKey}-as-needed`) % 3)
+    : dueScheduled
+      ? Math.round(expected * scaleForDay(`${seedKey}-scope-completion`, dayOffset, 0.72, 0.94))
+      : 0;
+  const completedPercent = dueScheduled && expected > 0 ? Math.min(100, (completed / expected) * 100) : 0;
+  const showsCompletion = isAsNeeded || dueScheduled;
+  const linked = showsCompletion ? pickLinkedEvidence(evidence, seedKey, 3) : [];
+  const shiftsText = task.shifts && task.shifts.length > 0 && task.shifts.length < 3 ? task.shifts.join("/") : null;
+
+  return (
+    <div className={styles.scopeTaskRow}>
+      <i className={["fa-solid fa-ballot-check", styles.scopeTaskIcon].join(" ")} aria-hidden="true" />
+      <div className={[sharedStyles.taskRow, styles.scopeTaskLabelBlock].join(" ")}>
+        <span className={sharedStyles.taskLabel}>{task.label}</span>
+        <span className={sharedStyles.frequencyText}>
+          {shiftsText && `Shift: ${shiftsText} | `}Frequency: {task.frequency}
+        </span>
+      </div>
+      <div className={styles.scopeTaskCompletionGroup}>
+        {showsCompletion && (
+          <span className={styles.areaTypeTableProgressTrack}>
+            <span
+              className={[styles.areaTypeTableProgressFill, isAsNeeded ? styles.areaTypeTableProgressFillSuccess : ""]
+                .filter(Boolean)
+                .join(" ")}
+              style={{ width: `${isAsNeeded ? 100 : completedPercent}%` }}
+            >
+              <span className={styles.areaTypeTableProgressLabel}>
+                {isAsNeeded ? `${completed} completed` : `${completed} of ${expected} Completed`}
+              </span>
+            </span>
+          </span>
+        )}
+        {linked.length > 0 && (
+          <button type="button" className={styles.scopeTaskViewToggle} onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+            View
+            <i className={["fa-solid", open ? "fa-chevron-up" : "fa-chevron-down"].join(" ")} aria-hidden="true" />
+          </button>
+        )}
+      </div>
+      {open && linked.length > 0 && (
+        <div className={styles.linkedEvidenceList}>
+          {linked.map((item, i) => (
+            <div key={i} className={styles.linkedEvidenceRow}>
+              {item.areaPhoto ? (
+                <img src={item.areaPhoto} alt="" className={styles.linkedEvidenceThumb} />
+              ) : (
+                <span className={styles.linkedEvidenceThumbPlaceholder} aria-hidden="true" />
+              )}
+              <span className={styles.serviceIconBadge} style={{ backgroundColor: badgeColorForServiceTag(item.tag) }}>
+                <i className={iconForServiceTag(item.tag)} style={{ color: colorForServiceTag(item.tag) }} aria-hidden="true" />
+              </span>
+              <span className={styles.linkedEvidenceTag}>{item.tag}</span>
+              <span className={styles.areaTypeTableScoreChip}>{item.score.toFixed(1)}</span>
+              <span className={styles.linkedEvidencePerson}>
+                <img src={item.personAvatar} alt="" className={styles.linkedEvidenceAvatar} />
+                {item.personName}
+              </span>
+              <span className={styles.linkedEvidenceTime}>{item.timeAgo}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function formatShortDate(d: Date): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
@@ -360,9 +538,16 @@ const GROUP_BY_OPTIONS: ButtonGroupOption<GroupBy>[] = [
   { id: "areaType", label: "Area Type", icon: <i className="fa-solid fa-vector-square" aria-hidden="true" /> },
 ];
 
+/** The Today/Yesterday trend look-back choice — same pills styling as Group by, no icons. */
+const TREND_RANGE_OPTIONS: ButtonGroupOption<TrendRange>[] = [
+  { id: "week", label: "Last 7 days" },
+  { id: "month", label: "Last 30 days" },
+];
+
 const VIEW_MODE_OPTIONS: ButtonGroupOption<ViewMode>[] = [
   { id: "grid", label: "Grid", icon: <i className="fa-solid fa-table-cells" aria-hidden="true" /> },
   { id: "list", label: "List", icon: <i className="fa-solid fa-list" aria-hidden="true" /> },
+  { id: "tasks", label: "Tasks", icon: <i className="fa-solid fa-ballot-check" aria-hidden="true" /> },
 ];
 
 const STATS_VIEW_OPTIONS: ButtonGroupOption<StatsView>[] = [
@@ -475,6 +660,12 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
 
   const [dayOffset, setDayOffset] = useState(0);
   const [datePreset, setDatePreset] = useState<DatePreset>("today");
+  // How many days the selected preset actually spans — "Today" is 1,
+  // "1 Year" is 365. Coverage/hours/audit totals below multiply by
+  // this so a longer range shows a realistically larger total instead
+  // of repeating the same one-day number (percentages/scores stay
+  // day-based — a ratio or an average shouldn't scale with period).
+  const periodDays = periodDaysForDatePreset(datePreset);
   const [dateMenuOpen, setDateMenuOpen] = useState(false);
   const dateMenuRef = useRef<HTMLDivElement>(null);
   const [trendRange, setTrendRange] = useState<TrendRange>("week");
@@ -519,8 +710,10 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
       setTrendRange("week");
       return;
     }
+    // Every other preset drives the trend span directly via periodDays
+    // (see metricTrendDays below) — trendRange only matters for the
+    // single-day presets above, so it's left as-is here.
     setDayOffset(0);
-    setTrendRange(preset === "week" ? "week" : "month");
   }
 
   const isDayPreset = datePreset === "today" || datePreset === "yesterday";
@@ -623,10 +816,48 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
     setCardGranularity(availableCardGranularityOptions[0].id);
   }, [availableCardGranularityOptions, cardGranularity]);
 
+  // "Tasks" (a flat, per-task completion table — Figma fileKey
+  // SWFMjlBJ4u9vSrVaomRe12, node 122:23031) only makes sense once a
+  // specific area is selected: every area of an area type shares the
+  // same contracted tasks, so this is "that one area's task list,"
+  // not a cross-area rollup the way Grid/List are.
+  const availableViewModeOptions = useMemo(() => {
+    if (!selectedArea) return VIEW_MODE_OPTIONS.filter((o) => o.id !== "tasks");
+    const taskCount = selectedContractAreaType?.tasks.length ?? 0;
+    return VIEW_MODE_OPTIONS.map((o) => (o.id === "tasks" ? { ...o, label: `Tasks (${taskCount})` } : o));
+  }, [selectedArea, selectedContractAreaType]);
+
+  useEffect(() => {
+    if (availableViewModeOptions.some((o) => o.id === viewMode)) return;
+    setViewMode(availableViewModeOptions[0].id);
+  }, [availableViewModeOptions, viewMode]);
+
+  // How many evidence rows one specific area should show for the
+  // selected date range — the exact same "real daily task instances ×
+  // periodDays, scaled by the day's completion fraction" math as the
+  // areaCards builder below, so this area's evidence feed always has
+  // as many rows as its own "Totals Services" figure says it should
+  // (a month reads like a month's worth of services, not always the
+  // same flat handful). Split mostly into verifications, a small
+  // realistic slice into audits (audits are inherently rarer).
+  function evidenceCountsForArea(areaType: ContractAreaType, area: ContractArea) {
+    const dailyTaskInstances = areaType.tasks.reduce((sum, t) => sum + (t.freqCount ?? 1), 0);
+    const expected = Math.max(1, dailyTaskInstances * periodDays);
+    const completed = Math.max(1, Math.round(expected * scaleForDay(`${area.areaId}-serviced`, dayOffset, 0.2, 0.95)));
+    const auditCount = Math.max(1, Math.round(completed * 0.08));
+    const verificationCount = Math.max(1, completed - auditCount);
+    return { verificationCount, auditCount };
+  }
+
   const evidenceVerifications = useMemo(() => {
     let base: VerificationEvent[];
     if (selectedContractAreaType && selectedArea) {
-      base = withForcedArea(verificationsForArea(selectedContractAreaType.name), selectedArea.displayName, selectedContractAreaType.name);
+      const { verificationCount } = evidenceCountsForArea(selectedContractAreaType, selectedArea);
+      base = withForcedArea(
+        verificationsForArea(selectedContractAreaType.name, verificationCount, periodDays, dayOffset),
+        selectedArea.displayName,
+        selectedContractAreaType.name
+      );
     } else if (selectedContractAreaType) {
       base = withAreaTagging(verificationsForArea(selectedContractAreaType.name), selectedContractAreaType);
     } else if (selection.buildingName && isModeled(selection.buildingName)) {
@@ -643,11 +874,16 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
     }
     return base.filter((v) => taskTypeFilter === ALL || v.type === taskTypeFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedContractAreaType, selectedArea, selection.buildingName, isSiteLevel, contractBuildings, taskTypeFilter]);
+  }, [selectedContractAreaType, selectedArea, selection.buildingName, isSiteLevel, contractBuildings, taskTypeFilter, periodDays, dayOffset]);
 
   const evidenceAudits = useMemo((): AuditEvent[] => {
     if (selectedContractAreaType && selectedArea) {
-      return withForcedArea(auditsForArea(selectedContractAreaType.name), selectedArea.displayName, selectedContractAreaType.name);
+      const { auditCount } = evidenceCountsForArea(selectedContractAreaType, selectedArea);
+      return withForcedArea(
+        auditsForArea(selectedContractAreaType.name, auditCount, periodDays, dayOffset),
+        selectedArea.displayName,
+        selectedContractAreaType.name
+      );
     }
     if (selectedContractAreaType) return withAreaTagging(auditsForArea(selectedContractAreaType.name), selectedContractAreaType);
     if (selection.buildingName && isModeled(selection.buildingName)) {
@@ -659,7 +895,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
     }
     return [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedContractAreaType, selectedArea, selection.buildingName, isSiteLevel, contractBuildings]);
+  }, [selectedContractAreaType, selectedArea, selection.buildingName, isSiteLevel, contractBuildings, periodDays, dayOffset]);
 
   const evidenceActivity = useMemo(() => {
     const verificationItems = evidenceVerifications.map(verificationToActivity);
@@ -670,6 +906,14 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
   }, [evidenceVerifications, evidenceAudits, activityFilter]);
 
   const metricSeedKey = selection.areaTypeName ?? selection.buildingName ?? "site";
+  // Hours Captured specifically gets a per-area seed once a specific
+  // area is selected (not its area type's, shared across every
+  // sibling area) so it reads as that one area's own paid/captured
+  // hours instead of the whole area type's aggregate repeated on
+  // every one of its areas. Audits stay at the area-type/building/site
+  // granularity metricSeedKey already gives — real audits happen at
+  // that coarser level, not once independently per small area.
+  const hoursSeedKey = selectedArea ? selectedArea.areaId : metricSeedKey;
 
   const dayEvidenceActivity = useMemo(
     () => evidenceActivity.map((item) => applyDayVariationToActivity(item, dayOffset)),
@@ -701,8 +945,14 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
     () =>
       scopedAreaTypesForGrid.map((at) => {
         const converted = areaTypeFromContract(at);
-        const expected = converted.expectedServices;
-        const servicedToday = Math.max(0, Math.round(converted.servicedToday * scaleForDay(`${at.name}-serviced`, dayOffset)));
+        // Both scale by periodDays so a longer selected range shows a
+        // realistically larger total instead of repeating today's
+        // single-day count — percent stays day-based.
+        const expected = Math.round(converted.expectedServices * periodDays);
+        const servicedToday = Math.max(
+          0,
+          Math.round(converted.servicedToday * periodDays * scaleForDay(`${at.name}-serviced`, dayOffset))
+        );
         const percent = expected > 0 ? Math.min(100, (servicedToday / expected) * 100) : 0;
         const seedKey = `${at.building}-${at.name}`;
         const areaCount = at.areas.length;
@@ -724,14 +974,17 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
           areasServicedCount,
         };
       }),
-    [scopedAreaTypesForGrid, dayOffset]
+    [scopedAreaTypesForGrid, dayOffset, periodDays]
   );
 
   const areaCards: WorkCardData[] = useMemo(
     () =>
       scopedAreaTypesForGrid.flatMap((at) => {
         const converted = areaTypeFromContract(at);
-        const perAreaExpected = Math.max(1, Math.round(converted.expectedServices / Math.max(1, at.areas.length)));
+        const perAreaExpected = Math.max(
+          1,
+          Math.round((converted.expectedServices / Math.max(1, at.areas.length)) * periodDays)
+        );
         return at.areas.map((area) => {
           const seedKey = area.areaId;
           const servicedToday = Math.max(0, Math.round(perAreaExpected * scaleForDay(`${seedKey}-serviced`, dayOffset, 0.2, 0.95)));
@@ -750,7 +1003,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
           };
         });
       }),
-    [scopedAreaTypesForGrid, dayOffset]
+    [scopedAreaTypesForGrid, dayOffset, periodDays]
   );
 
   const elementCards: WorkCardData[] = useMemo(
@@ -848,26 +1101,37 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
     : 0;
 
   const coveragePercent = coveragePercentForOffset(dayOffset);
-  const coverageExpected = selectedAreaType
-    ? selectedAreaType.expectedServices
-    : (selectedBuilding?.totalActions ?? facilitySummary.verificationsExpected);
+  // Both sides of "X/Y Services Covered" scale by periodDays — a
+  // ratio (coveragePercent) stays day-based, but the raw totals
+  // behind it should reflect the whole selected range, not just
+  // today's slice of it.
+  const coverageExpected = Math.round(
+    (selectedAreaType ? selectedAreaType.expectedServices : (selectedBuilding?.totalActions ?? facilitySummary.verificationsExpected)) *
+      periodDays
+  );
   const coverageServicedToday = selectedAreaType
-    ? dayAreaServicedToday
+    ? Math.round(dayAreaServicedToday * periodDays)
     : Math.round((coveragePercent / 100) * coverageExpected);
-  const hoursCaptured = hoursCapturedForNode(metricSeedKey, dayOffset);
-  const auditSummary = auditSummaryForNode(metricSeedKey, dayOffset);
+  const hoursCaptured = hoursCapturedForNode(hoursSeedKey, dayOffset, periodDays);
+  const auditSummary = auditSummaryForNode(metricSeedKey, dayOffset, periodDays);
 
   // Per-metric trend series for the Performance section's Trend view —
   // one line each for Service Coverage, Hours Captured, and Average
   // Audit Score, each built from the same per-day generators driving
   // their Snapshot counterparts above (oldest first, ending at dayOffset).
-  const metricTrendDays = trendRange === "week" ? 7 : 30;
+  // The trend always spans exactly the date range selected up top —
+  // "Current Month" trends over the last 30 days, "3 Months" over the
+  // last 90, etc. — so there's one range in view, not two that can
+  // disagree. Today/Yesterday are single-day scopes with no real span
+  // of their own, so trendRange is the one place left with a genuine
+  // choice: how far back to look.
+  const metricTrendDays = isDayPreset ? (trendRange === "week" ? 7 : 30) : periodDays;
   const coverageTrendSeries = Array.from({ length: metricTrendDays }, (_, i) =>
     coveragePercentForOffset(dayOffset + (metricTrendDays - 1 - i))
   );
   const hoursCapturedTrendSeries = Array.from(
     { length: metricTrendDays },
-    (_, i) => hoursCapturedForNode(metricSeedKey, dayOffset + (metricTrendDays - 1 - i)).percent
+    (_, i) => hoursCapturedForNode(hoursSeedKey, dayOffset + (metricTrendDays - 1 - i)).percent
   );
   const auditScoreTrendSeries = Array.from({ length: metricTrendDays }, (_, i) =>
     scoreForDay(`${metricSeedKey}-audit-score`, dayOffset + (metricTrendDays - 1 - i))
@@ -915,49 +1179,10 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
   // surfaces "which physical spaces this applies to"); and by Area Type
   // when only a building is selected — the natural next level down, same
   // as the (now-removed) inline task list used to.
-  const periodDays = periodDaysForDatePreset(datePreset);
-
   const scopeAccordionItems: AccordionItemData[] = useMemo(() => {
-    // Real, contract-derived expected count (areaCount — one due instance
-    // per area, same convention SowTimeFirstPage's Scope & Frequency tab
-    // uses) alongside a deterministic seeded completed count (same
-    // scaleForDay generator family as every other coverage number on this
-    // page). Only rendered for tasks actually due within the page's
-    // current date-range preset — a Weekly/Monthly task viewed on "Today"
-    // just shows its frequency text, same as before, rather than a
-    // misleading 0-of-something for a task that isn't due yet.
-    function tasksList(tasks: ContractTaskDef[], seedPrefix: string, areaCount: number) {
-      return (
-        <div className={styles.flatTaskList}>
-          {tasks.map((task) => {
-            const due = isTaskDueForPeriod(task.frequency, periodDays);
-            const expected = areaCount;
-            const seedKey = `${seedPrefix}-${task.label}`;
-            const completed = due ? Math.round(expected * scaleForDay(`${seedKey}-scope-completion`, dayOffset, 0.72, 0.94)) : 0;
-            const completedPercent = due && expected > 0 ? Math.min(100, (completed / expected) * 100) : 0;
-            return (
-              <div key={task.label} className={styles.scopeTaskRow}>
-                <div className={sharedStyles.taskRow}>
-                  <span className={sharedStyles.taskLabel}>{task.label}</span>
-                  <span className={sharedStyles.frequencyText}>
-                    {task.frequency}
-                    {task.shifts && task.shifts.length > 0 && task.shifts.length < 3 && ` · ${task.shifts.join("/")}`}
-                  </span>
-                </div>
-                {due && (
-                  <span className={styles.areaTypeTableProgressTrack}>
-                    <span className={styles.areaTypeTableProgressFill} style={{ width: `${completedPercent}%` }}>
-                      <span className={styles.areaTypeTableProgressLabel}>
-                        {completed} of {expected} Completed
-                      </span>
-                    </span>
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      );
+    function tasksList(areaType: ContractAreaType, seedPrefix: string, areaCount: number, forcedArea?: ContractArea) {
+      const evidence = buildScopeEvidence(areaType, forcedArea);
+      return renderTaskScopeList(areaType.tasks, seedPrefix, areaCount, periodDays, dayOffset, evidence);
     }
 
     if (isSiteLevel) {
@@ -998,7 +1223,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
               </span>
             </span>
           ),
-          content: tasksList(inst.areaType.tasks, `${inst.building.name}-${inst.areaType.name}`, inst.areaType.areas.length),
+          content: tasksList(inst.areaType, `${inst.building.name}-${inst.areaType.name}`, inst.areaType.areas.length),
         }));
       }
     }
@@ -1014,7 +1239,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
             </span>
           </span>
         ),
-        content: tasksList(selectedContractAreaType.tasks, a.areaId, 1),
+        content: tasksList(selectedContractAreaType, a.areaId, 1, a),
       }));
     }
     if (selectedBuildingContract) {
@@ -1028,7 +1253,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
             </span>
           </span>
         ),
-        content: tasksList(at.tasks, `${selectedBuildingContract.name}-${at.name}`, at.areas.length),
+        content: tasksList(at, `${selectedBuildingContract.name}-${at.name}`, at.areas.length),
       }));
     }
     return [];
@@ -1163,7 +1388,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                   </span>
                   <span>•</span>
                   <span className={styles.treeRowMetaItem}>
-                    <i className="fa-solid fa-list" aria-hidden="true" /> Tasks: {contractAreaType.tasks.length}
+                    <i className="fa-solid fa-ballot-check" aria-hidden="true" /> Tasks: {contractAreaType.tasks.length}
                   </span>
                 </span>
               </span>
@@ -1416,6 +1641,20 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
               </p>
               {renderPerformanceToggle()}
             </div>
+          ) : selectedArea && selectedContractAreaType ? (
+            <div className={styles.contentHeaderMetaRow}>
+              <p className={styles.contentHeaderMeta}>
+                <span className={styles.treeRowMetaItem}>
+                  <i className="fa-solid fa-location-dot" aria-hidden="true" /> Floor {selectedArea.floor}
+                  {selectedArea.floorDescription ? ` (${selectedArea.floorDescription})` : ""}
+                </span>
+                <span>•</span>
+                <span className={styles.treeRowMetaItem}>
+                  <i className="fa-solid fa-ballot-check" aria-hidden="true" /> Tasks: {selectedContractAreaType.tasks.length}
+                </span>
+              </p>
+              {renderPerformanceToggle()}
+            </div>
           ) : hasHeaderMeta ? (
             <div className={styles.contentHeaderMetaRow}>
               <p className={styles.contentHeaderMeta}>
@@ -1455,7 +1694,21 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                         variant="segmented"
                         aria-label="Performance view"
                       />
-                      {statsView === "trend" && <TrendRangeToggle trendRange={trendRange} setTrendRange={setTrendRange} />}
+                      {statsView === "trend" &&
+                        (isDayPreset ? (
+                          <ButtonGroup
+                            options={TREND_RANGE_OPTIONS}
+                            value={trendRange}
+                            onChange={setTrendRange}
+                            aria-label="Trend look-back range"
+                          />
+                        ) : (
+                          <span className={styles.trendRangeLabel}>
+                            <i className="fa-solid fa-calendar-days" aria-hidden="true" />
+                            Trend for {rangeLabelForPreset(datePreset) ?? dateLabel} ({metricTrendDays} day
+                            {metricTrendDays === 1 ? "" : "s"})
+                          </span>
+                        ))}
                     </div>
                   </div>
 
@@ -1470,7 +1723,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                           </div>
                         </div>
                         <span className={styles.metricCardDescription}>
-                          {coverageServicedToday}/{coverageExpected} Services Covered
+                          {coverageServicedToday.toLocaleString()}/{coverageExpected.toLocaleString()} Services Covered
                         </span>
                       </Card>
 
@@ -1493,7 +1746,8 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                           <span className={styles.metricCardScoreChip}>{auditSummary.avgScore.toFixed(2)}</span>
                         </div>
                         <span className={styles.metricCardDescription}>
-                          Across {auditSummary.totalAudits} audits · {auditSummary.jointAudits} joint with {siteInfo.client}
+                          Across {auditSummary.totalAudits.toLocaleString()} audits · {auditSummary.jointAudits.toLocaleString()} joint
+                          with {siteInfo.client}
                         </span>
                       </Card>
                     </div>
@@ -1505,7 +1759,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                         formatValue={(v) => `${Math.round(v)}%`}
                         dayOffset={dayOffset}
                         color="var(--color-primary-500)"
-                        description={`${coverageServicedToday}/${coverageExpected} Services Covered`}
+                        description={`${coverageServicedToday.toLocaleString()}/${coverageExpected.toLocaleString()} Services Covered`}
                       />
                       <MetricTrendCard
                         label="Hours Captured"
@@ -1521,7 +1775,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                         formatValue={(v) => v.toFixed(2)}
                         dayOffset={dayOffset}
                         color="var(--color-success-700)"
-                        description={`Across ${auditSummary.totalAudits} audits · ${auditSummary.jointAudits} joint with ${siteInfo.client}`}
+                        description={`Across ${auditSummary.totalAudits.toLocaleString()} audits · ${auditSummary.jointAudits.toLocaleString()} joint with ${siteInfo.client}`}
                         chip
                       />
                     </div>
@@ -1574,7 +1828,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                       />
                     </div>
                     <ButtonGroup
-                      options={VIEW_MODE_OPTIONS}
+                      options={availableViewModeOptions}
                       value={viewMode}
                       onChange={setViewMode}
                       variant="segmented"
@@ -1582,7 +1836,14 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                     />
                   </div>
 
-                  {gridCards.length === 0 ? (
+                  {viewMode === "tasks" && selectedContractAreaType && selectedArea ? (
+                    <TasksListTable
+                      tasks={selectedContractAreaType.tasks}
+                      services={serviceCards}
+                      periodDays={periodDays}
+                      onViewService={setViewedServiceItem}
+                    />
+                  ) : gridCards.length === 0 ? (
                     <p className={styles.emptyNote}>
                       No evidence available here — try clearing filters, or select an area type in the tree.
                     </p>
@@ -1724,7 +1985,13 @@ function areaTypeSortValue(item: WorkCardData, key: AreaTypeSortKey): string | n
   }
 }
 
-function AreaTypeListTable({ items, onSelect }: { items: WorkCardData[]; onSelect: (building: string, name: string) => void }) {
+function AreaTypeListTable({
+  items,
+  onSelect,
+}: {
+  items: WorkCardData[];
+  onSelect: (building: string, name: string) => void;
+}) {
   const [sortState, setSortState] = useState<SortState<AreaTypeSortKey>>(null);
   const sortedItems = useMemo(() => sortByValue(items, sortState, areaTypeSortValue), [items, sortState]);
   const onSort = (key: AreaTypeSortKey) => setSortState((prev) => toggleSort(key, prev));
@@ -1775,13 +2042,13 @@ function AreaTypeListTable({ items, onSelect }: { items: WorkCardData[]; onSelec
                 <span className={styles.areaTypeTableScoreChip}>{item.score.toFixed(1)}</span>
               </span>
 
-              <span className={styles.areaTypeTableCellTextMedium}>{item.progress?.servicedToday ?? 0}</span>
+              <span className={styles.areaTypeTableCellTextMedium}>{(item.progress?.servicedToday ?? 0).toLocaleString()}</span>
 
               <span>
                 <span className={styles.areaTypeTableProgressTrack}>
                   <span className={styles.areaTypeTableProgressFill} style={{ width: `${expectedPercent}%` }}>
                     <span className={styles.areaTypeTableProgressLabel}>
-                      {item.progress?.servicedToday ?? 0} of {item.progress?.expected ?? 0}
+                      {(item.progress?.servicedToday ?? 0).toLocaleString()} of {(item.progress?.expected ?? 0).toLocaleString()}
                     </span>
                   </span>
                 </span>
@@ -1894,13 +2161,13 @@ function AreaListTable({
                 <span className={styles.areaTypeTableScoreChip}>{item.score.toFixed(1)}</span>
               </span>
 
-              <span className={styles.areaTypeTableCellTextMedium}>{item.progress?.servicedToday ?? 0}</span>
+              <span className={styles.areaTypeTableCellTextMedium}>{(item.progress?.servicedToday ?? 0).toLocaleString()}</span>
 
               <span>
                 <span className={styles.areaTypeTableProgressTrack}>
                   <span className={styles.areaTypeTableProgressFill} style={{ width: `${expectedPercent}%` }}>
                     <span className={styles.areaTypeTableProgressLabel}>
-                      {item.progress?.servicedToday ?? 0} of {item.progress?.expected ?? 0}
+                      {(item.progress?.servicedToday ?? 0).toLocaleString()} of {(item.progress?.expected ?? 0).toLocaleString()}
                     </span>
                   </span>
                 </span>
@@ -1909,6 +2176,200 @@ function AreaListTable({
               <span className={styles.areaTypeTableArrowCell}>
                 <i className="fa-solid fa-arrow-right" aria-hidden="true" />
               </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "Tasks" — a third Work view (Grid/List/Tasks), reachable only once
+ * a specific area is selected (see availableViewModeOptions): a flat
+ * table of that area's contracted tasks with a real Completed
+ * Services count, each row expandable to the specific verifications
+ * "linked" to it. Figma fileKey SWFMjlBJ4u9vSrVaomRe12, node
+ * 122:23031 — unlike the (now-removed) inline Contracted Scope
+ * disclosure this replaces, every task shows a plain ratio pill
+ * regardless of frequency (no As-Needed/scheduled distinction), and
+ * "expected" is the task's own real freq_count (e.g. 3 for "3x
+ * Daily") rather than an area count — this view is already scoped to
+ * one area, so there's no area count left to express.
+ */
+type TaskRowData = {
+  task: ContractTaskDef;
+  shiftText: string;
+  completed: number;
+  expected: number;
+  percent: number;
+  linked: WorkCardData[];
+};
+
+type TaskSortKey = "task" | "shift" | "frequency" | "completed";
+
+function taskSortValue(row: TaskRowData, key: TaskSortKey): string | number {
+  switch (key) {
+    case "task":
+      return row.task.label;
+    case "shift":
+      return row.shiftText;
+    case "frequency":
+      return row.task.frequency;
+    case "completed":
+      return row.percent;
+  }
+}
+
+function TasksListTable({
+  tasks,
+  services,
+  periodDays,
+  onViewService,
+}: {
+  tasks: ContractTaskDef[];
+  services: WorkCardData[];
+  periodDays: number;
+  onViewService: (item: WorkCardData) => void;
+}) {
+  const [sortState, setSortState] = useState<SortState<TaskSortKey>>(null);
+  const [openKeys, setOpenKeys] = useState<Set<string>>(new Set());
+  const toggleOpen = (key: string) =>
+    setOpenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  const rows: TaskRowData[] = useMemo(() => {
+    // Every service shown in "View by: Service" gets assigned to
+    // exactly one task, round-robin — same services as the List
+    // view, just grouped by task instead of listed flat, so a task's
+    // "completed" count and its expanded row count always match
+    // (no separate sampling/capping).
+    const buckets: WorkCardData[][] = tasks.map(() => []);
+    if (tasks.length > 0) {
+      services.forEach((item, i) => buckets[i % tasks.length].push(item));
+    }
+    return tasks.map((task, ti) => {
+      const linked = buckets[ti];
+      const completed = linked.length;
+      // The contract-derived target this task's real freq_count
+      // implies for the period — how many times THIS task's own
+      // cycle fits in the selected range (a "3x Daily" task over a
+      // week is ~21, a Weekly task over a month is ~4).
+      const cycleDays = FREQ_CYCLE_DAYS[frequencyPeriod(task.frequency)];
+      const cyclesInPeriod = cycleDays ? Math.max(1, Math.round(periodDays / cycleDays)) : periodDays;
+      const expected = (task.freqCount ?? 1) * cyclesInPeriod;
+      const percent = expected > 0 ? Math.min(100, (completed / expected) * 100) : 0;
+      const shiftText = task.shifts.length > 0 && task.shifts.length < 3 ? task.shifts.join("/") : "All Shifts";
+      return { task, shiftText, completed, expected, percent, linked };
+    });
+  }, [tasks, services, periodDays]);
+
+  const sortedRows = useMemo(() => sortByValue(rows, sortState, taskSortValue), [rows, sortState]);
+  const onSort = (key: TaskSortKey) => setSortState((prev) => toggleSort(key, prev));
+
+  if (rows.length === 0) {
+    return <p className={styles.emptyNote}>No contracted tasks available for this area.</p>;
+  }
+
+  return (
+    <div className={styles.areaTypeTableWrap}>
+      <div className={[styles.areaTypeTableHeaderRow, styles.colsTasks].join(" ")}>
+        <SortableHeaderCell label="Task" columnKey="task" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Shift" columnKey="shift" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Frequency" columnKey="frequency" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Completed Services" columnKey="completed" sortState={sortState} onSort={onSort} />
+        <span aria-hidden="true" />
+      </div>
+
+      <div className={styles.taskListRows}>
+        {sortedRows.map((row) => {
+          const isOpen = openKeys.has(row.task.label);
+          const isFullyCompleted = row.expected > 0 && row.completed >= row.expected;
+          return (
+            <div key={row.task.label} className={styles.taskCard}>
+              <div className={[styles.taskListRow, styles.colsTasks].join(" ")}>
+                <span className={styles.taskListNameCell}>
+                  <i className={["fa-solid fa-ballot-check", styles.taskListIcon].join(" ")} aria-hidden="true" />
+                  <span className={styles.taskListLabel}>{row.task.label}</span>
+                </span>
+                <span className={styles.taskListValue}>{row.shiftText}</span>
+                <span className={styles.taskListValue}>{row.task.frequency}</span>
+                <span className={[styles.areaTypeTableProgressTrack, styles.taskCompletionPillTrack].join(" ")}>
+                  <span
+                    className={[styles.areaTypeTableProgressFill, isFullyCompleted ? styles.areaTypeTableProgressFillSuccess : ""]
+                      .filter(Boolean)
+                      .join(" ")}
+                    style={{ width: `${row.percent}%` }}
+                  >
+                    <span className={styles.areaTypeTableProgressLabel}>
+                      {row.completed.toLocaleString()} of {row.expected.toLocaleString()}
+                    </span>
+                  </span>
+                </span>
+                {row.linked.length > 0 ? (
+                  <button
+                    type="button"
+                    className={styles.taskListChevron}
+                    onClick={() => toggleOpen(row.task.label)}
+                    aria-expanded={isOpen}
+                    aria-label={isOpen ? "Hide completed services" : "Show completed services"}
+                  >
+                    <i className={["fa-solid", isOpen ? "fa-chevron-up" : "fa-chevron-down"].join(" ")} aria-hidden="true" />
+                  </button>
+                ) : (
+                  <span aria-hidden="true" />
+                )}
+              </div>
+              {isOpen &&
+                row.linked.map((item) => (
+                  <div
+                    key={item.key}
+                    className={styles.taskEvidenceRow}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`View ${item.title} service`}
+                    onClick={() => onViewService(item)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onViewService(item);
+                      }
+                    }}
+                  >
+                    {item.photo ? (
+                      <img src={item.photo} alt="" className={styles.taskEvidenceThumb} />
+                    ) : (
+                      <span className={styles.taskEvidenceThumbPlaceholder} aria-hidden="true" />
+                    )}
+                    <span className={styles.taskEvidenceIconTag}>
+                      <span className={styles.serviceIconBadge} style={{ backgroundColor: badgeColorForServiceTag(item.title) }}>
+                        {item.serviceIcon && (
+                          <i className={item.serviceIcon} style={{ color: item.serviceIconColor }} aria-hidden="true" />
+                        )}
+                      </span>
+                      <span className={styles.taskEvidenceTagText}>{item.title}</span>
+                    </span>
+                    <span className={styles.taskEvidencePerson}>
+                      <img src={item.personAvatar} alt="" className={styles.taskEvidenceAvatar} />
+                      <span className={styles.taskEvidencePersonInfo}>
+                        <span className={styles.taskEvidencePersonName}>{item.personName}</span>
+                        {item.personRole && <span className={styles.taskEvidencePersonRole}>{item.personRole}</span>}
+                      </span>
+                    </span>
+                    <span className={styles.taskEvidenceTime}>{item.timeAgo}</span>
+                    <span className={styles.taskEvidenceScoreCell}>
+                      <span className={styles.areaTypeTableScoreChip}>{item.score.toFixed(1)}</span>
+                    </span>
+                    <span className={styles.serviceTableViewLink}>
+                      <i className="fa-solid fa-eye" aria-hidden="true" />
+                      View
+                    </span>
+                  </div>
+                ))}
             </div>
           );
         })}
@@ -1985,11 +2446,16 @@ function ServiceListTable({
 
             <span className={styles.serviceTypeCell}>
               {item.serviceIcon && (
-                <i
-                  className={[item.serviceIcon, styles.serviceTypeIcon].join(" ")}
-                  style={item.serviceIconColor ? { color: item.serviceIconColor } : undefined}
-                  aria-hidden="true"
-                />
+                <span
+                  className={styles.serviceIconBadge}
+                  style={{ backgroundColor: badgeColorForServiceTag(item.title) }}
+                >
+                  <i
+                    className={item.serviceIcon}
+                    style={item.serviceIconColor ? { color: item.serviceIconColor } : undefined}
+                    aria-hidden="true"
+                  />
+                </span>
               )}
               <span className={styles.serviceTypeLabel}>{item.title}</span>
             </span>
@@ -2013,7 +2479,7 @@ function ServiceListTable({
             <span className={styles.areaTypeTableCellTextMedium}>{item.startLabel}</span>
 
             <button type="button" className={styles.serviceTableViewLink} onClick={() => onView(item)}>
-              <i className="fa-solid fa-image" aria-hidden="true" />
+              <i className="fa-solid fa-eye" aria-hidden="true" />
               View
             </button>
           </div>
@@ -2054,11 +2520,13 @@ function WorkCard({ data }: { data: WorkCardData }) {
           <>
             <div className={styles.workCardServiceHeaderRow}>
               {data.serviceIcon && (
-                <i
-                  className={[data.serviceIcon, styles.workCardServiceIcon].join(" ")}
-                  style={data.serviceIconColor ? { color: data.serviceIconColor } : undefined}
-                  aria-hidden="true"
-                />
+                <span className={styles.serviceIconBadge} style={{ backgroundColor: badgeColorForServiceTag(data.title) }}>
+                  <i
+                    className={data.serviceIcon}
+                    style={data.serviceIconColor ? { color: data.serviceIconColor } : undefined}
+                    aria-hidden="true"
+                  />
+                </span>
               )}
               <span className={styles.workCardServiceTitleGroup}>
                 <span className={styles.workCardTag}>{data.title}</span>
@@ -2100,7 +2568,7 @@ function WorkCard({ data }: { data: WorkCardData }) {
               <>
                 <div className={styles.workCardProgressLine}>
                   <span className={styles.workCardProgressLabel}>
-                    {data.progress.servicedToday} of {data.progress.expected} Expected Services
+                    {data.progress.servicedToday.toLocaleString()} of {data.progress.expected.toLocaleString()} Expected Services
                   </span>
                   <span className={styles.workCardProgressPercent}>{Math.round(data.progress.percent)}%</span>
                 </div>
@@ -2120,30 +2588,6 @@ function WorkCard({ data }: { data: WorkCardData }) {
         )}
       </div>
     </Card>
-  );
-}
-
-/** The Week/Month range toggle shared by TrendSection's own header (site level) and the per-node Performance header (building/area-type/area level). */
-function TrendRangeToggle({ trendRange, setTrendRange }: { trendRange: TrendRange; setTrendRange: (r: TrendRange) => void }) {
-  return (
-    <div className={sharedStyles.chipRow}>
-      <button
-        type="button"
-        className={[sharedStyles.chip, trendRange === "week" ? sharedStyles.chipActive : ""].filter(Boolean).join(" ")}
-        data-theme="light"
-        onClick={() => setTrendRange("week")}
-      >
-        Week
-      </button>
-      <button
-        type="button"
-        className={[sharedStyles.chip, trendRange === "month" ? sharedStyles.chipActive : ""].filter(Boolean).join(" ")}
-        data-theme="light"
-        onClick={() => setTrendRange("month")}
-      >
-        Month
-      </button>
-    </div>
   );
 }
 
