@@ -22,6 +22,8 @@
 
 /* ---------------- Page header: title + schedule toggle + date nav ---------------- */
 
+/* A "Quality / Scope of Work" breadcrumb-style title, and the Site
+   Schedule toggle + date picker right-aligned on that same row. */
 .pageHeaderBar {
   display: flex;
   flex-wrap: wrap;
@@ -32,7 +34,8 @@
   max-width: 1856px;
   margin: 0 auto;
   padding: 24px 16px;
-  border-bottom: 1px solid var(--color-neutral-400);
+  background-color: var(--color-neutral-200);
+  border-bottom: 1px solid var(--color-neutral-300);
 }
 
 @media (min-width: 768px) {
@@ -43,22 +46,28 @@
 
 @media (min-width: 1024px) {
   .pageHeaderBar {
-    padding: 40px 32px;
+    padding: 40px 32px 24px;
   }
 }
 
 .pageHeaderTitle {
-  font-family: var(--type-h1-family);
-  font-size: var(--type-h1-size);
-  font-weight: var(--type-h1-weight);
-  line-height: var(--type-h1-leading);
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-leading);
+  color: var(--color-text-lt-default);
 }
 
-.headerControls {
+.pageHeaderTitleGrey {
+  color: var(--color-text-lt-grey);
+}
+
+/* Site Schedule toggle + date picker's own row, under the title. */
+.pageHeaderControlsRow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 /* Site Schedule toggle — decorative on this prototype (no scheduling
@@ -154,6 +163,13 @@
   white-space: nowrap;
 }
 
+/* Matches the design system "Dropdown" drawer (Figma fileKey
+   SWFMjlBJ4u9vSrVaomRe12, node 118:16287): edge-to-edge 40px rows, no
+   container padding, selected row gets a Primary/500 @15% tint plus a
+   trailing checkmark — same spec as components/ui/Select.module.css's
+   .dropdownDrawer/.dropdownItem, duplicated here since this menu isn't
+   built on DsSelect (it pairs with prev/next day carets, not a plain
+   value list). */
 .dateMenu {
   position: absolute;
   top: calc(100% + 6px);
@@ -161,11 +177,10 @@
   min-width: 190px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
   background-color: var(--surface-lt-card);
-  border-radius: 8px;
-  box-shadow: var(--shadow-lt-card);
-  padding: 6px;
+  border-radius: 4px;
+  box-shadow: var(--shadow-lt-popup-menu);
+  overflow: hidden;
   z-index: 20;
 }
 
@@ -173,9 +188,13 @@
   appearance: none;
   border: none;
   background: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 40px;
+  padding: 0 16px;
   text-align: left;
-  padding: 10px 12px;
-  border-radius: 6px;
   cursor: pointer;
   font-family: var(--type-body-md-family);
   font-size: var(--type-body-md-size);
@@ -186,9 +205,16 @@
   background-color: var(--color-neutral-200);
 }
 
-.dateMenuItemActive {
+.dateMenuItemActive,
+.dateMenuItemActive:hover {
+  padding: 0 8px 0 12px;
+  background-color: var(--btn-ghost-lt-primary-static);
+}
+
+.dateMenuItemCheck {
+  flex-shrink: 0;
+  font-size: 20px;
   color: var(--color-primary-500);
-  font-weight: 600;
 }
 
 .layout {
@@ -211,7 +237,7 @@
 .sidebar {
   flex-shrink: 0;
   width: 100%;
-  border-bottom: 1px solid var(--color-neutral-300);
+  border-bottom: 1px solid var(--color-neutral-400);
   padding: 24px 16px;
 }
 
@@ -228,10 +254,12 @@
 @media (min-width: 900px) {
   .sidebar {
     width: 420px;
-    min-height: calc(100vh - 56px);
+    height: calc(100vh - 56px);
     border-bottom: none;
     position: sticky;
     top: 0;
+    display: flex;
+    flex-direction: column;
   }
 }
 
@@ -254,6 +282,7 @@
   width: 100%;
   appearance: none;
   border: none;
+  border-left: 3px solid transparent;
   cursor: pointer;
   text-align: left;
   padding: 20px;
@@ -264,6 +293,7 @@
 }
 
 .siteCardActive {
+  border-left-color: var(--color-primary-500);
   background-color: var(--wash-primary-15);
 }
 
@@ -311,11 +341,12 @@
   margin-bottom: 16px;
 }
 
+/* Same size/font as the "View by" dropdown's own label (components/ui/Select.module.css's .filterFieldLabel). */
 .groupByLabel {
-  font-family: var(--type-h3-family);
-  font-size: var(--type-h3-size);
-  font-weight: var(--type-h3-weight);
-  color: var(--color-text-lt-default);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-grey);
   flex-shrink: 0;
 }
 
@@ -327,6 +358,20 @@
   flex-direction: column;
   border-radius: 8px;
   overflow: hidden;
+}
+
+/* Once the sidebar itself pins to the viewport (see .sidebar's own
+   900px breakpoint), the tree becomes its own internally-scrolling
+   pane within that fixed-height column — the site card/search/group-by
+   above it stay in place while a long tree scrolls on its own,
+   instead of the whole sidebar just growing past the viewport. */
+@media (min-width: 900px) {
+  .tree {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
 }
 
 .treeRow {
@@ -479,7 +524,7 @@
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  margin-bottom: 8px;
+  margin-bottom: 16px;
 }
 
 .contentTitle {
@@ -525,7 +570,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 48px;
   font-family: var(--type-body-lg-family);
   font-size: var(--type-body-lg-size);
   color: var(--color-text-lt-grey);
@@ -533,6 +577,18 @@
 
 .contentHeaderMeta i {
   color: var(--color-neutral-500);
+}
+
+/* Breadcrumb + "View Scope for this Area" share one line, right-aligned
+   in the layout — the row's own margin-bottom (not the breadcrumb
+   text's) sets the gap down to the title row below it. */
+.contentBreadcrumbRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
 }
 
 .breadcrumb {
@@ -543,7 +599,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-bottom: 24px;
 }
 
 /* Trims .sectionStack's default 32px section gap down for this page —
@@ -566,6 +621,21 @@
   flex-direction: column;
   gap: 2px;
   padding: 8px 16px;
+}
+
+/* One contracted task's label/frequency line, plus — only when it's
+   actually due for the page's current date-range preset — a
+   completed-vs-expected progress bar underneath (same visual language
+   as the Area Type/Area list tables' Expected Services bar). */
+.scopeTaskRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+}
+
+.scopeTaskRow:last-child {
+  padding-bottom: 0;
 }
 
 /* -- Scope modal accordion headers -- */
@@ -716,6 +786,61 @@
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
+}
+
+.performanceSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* The toggle link lives in the content header (right-aligned, under
+   "View Scope for this Area") rather than inside the Performance
+   section itself — Figma fileKey SWFMjlBJ4u9vSrVaomRe12, node
+   118:18892. */
+/* Meta text (Buildings/Floors/Areas) and the performance toggle share
+   one line, right under "View Scope for this Area" — Figma fileKey
+   SWFMjlBJ4u9vSrVaomRe12, node 118:18892. An empty first child covers
+   the no-meta case so the toggle still gets a row to sit in. */
+.contentHeaderMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.sectionDivider {
+  width: 100%;
+  height: 0;
+  margin: 32px 0;
+  border: none;
+  /* Same color as .pageHeaderBar's own bottom border. */
+  border-top: 1px solid var(--color-neutral-300);
+}
+
+.performanceToggleButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  /* Same blue as the "View Scope for this Area/Site" button's text (Button's secondary/light variant). */
+  color: var(--color-text-lt-blue);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+}
+
+.performanceToggleButton i {
+  font-size: 12px;
 }
 
 .workControlsLabel {
@@ -876,22 +1001,48 @@
   gap: 2px;
 }
 
-.workCardSubLabel {
+/* Area + Area Type, combined on one line with a bullet separator —
+   its own full-width row (not nested inside workCardServiceTitleGroup)
+   so it starts flush with the card's left edge instead of indented
+   past the leading service icon. Figma fileKey
+   SWFMjlBJ4u9vSrVaomRe12, node 118:19856. */
+.workCardAreaLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--type-h4-family);
   font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
   color: var(--color-text-lt-grey);
+}
+
+.workCardAreaLineDot {
+  color: var(--color-neutral-500);
+}
+
+.workCardServiceFooterRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .workCardPerson {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--type-body-sm-family);
-  font-size: var(--type-body-sm-size);
-  color: var(--color-text-lt-grey);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-default);
+}
+
+.workCardPerson img {
+  width: 28px;
+  height: 28px;
 }
 
 .workCardFooterRow {
@@ -942,6 +1093,344 @@
   background-color: var(--color-primary-500);
 }
 
+/* ---------------- Area Type / Area / Service list tables ("View by" + List) ----------------
+   Figma fileKey SWFMjlBJ4u9vSrVaomRe12, nodes 118:18414 (Area Type),
+   118:19385 (Area), 118:17045 + 118:20809 (Service, icon/color +
+   Area/Area Type treatment shared with WorkCard's Grid variant).
+   Not a bordered HTML table: a header line of plain labels, then each
+   row is its own rounded-8 card floating on the page background with
+   a 12px gap between rows (and between the header and the first row).
+   Header and row are real CSS Grid tracks (.cols5/6/7, one per table's
+   data-column count, matched 1:1 to each row's DOM child order) so
+   columns stay evenly spaced across the available width instead of a
+   fixed pixel layout that needs horizontal scroll — a trailing `auto`
+   track keeps the arrow/View action column at its own content width. */
+
+.areaTypeTableWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.areaTypeTableHeaderRow,
+.areaTypeTableRow {
+  display: grid;
+  align-items: center;
+  gap: 24px;
+}
+
+.areaTypeTableHeaderRow > *,
+.areaTypeTableRow > * {
+  min-width: 0;
+}
+
+/* The trailing action column (arrow / View) is a fixed width, not
+   `auto` — the header row has no cell in it at all (no "arrow"
+   header), so an `auto` track would size to 0 there but to its real
+   button width on data rows, throwing header and data columns out of
+   alignment. A fixed width reserves identical space on every row
+   regardless of what (if anything) occupies it. */
+.cols5 {
+  grid-template-columns: repeat(5, 1fr) 40px;
+}
+
+.cols6 {
+  grid-template-columns: repeat(6, 1fr) 40px;
+}
+
+/* Employee Name gets extra share (name + role can't fit in an even split). */
+.cols7 {
+  grid-template-columns: 1fr 1fr 1.8fr 1fr 1fr 1fr 1fr 80px;
+}
+
+/* Same as .cols7 minus the Area column — one specific area is already
+   selected, so every row would repeat it. */
+.cols6Service {
+  grid-template-columns: 1fr 1.8fr 1fr 1fr 1fr 1fr 80px;
+}
+
+.areaTypeTableHeaderRow {
+  padding: 0 16px;
+}
+
+.areaTypeTableHeaderCell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+  color: var(--color-text-lt-grey);
+  white-space: nowrap;
+}
+
+.areaTypeTableHeaderCellActive {
+  color: var(--color-text-lt-default);
+}
+
+.areaTypeTableHeaderCaret {
+  font-size: 12px;
+  color: var(--color-neutral-500);
+}
+
+.areaTypeTableHeaderCaretActive {
+  color: var(--color-primary-500);
+}
+
+.areaTableNameSub {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: var(--type-body-sm-weight);
+  line-height: var(--type-body-sm-leading);
+  color: var(--color-text-lt-grey);
+  white-space: nowrap;
+}
+
+.areaTableNameSubDot {
+  color: var(--color-neutral-500);
+}
+
+.serviceTableAreaTypeSub {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: var(--type-body-sm-weight);
+  line-height: var(--type-body-sm-leading);
+  color: var(--color-text-lt-grey);
+}
+
+.serviceTypeCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.serviceTypeIcon {
+  flex-shrink: 0;
+  font-size: 20px;
+}
+
+.serviceTypeLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: var(--type-body-md-weight);
+  color: var(--color-text-lt-default);
+}
+
+.employeeCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.employeeAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 100%;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.employeeInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.employeeName {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+  color: var(--color-text-lt-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.employeeSub {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: var(--type-body-sm-weight);
+  line-height: var(--type-body-sm-leading);
+  color: var(--color-text-lt-grey);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.serviceTableViewLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-primary-700);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+}
+
+.serviceViewPhoto {
+  width: 100%;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.areaTypeTableRows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.areaTypeTableRow {
+  min-height: 71px;
+  padding: 16px;
+  border-radius: 8px;
+  background-color: var(--surface-lt-card);
+  /* Same elevation as the Grid view's WorkCard (Card component). */
+  box-shadow: var(--shadow-lt-card);
+  cursor: pointer;
+}
+
+.areaTypeTableRow:hover {
+  background-color: var(--color-neutral-300);
+}
+
+.areaTypeTableRow:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: -2px;
+}
+
+.areaTypeTableNameCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.areaTypeTableName {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+  color: var(--color-text-lt-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.areaTypeTableNameSub {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: var(--type-body-sm-weight);
+  line-height: var(--type-body-sm-leading);
+  color: var(--color-text-lt-grey);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.areaTypeTableCellText {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: var(--type-body-md-weight);
+  line-height: var(--type-body-md-leading);
+  color: var(--color-text-lt-default);
+}
+
+.areaTypeTableCellTextMedium {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+  color: var(--color-text-lt-default);
+}
+
+.areaTypeTableScoreChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 24px;
+  border-radius: 4px;
+  background-color: var(--color-success-100);
+  color: var(--color-text-lt-default);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+}
+
+.areaTypeTableProgressTrack {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  height: 32px;
+  border-radius: 4px;
+  background-color: var(--color-neutral-300);
+  overflow: hidden;
+}
+
+.areaTypeTableProgressFill {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 8px;
+  border-radius: 4px;
+  background-color: var(--btn-ghost-lt-primary-static);
+}
+
+.areaTypeTableProgressFillSuccess {
+  background-color: var(--wash-success-15);
+}
+
+.areaTypeTableProgressLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: var(--type-body-sm-weight);
+  line-height: var(--type-body-sm-leading);
+  color: var(--color-text-lt-default);
+  white-space: nowrap;
+}
+
+.areaTypeTableCheck {
+  font-size: 12px;
+  color: var(--color-text-lt-default);
+}
+
+.areaTypeTableArrowCell {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--color-primary-500);
+}
 
 /* ---------------- Trend chart (Performance section's Trend view) ---------------- */
 

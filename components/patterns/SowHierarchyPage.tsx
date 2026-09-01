@@ -18,7 +18,6 @@ import {
   verificationsForArea,
   auditsForArea,
   areaTypeFromContract,
-  taskTypes,
   facilitySummary,
   verificationToActivity,
   auditToActivity,
@@ -29,6 +28,7 @@ import {
   auditSummaryForNode,
   hashSeed,
   capturedDurationLabel,
+  serviceTimingForSeed,
   type VerificationEvent,
   type AuditEvent,
   type ActivityItem,
@@ -36,6 +36,7 @@ import {
 } from "../../lib/sowData";
 import {
   findContractAreaType,
+  isTaskDueForPeriod,
   type ContractBuilding,
   type ContractAreaType,
   type ContractArea,
@@ -72,10 +73,32 @@ type SortOrder = "recent" | "score-desc" | "score-asc";
 type CardGranularity = "areaType" | "area" | "element" | "service";
 
 const CARD_GRANULARITY_OPTIONS: { id: CardGranularity; label: string }[] = [
-  { id: "area", label: "Area" },
   { id: "areaType", label: "Area Type" },
-  { id: "element", label: "Element" },
+  { id: "area", label: "Area" },
   { id: "service", label: "Service" },
+  { id: "element", label: "Element" },
+];
+
+/**
+ * The "Services" filter dropdown's option list — Figma's fuller service
+ * taxonomy (fileKey SWFMjlBJ4u9vSrVaomRe12, node 118:16305), broader
+ * than this dataset's 4 real task types (lib/sowData.ts's taskTypes).
+ * Only "All Services" and "Periodics" (mapped to this dataset's real
+ * "Periodic" tag) return live evidence; the rest are stand-in
+ * categories with no backing data yet — same spirit as the Element
+ * grid's ELEMENT_NAMES below, so selecting one just shows the grid's
+ * existing empty state rather than fabricating matches.
+ */
+const SERVICE_FILTER_OPTIONS: { value: string; label: string }[] = [
+  { value: ALL, label: "All Services" },
+  { value: "Failed Services", label: "Failed Services" },
+  { value: "No Services", label: "No Services" },
+  { value: "Periodic", label: "Periodics" },
+  { value: "Detail Work", label: "Detail Work" },
+  { value: "Additional Services", label: "Additional Services" },
+  { value: "Trashing", label: "Trashing" },
+  { value: "Utility/Supply Management", label: "Utility/Supply Management" },
+  { value: "Floor Work", label: "Floor Work" },
 ];
 
 /**
@@ -100,13 +123,142 @@ type WorkCardData = {
   location?: string;
   personName?: string;
   personAvatar?: string;
+  /** Area-type-only, for the List view's dedicated table (AreaTypeListTable) — which building this area type's row belongs to (for click-to-navigate) and its areas-serviced-today count out of its total area count. */
+  building?: string;
+  areaCount?: number;
+  areasServicedCount?: number;
+  /** Area-only, for the List view's dedicated table (AreaListTable) — the owning area type's name, alongside `building`, for the row's breadcrumb subtitle and click-to-navigate (key already carries the area's own areaId). */
+  areaTypeName?: string;
+  /** Service-only, for the Grid card (WorkCard) and List view's dedicated table (ServiceListTable) — the real physical area this event is tagged against (areaTypeName, above, doubles as its area type), the icon's tag color, the associate's role/shift subtitle, and the End/Serviced/Start trio (internally consistent — see lib/sowData.ts's serviceTimingForSeed). */
+  areaDisplayName?: string;
+  serviceIconColor?: string;
+  personRole?: string;
+  startLabel?: string;
+  endLabel?: string;
+  servicedLabel?: string;
 };
 
+/** Icon + color per service tag — Figma fileKey SWFMjlBJ4u9vSrVaomRe12, node 118:20809. Shared by the Grid card (WorkCard) and List row (ServiceListTable) so both read identically. */
 function iconForServiceTag(tag: string): string {
   if (tag.includes("Audit")) return "fa-solid fa-clipboard-check";
-  if (tag === "Full Service") return "fa-solid fa-broom";
+  if (tag === "Full Service") return "fa-solid fa-hand-sparkles";
+  if (tag === "Spot Clean") return "fa-solid fa-broom-wide";
   if (tag === "Periodic") return "fa-solid fa-rotate";
-  return "fa-solid fa-spray-can-sparkles";
+  if (tag === "Quality Check") return "fa-solid fa-magnifying-glass";
+  return "fa-solid fa-bullseye-arrow"; // Detail Work and any other stand-in category
+}
+
+/**
+ * Tags each verification/audit event with a real physical area from
+ * its source area type (deterministic pick, not the event's own
+ * "Zone N"/"Inspection N" suffix) plus that area type's real name —
+ * backs the Service grid card and list row's "Area" / "Area Type"
+ * lines (Figma fileKey SWFMjlBJ4u9vSrVaomRe12, node 118:20809).
+ * verificationsForArea/auditsForArea only take an area-type name (no
+ * ContractAreaType), so this enriches their output afterward rather
+ * than changing their shared signature.
+ */
+function withAreaTagging<T extends { location: string }>(events: T[], areaType: ContractAreaType): T[] {
+  if (areaType.areas.length === 0) return events.map((e) => ({ ...e, areaTypeName: areaType.name }));
+  return events.map((e) => ({
+    ...e,
+    areaDisplayName: areaType.areas[hashSeed(e.location) % areaType.areas.length].displayName,
+    areaTypeName: areaType.name,
+  }));
+}
+
+/**
+ * Tags every event with one specific real area instead of
+ * hash-distributing across its whole area type — used when the
+ * sidebar tree has a specific area selected (selectedArea), so its
+ * evidence pool genuinely reflects "just this area" rather than a
+ * sample spread across every area in the type.
+ */
+function withForcedArea<T>(events: T[], areaDisplayName: string, areaTypeName: string): T[] {
+  return events.map((e) => ({ ...e, areaDisplayName, areaTypeName }));
+}
+
+function colorForServiceTag(tag: string): string {
+  if (tag.includes("Audit")) return "var(--color-datavis-sky-blue-700)";
+  if (tag === "Full Service") return "var(--color-datavis-purple-500)";
+  if (tag === "Spot Clean") return "var(--color-datavis-pinkle-500)";
+  if (tag === "Periodic") return "var(--color-datavis-sky-blue-500)";
+  if (tag === "Quality Check") return "var(--color-datavis-teal-700)";
+  return "var(--color-datavis-bubblegum-500)"; // Detail Work and any other stand-in category
+}
+
+/* ---------------- Click-to-sort column headers, shared by AreaTypeListTable/AreaListTable/ServiceListTable ---------------- */
+
+type SortDir = "asc" | "desc";
+type SortState<K extends string> = { key: K; dir: SortDir } | null;
+
+/** Clicking a new column starts it ascending; clicking the already-active column flips direction. */
+function toggleSort<K extends string>(key: K, current: SortState<K>): { key: K; dir: SortDir } {
+  if (current?.key === key) return { key, dir: current.dir === "asc" ? "desc" : "asc" };
+  return { key, dir: "asc" };
+}
+
+function sortByValue<T, K extends string>(items: T[], sortState: SortState<K>, getValue: (item: T, key: K) => string | number): T[] {
+  if (!sortState) return items;
+  const { key, dir } = sortState;
+  const dirMul = dir === "asc" ? 1 : -1;
+  return [...items].sort((a, b) => {
+    const av = getValue(a, key);
+    const bv = getValue(b, key);
+    if (typeof av === "string" || typeof bv === "string") return dirMul * String(av).localeCompare(String(bv));
+    return dirMul * (av - bv);
+  });
+}
+
+/** "1:48 PM" → minutes since midnight, for a real chronological sort on End/Start's formatted time labels (see lib/sowData.ts's serviceTimingForSeed). */
+function parseTimeLabelToMinutes(label: string): number {
+  const m = label.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!m) return 0;
+  let hour = parseInt(m[1], 10) % 12;
+  if (/PM/i.test(m[3])) hour += 12;
+  return hour * 60 + parseInt(m[2], 10);
+}
+
+/** "17m 11s" → total seconds, for a real duration sort on Serviced's formatted label. */
+function parseDurationLabelToSeconds(label: string): number {
+  const m = label.match(/(\d+)m\s*(\d+)s/);
+  if (!m) return 0;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+}
+
+function SortableHeaderCell<K extends string>({
+  label,
+  columnKey,
+  sortState,
+  onSort,
+}: {
+  label: string;
+  columnKey: K;
+  sortState: SortState<K>;
+  onSort: (key: K) => void;
+}) {
+  const isActive = sortState?.key === columnKey;
+  return (
+    <button
+      type="button"
+      className={[styles.areaTypeTableHeaderCell, isActive ? styles.areaTypeTableHeaderCellActive : ""].filter(Boolean).join(" ")}
+      onClick={() => onSort(columnKey)}
+      aria-sort={isActive ? (sortState!.dir === "asc" ? "ascending" : "descending") : "none"}
+    >
+      {label}
+      <i
+        className={[
+          "fa-solid",
+          isActive && sortState!.dir === "asc" ? "fa-caret-up" : "fa-caret-down",
+          styles.areaTypeTableHeaderCaret,
+          isActive ? styles.areaTypeTableHeaderCaretActive : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        aria-hidden="true"
+      />
+    </button>
+  );
 }
 
 const TIME_AGO_OPTIONS = ["5 minutes ago", "17 minutes ago", "29 minutes ago", "1 hour ago", "2 hours ago", "3 hours ago"];
@@ -148,6 +300,16 @@ const DATE_PRESET_OPTIONS: { id: DatePreset; label: string }[] = [
   { id: "custom", label: "Custom" },
 ];
 
+/** Day-count for the page's date preset — feeds the scope modal's "is this task due for the period in view" check (isTaskDueForPeriod), so a Weekly/Monthly task only shows a completed-vs-expected count once the selected range actually spans its cycle. */
+function periodDaysForDatePreset(preset: DatePreset): number {
+  if (preset === "today" || preset === "yesterday") return 1;
+  if (preset === "week") return 7;
+  if (preset === "month" || preset === "lastMonth" || preset === "custom") return 30;
+  if (preset === "3months") return 90;
+  if (preset === "6months") return 180;
+  return 365; // 1year
+}
+
 function formatShortDate(d: Date): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
@@ -188,9 +350,9 @@ function rangeLabelForPreset(preset: DatePreset): string | null {
 
 /** "All / Verifications / Audits" filter pills atop the Work grid — Figma's Filter Button row (fileKey SWFMjlBJ4u9vSrVaomRe12, node 100:21986). */
 const TYPE_OPTIONS: ButtonGroupOption<ActivityKind | "all">[] = [
-  { id: "all", label: "All", icon: <i className="fa-solid fa-image" aria-hidden="true" /> },
-  { id: "verification", label: "Verifications", icon: <i className="fa-solid fa-user-group" aria-hidden="true" /> },
-  { id: "audit", label: "Audits", icon: <i className="fa-solid fa-user-group" aria-hidden="true" /> },
+  { id: "all", label: "All", icon: <i className="fa-solid fa-check-double" aria-hidden="true" /> },
+  { id: "verification", label: "Verifications", icon: <i className="fa-solid fa-badge-check" aria-hidden="true" /> },
+  { id: "audit", label: "Audits", icon: <i className="fa-solid fa-clipboard-check" aria-hidden="true" /> },
 ];
 
 const GROUP_BY_OPTIONS: ButtonGroupOption<GroupBy>[] = [
@@ -265,6 +427,39 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
     areaTypeName: null,
     areaId: null,
   });
+  const treeRef = useRef<HTMLElement>(null);
+  const contentRef = useRef<HTMLElement>(null);
+
+  // Two independent scroll adjustments on every new tree selection: the
+  // main content pane's own top scrolls into view (not the whole page —
+  // the page header bar above it can stay scrolled out of view), so a new
+  // selection always reads from its own title/breadcrumb regardless of
+  // how far the previous selection's evidence grid had been scrolled —
+  // but only once the page is already scrolled down (past the point
+  // where the sidebar goes sticky); if the user's still at the very top,
+  // there's nothing to correct, so leave the scroll position alone. And
+  // — only if the newly-selected row isn't already visible in the
+  // sidebar's own scrolling tree — that tree scrolls just enough to
+  // reveal it, anchored at the bottom of the tree's viewport rather than
+  // snapping it to the top (so the rows leading up to the selection stay
+  // visible for context) rather than always re-centering on every click.
+  useEffect(() => {
+    if (window.scrollY > 0) {
+      contentRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+    }
+    const container = treeRef.current;
+    if (!container) return;
+    const activeEl = container.querySelector<HTMLElement>(`.${styles.treeRowActive}`);
+    if (!activeEl) return;
+    const containerRect = container.getBoundingClientRect();
+    const activeRect = activeEl.getBoundingClientRect();
+    const isFullyVisible = activeRect.top >= containerRect.top && activeRect.bottom <= containerRect.bottom;
+    if (!isFullyVisible) {
+      activeEl.scrollIntoView({ block: "end", behavior: "smooth" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selection]);
+
   const [groupBy, setGroupBy] = useState<GroupBy>("building");
   const [expandedBuildings, setExpandedBuildings] = useState<Record<string, boolean>>({ "Concourse D": true });
   const [expandedAreaTypes, setExpandedAreaTypes] = useState<Record<string, boolean>>({ "Break Rooms": true });
@@ -284,6 +479,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
   const dateMenuRef = useRef<HTMLDivElement>(null);
   const [trendRange, setTrendRange] = useState<TrendRange>("week");
   const [statsView, setStatsView] = useState<StatsView>("snapshot");
+  const [performanceCollapsed, setPerformanceCollapsed] = useState(false);
 
   // Close the date preset menu on an outside click or Escape — it's a
   // lightweight popover, not a Modal, so it manages its own dismissal.
@@ -332,6 +528,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
 
   const [scopeModalOpen, setScopeModalOpen] = useState(false);
   const [openScopeIds, setOpenScopeIds] = useState<string[]>([]);
+  const [viewedServiceItem, setViewedServiceItem] = useState<WorkCardData | null>(null);
 
   function isModeled(buildingName: string): boolean {
     return contractBuildings.some((cb) => cb.name === buildingName);
@@ -410,36 +607,59 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
     ? contractBuildings.find((cb) => cb.name === selection.buildingName)
     : undefined;
 
+  // "View by" only offers a granularity that still describes a real group
+  // of siblings for what's selected: with one area type picked, "by area
+  // type" would just be a single card for itself, so it drops out (falling
+  // back to "Area"); with one specific area picked, "by area" is the same
+  // dead end too, so both drop out (falling back to "Element").
+  const availableCardGranularityOptions = useMemo(() => {
+    if (selectedArea) return CARD_GRANULARITY_OPTIONS.filter((o) => o.id === "element" || o.id === "service");
+    if (selectedAreaType) return CARD_GRANULARITY_OPTIONS.filter((o) => o.id !== "areaType");
+    return CARD_GRANULARITY_OPTIONS;
+  }, [selectedArea, selectedAreaType]);
+
+  useEffect(() => {
+    if (availableCardGranularityOptions.some((o) => o.id === cardGranularity)) return;
+    setCardGranularity(availableCardGranularityOptions[0].id);
+  }, [availableCardGranularityOptions, cardGranularity]);
+
   const evidenceVerifications = useMemo(() => {
     let base: VerificationEvent[];
-    if (selectedAreaType) {
-      base = verificationsForArea(selectedAreaType.name);
+    if (selectedContractAreaType && selectedArea) {
+      base = withForcedArea(verificationsForArea(selectedContractAreaType.name), selectedArea.displayName, selectedContractAreaType.name);
+    } else if (selectedContractAreaType) {
+      base = withAreaTagging(verificationsForArea(selectedContractAreaType.name), selectedContractAreaType);
     } else if (selection.buildingName && isModeled(selection.buildingName)) {
       const modeled = contractBuildings.find((cb) => cb.name === selection.buildingName)!;
-      base = modeled.areaTypes.flatMap((at) => verificationsForArea(at.name));
+      base = modeled.areaTypes.flatMap((at) => withAreaTagging(verificationsForArea(at.name), at));
     } else if (isSiteLevel) {
       // A few featured area types per building rather than every one — flattening
       // all ~40 area types across all 7 buildings would produce thousands of cards.
-      base = contractBuildings.flatMap((cb) => cb.areaTypes.slice(0, 3).flatMap((at) => verificationsForArea(at.name)));
+      base = contractBuildings.flatMap((cb) =>
+        cb.areaTypes.slice(0, 3).flatMap((at) => withAreaTagging(verificationsForArea(at.name), at))
+      );
     } else {
       base = [];
     }
     return base.filter((v) => taskTypeFilter === ALL || v.type === taskTypeFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAreaType, selection.buildingName, isSiteLevel, contractBuildings, taskTypeFilter]);
+  }, [selectedContractAreaType, selectedArea, selection.buildingName, isSiteLevel, contractBuildings, taskTypeFilter]);
 
   const evidenceAudits = useMemo((): AuditEvent[] => {
-    if (selectedAreaType) return auditsForArea(selectedAreaType.name);
+    if (selectedContractAreaType && selectedArea) {
+      return withForcedArea(auditsForArea(selectedContractAreaType.name), selectedArea.displayName, selectedContractAreaType.name);
+    }
+    if (selectedContractAreaType) return withAreaTagging(auditsForArea(selectedContractAreaType.name), selectedContractAreaType);
     if (selection.buildingName && isModeled(selection.buildingName)) {
       const modeled = contractBuildings.find((cb) => cb.name === selection.buildingName)!;
-      return modeled.areaTypes.flatMap((at) => auditsForArea(at.name));
+      return modeled.areaTypes.flatMap((at) => withAreaTagging(auditsForArea(at.name), at));
     }
     if (isSiteLevel) {
-      return contractBuildings.flatMap((cb) => cb.areaTypes.slice(0, 3).flatMap((at) => auditsForArea(at.name)));
+      return contractBuildings.flatMap((cb) => cb.areaTypes.slice(0, 3).flatMap((at) => withAreaTagging(auditsForArea(at.name), at)));
     }
     return [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAreaType, selection.buildingName, isSiteLevel, contractBuildings]);
+  }, [selectedContractAreaType, selectedArea, selection.buildingName, isSiteLevel, contractBuildings]);
 
   const evidenceActivity = useMemo(() => {
     const verificationItems = evidenceVerifications.map(verificationToActivity);
@@ -485,6 +705,11 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
         const servicedToday = Math.max(0, Math.round(converted.servicedToday * scaleForDay(`${at.name}-serviced`, dayOffset)));
         const percent = expected > 0 ? Math.min(100, (servicedToday / expected) * 100) : 0;
         const seedKey = `${at.building}-${at.name}`;
+        const areaCount = at.areas.length;
+        const areasServicedCount = Math.min(
+          areaCount,
+          Math.max(areaCount > 0 ? 1 : 0, Math.round(areaCount * scaleForDay(`${seedKey}-areas-serviced`, dayOffset, 0.75, 1)))
+        );
         return {
           key: seedKey,
           photo: photoForAreaType(at.name, seedKey),
@@ -494,6 +719,9 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
           variant: "areaType" as const,
           progress: { servicedToday, expected, percent },
           capturedLabel: `${capturedDurationLabel(seedKey, dayOffset)} Captured`,
+          building: at.building,
+          areaCount,
+          areasServicedCount,
         };
       }),
     [scopedAreaTypesForGrid, dayOffset]
@@ -517,6 +745,8 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
             variant: "area" as const,
             progress: { servicedToday, expected: perAreaExpected, percent },
             capturedLabel: `${capturedDurationLabel(seedKey, dayOffset)} Captured`,
+            building: at.building,
+            areaTypeName: at.name,
           };
         });
       }),
@@ -544,19 +774,30 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
 
   const serviceCards: WorkCardData[] = useMemo(
     () =>
-      sortedEvidenceActivity.map((item, i) => ({
-        key: `${item.location}-${i}`,
-        photo: item.areaPhoto,
-        timeAgo: item.timeAgo,
-        title: item.tag,
-        score: item.score,
-        variant: "service" as const,
-        serviceIcon: iconForServiceTag(item.tag),
-        location: item.location,
-        personName: item.personName,
-        personAvatar: item.personAvatar,
-        capturedLabel: `${capturedDurationLabel(`${item.location}-${item.personName}-${i}`, dayOffset)} Captured`,
-      })),
+      sortedEvidenceActivity.map((item, i) => {
+        const seedKey = `${item.location}-${item.personName}-${i}`;
+        const timing = serviceTimingForSeed(seedKey, dayOffset);
+        return {
+          key: `${item.location}-${i}`,
+          photo: item.areaPhoto,
+          timeAgo: item.timeAgo,
+          title: item.tag,
+          score: item.score,
+          variant: "service" as const,
+          serviceIcon: iconForServiceTag(item.tag),
+          serviceIconColor: colorForServiceTag(item.tag),
+          location: item.location,
+          areaDisplayName: item.areaDisplayName ?? item.location,
+          areaTypeName: item.areaTypeName,
+          personName: item.personName,
+          personAvatar: item.personAvatar,
+          personRole: item.position && item.shift ? `${item.position} | ${item.shift}` : undefined,
+          capturedLabel: timing.servicedLabel,
+          startLabel: timing.startLabel,
+          endLabel: timing.endLabel,
+          servicedLabel: timing.servicedLabel,
+        };
+      }),
     [sortedEvidenceActivity, dayOffset]
   );
 
@@ -674,19 +915,47 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
   // surfaces "which physical spaces this applies to"); and by Area Type
   // when only a building is selected — the natural next level down, same
   // as the (now-removed) inline task list used to.
+  const periodDays = periodDaysForDatePreset(datePreset);
+
   const scopeAccordionItems: AccordionItemData[] = useMemo(() => {
-    function tasksList(tasks: ContractTaskDef[]) {
+    // Real, contract-derived expected count (areaCount — one due instance
+    // per area, same convention SowTimeFirstPage's Scope & Frequency tab
+    // uses) alongside a deterministic seeded completed count (same
+    // scaleForDay generator family as every other coverage number on this
+    // page). Only rendered for tasks actually due within the page's
+    // current date-range preset — a Weekly/Monthly task viewed on "Today"
+    // just shows its frequency text, same as before, rather than a
+    // misleading 0-of-something for a task that isn't due yet.
+    function tasksList(tasks: ContractTaskDef[], seedPrefix: string, areaCount: number) {
       return (
         <div className={styles.flatTaskList}>
-          {tasks.map((task) => (
-            <div key={task.label} className={sharedStyles.taskRow}>
-              <span className={sharedStyles.taskLabel}>{task.label}</span>
-              <span className={sharedStyles.frequencyText}>
-                {task.frequency}
-                {task.shifts && task.shifts.length > 0 && task.shifts.length < 3 && ` · ${task.shifts.join("/")}`}
-              </span>
-            </div>
-          ))}
+          {tasks.map((task) => {
+            const due = isTaskDueForPeriod(task.frequency, periodDays);
+            const expected = areaCount;
+            const seedKey = `${seedPrefix}-${task.label}`;
+            const completed = due ? Math.round(expected * scaleForDay(`${seedKey}-scope-completion`, dayOffset, 0.72, 0.94)) : 0;
+            const completedPercent = due && expected > 0 ? Math.min(100, (completed / expected) * 100) : 0;
+            return (
+              <div key={task.label} className={styles.scopeTaskRow}>
+                <div className={sharedStyles.taskRow}>
+                  <span className={sharedStyles.taskLabel}>{task.label}</span>
+                  <span className={sharedStyles.frequencyText}>
+                    {task.frequency}
+                    {task.shifts && task.shifts.length > 0 && task.shifts.length < 3 && ` · ${task.shifts.join("/")}`}
+                  </span>
+                </div>
+                {due && (
+                  <span className={styles.areaTypeTableProgressTrack}>
+                    <span className={styles.areaTypeTableProgressFill} style={{ width: `${completedPercent}%` }}>
+                      <span className={styles.areaTypeTableProgressLabel}>
+                        {completed} of {expected} Completed
+                      </span>
+                    </span>
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       );
     }
@@ -729,7 +998,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
               </span>
             </span>
           ),
-          content: tasksList(inst.areaType.tasks),
+          content: tasksList(inst.areaType.tasks, `${inst.building.name}-${inst.areaType.name}`, inst.areaType.areas.length),
         }));
       }
     }
@@ -745,7 +1014,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
             </span>
           </span>
         ),
-        content: tasksList(selectedContractAreaType.tasks),
+        content: tasksList(selectedContractAreaType.tasks, a.areaId, 1),
       }));
     }
     if (selectedBuildingContract) {
@@ -759,11 +1028,21 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
             </span>
           </span>
         ),
-        content: tasksList(at.tasks),
+        content: tasksList(at.tasks, `${selectedBuildingContract.name}-${at.name}`, at.areas.length),
       }));
     }
     return [];
-  }, [isSiteLevel, contractBuildings, selection.crossBuilding, selection.areaTypeName, areaTypeGroups, selectedContractAreaType, selectedBuildingContract]);
+  }, [
+    isSiteLevel,
+    contractBuildings,
+    selection.crossBuilding,
+    selection.areaTypeName,
+    areaTypeGroups,
+    selectedContractAreaType,
+    selectedBuildingContract,
+    periodDays,
+    dayOffset,
+  ]);
 
   // -- Tree row renderers (closures over selection/expand state) --
 
@@ -882,11 +1161,32 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                     <i className="fa-solid fa-location-dot" aria-hidden="true" /> Floor {area.floor}
                     {area.floorDescription ? ` (${area.floorDescription})` : ""}
                   </span>
+                  <span>•</span>
+                  <span className={styles.treeRowMetaItem}>
+                    <i className="fa-solid fa-list" aria-hidden="true" /> Tasks: {contractAreaType.tasks.length}
+                  </span>
                 </span>
               </span>
             </button>
           ))}
       </div>
+    );
+  }
+
+  // Shared by every "meta row" variant below (site-level, area/area-type,
+  // and the no-meta fallback) so the toggle always sits on the same line
+  // as whatever meta text is there, right under "View Scope for this Area".
+  function renderPerformanceToggle() {
+    return (
+      <button
+        type="button"
+        className={styles.performanceToggleButton}
+        onClick={() => setPerformanceCollapsed((v) => !v)}
+        aria-expanded={!performanceCollapsed}
+      >
+        <i className={["fa-solid", performanceCollapsed ? "fa-chevron-down" : "fa-chevron-up"].join(" ")} aria-hidden="true" />
+        {performanceCollapsed ? "Show Performance Summary" : "Hide Performance Summary"}
+      </button>
     );
   }
 
@@ -901,70 +1201,76 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
       <SowNav current="hierarchy" />
 
       <div className={styles.pageHeaderBar}>
-          <h1 className={styles.pageHeaderTitle}>Scope of Work — Site Hierarchy</h1>
-          <div className={styles.headerControls}>
-            <button
-              type="button"
-              className={styles.scheduleToggle}
-              role="switch"
-              aria-checked={siteScheduleOn}
-              onClick={() => setSiteScheduleOn((v) => !v)}
-            >
-              Site Schedule
-              <span className={[styles.scheduleToggleTrack, siteScheduleOn ? styles.scheduleToggleTrackOn : ""].filter(Boolean).join(" ")}>
-                <span className={[styles.scheduleToggleThumb, siteScheduleOn ? styles.scheduleToggleThumbOn : ""].filter(Boolean).join(" ")} />
-              </span>
-            </button>
-            <div className={styles.datePicker} ref={dateMenuRef}>
-              {isDayPreset && (
-                <button
-                  type="button"
-                  className={styles.datePickerCaret}
-                  onClick={() => setDayOffset((o) => o + 1)}
-                  aria-label="Previous day"
-                >
-                  <CaretLeftIcon />
-                </button>
-              )}
+        <h1 className={styles.pageHeaderTitle}>
+          <span className={styles.pageHeaderTitleGrey}>Quality / </span>
+          Scope of Work
+        </h1>
+
+        <div className={styles.pageHeaderControlsRow}>
+          <button
+            type="button"
+            className={styles.scheduleToggle}
+            role="switch"
+            aria-checked={siteScheduleOn}
+            onClick={() => setSiteScheduleOn((v) => !v)}
+          >
+            Site Schedule
+            <span className={[styles.scheduleToggleTrack, siteScheduleOn ? styles.scheduleToggleTrackOn : ""].filter(Boolean).join(" ")}>
+              <span className={[styles.scheduleToggleThumb, siteScheduleOn ? styles.scheduleToggleThumbOn : ""].filter(Boolean).join(" ")} />
+            </span>
+          </button>
+          <div className={styles.datePicker} ref={dateMenuRef}>
+            {isDayPreset && (
               <button
                 type="button"
-                className={styles.datePickerLabel}
-                onClick={() => setDateMenuOpen((o) => !o)}
-                aria-haspopup="true"
-                aria-expanded={dateMenuOpen}
+                className={styles.datePickerCaret}
+                onClick={() => setDayOffset((o) => o + 1)}
+                aria-label="Previous day"
               >
-                {dateLabel}
+                <CaretLeftIcon />
               </button>
-              {isDayPreset && (
-                <button
-                  type="button"
-                  className={styles.datePickerCaret}
-                  onClick={() => setDayOffset((o) => Math.max(0, o - 1))}
-                  disabled={dayOffset === 0}
-                  aria-label="Next day"
-                >
-                  <CaretRightIcon />
-                </button>
-              )}
-              {dateMenuOpen && (
-                <div className={styles.dateMenu} role="menu">
-                  {DATE_PRESET_OPTIONS.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      role="menuitem"
-                      className={[styles.dateMenuItem, datePreset === p.id ? styles.dateMenuItemActive : ""]
-                        .filter(Boolean)
-                        .join(" ")}
-                      onClick={() => selectDatePreset(p.id)}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            )}
+            <button
+              type="button"
+              className={styles.datePickerLabel}
+              onClick={() => setDateMenuOpen((o) => !o)}
+              aria-haspopup="true"
+              aria-expanded={dateMenuOpen}
+            >
+              {dateLabel}
+            </button>
+            {isDayPreset && (
+              <button
+                type="button"
+                className={styles.datePickerCaret}
+                onClick={() => setDayOffset((o) => Math.max(0, o - 1))}
+                disabled={dayOffset === 0}
+                aria-label="Next day"
+              >
+                <CaretRightIcon />
+              </button>
+            )}
+            {dateMenuOpen && (
+              <div className={styles.dateMenu} role="menu">
+                {DATE_PRESET_OPTIONS.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={datePreset === p.id}
+                    className={[styles.dateMenuItem, datePreset === p.id ? styles.dateMenuItemActive : ""]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onClick={() => selectDatePreset(p.id)}
+                  >
+                    {p.label}
+                    {datePreset === p.id && <i className={["fa-solid fa-check", styles.dateMenuItemCheck].join(" ")} aria-hidden="true" />}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
+        </div>
       </div>
 
       <div className={styles.layout}>
@@ -997,7 +1303,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
             <ButtonGroup options={GROUP_BY_OPTIONS} value={groupBy} onChange={setGroupBy} aria-label="Group sidebar by" />
           </div>
 
-          <nav className={styles.tree} aria-label="Site hierarchy">
+          <nav className={styles.tree} aria-label="Site hierarchy" ref={treeRef}>
             {groupBy === "building"
               ? buildings.map((building) => {
                   const modeled = contractBuildings.find((cb) => cb.name === building.name);
@@ -1060,8 +1366,15 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
           </nav>
         </aside>
 
-        <main className={styles.content}>
-          {breadcrumbLabel && <p className={styles.breadcrumb}>{breadcrumbLabel}</p>}
+        <main className={styles.content} ref={contentRef}>
+          {breadcrumbLabel && (
+            <div className={styles.contentBreadcrumbRow}>
+              <p className={styles.breadcrumb}>{breadcrumbLabel}</p>
+              <Button variant="secondary" theme="light" onClick={openScopeModal}>
+                View Scope for this Area
+              </Button>
+            </div>
+          )}
           <div className={styles.contentHeaderRow}>
             {isSiteLevel ? (
               <div className={styles.contentHeaderIdentity}>
@@ -1076,30 +1389,35 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                 {selectedArea?.displayName ?? selectedAreaType?.name ?? selectedBuilding!.name}
               </h1>
             )}
-            <Button variant="secondary" theme="light" onClick={openScopeModal}>
-              View Scope for this {isSiteLevel ? "Site" : "Area"}
-            </Button>
+            {!breadcrumbLabel && (
+              <Button variant="secondary" theme="light" onClick={openScopeModal}>
+                View Scope for this Site
+              </Button>
+            )}
           </div>
           {isSiteLevel ? (
-            <p className={styles.contentHeaderMeta}>
-              <span className={styles.treeRowMetaItem}>
-                <i className="fa-solid fa-building" aria-hidden="true" /> Buildings: {siteContractStats.buildings}
-              </span>
-              <span>•</span>
-              <span className={styles.treeRowMetaItem}>
-                <i className="fa-solid fa-layer-group" aria-hidden="true" /> Floors: {siteFloorCount}
-              </span>
-              <span>•</span>
-              <span className={styles.treeRowMetaItem}>
-                <i className="fa-solid fa-object-ungroup" aria-hidden="true" /> Area Types: {siteContractStats.areaTypes}
-              </span>
-              <span>•</span>
-              <span className={styles.treeRowMetaItem}>
-                <i className="fa-solid fa-vector-square" aria-hidden="true" /> Areas: {siteContractStats.areas}
-              </span>
-            </p>
-          ) : (
-            hasHeaderMeta && (
+            <div className={styles.contentHeaderMetaRow}>
+              <p className={styles.contentHeaderMeta}>
+                <span className={styles.treeRowMetaItem}>
+                  <i className="fa-solid fa-building" aria-hidden="true" /> Buildings: {siteContractStats.buildings}
+                </span>
+                <span>•</span>
+                <span className={styles.treeRowMetaItem}>
+                  <i className="fa-solid fa-layer-group" aria-hidden="true" /> Floors: {siteFloorCount}
+                </span>
+                <span>•</span>
+                <span className={styles.treeRowMetaItem}>
+                  <i className="fa-solid fa-object-ungroup" aria-hidden="true" /> Area Types: {siteContractStats.areaTypes}
+                </span>
+                <span>•</span>
+                <span className={styles.treeRowMetaItem}>
+                  <i className="fa-solid fa-vector-square" aria-hidden="true" /> Areas: {siteContractStats.areas}
+                </span>
+              </p>
+              {renderPerformanceToggle()}
+            </div>
+          ) : hasHeaderMeta ? (
+            <div className={styles.contentHeaderMetaRow}>
               <p className={styles.contentHeaderMeta}>
                 <span className={styles.treeRowMetaItem}>
                   <i className="fa-solid fa-layer-group" aria-hidden="true" /> Floors: {metaFloorCount}
@@ -1109,8 +1427,16 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                   <i className="fa-solid fa-vector-square" aria-hidden="true" /> Areas: {metaAreaCount}
                 </span>
               </p>
-            )
+              {renderPerformanceToggle()}
+            </div>
+          ) : (
+            <div className={styles.contentHeaderMetaRow}>
+              <span />
+              {renderPerformanceToggle()}
+            </div>
           )}
+
+          <hr className={styles.sectionDivider} />
 
           <div className={[sharedStyles.sectionStack, styles.sectionStackTight].join(" ")}>
                 {/* Performance: today's Snapshot (the three metric cards), or a
@@ -1118,19 +1444,22 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                     pattern site-wide as it is for a single building/area type —
                     just fed the whole site's aggregate numbers when nothing in
                     the tree is selected. */}
+                {!performanceCollapsed && (
                 <div className={sharedStyles.section}>
-                  <div className={styles.workControlsLeft}>
-                    <ButtonGroup
-                      options={STATS_VIEW_OPTIONS}
-                      value={statsView}
-                      onChange={setStatsView}
-                      variant="segmented"
-                      aria-label="Performance view"
-                    />
-                    {statsView === "trend" && <TrendRangeToggle trendRange={trendRange} setTrendRange={setTrendRange} />}
+                  <div className={styles.performanceSectionHeader}>
+                    <div className={styles.workControlsLeft}>
+                      <ButtonGroup
+                        options={STATS_VIEW_OPTIONS}
+                        value={statsView}
+                        onChange={setStatsView}
+                        variant="segmented"
+                        aria-label="Performance view"
+                      />
+                      {statsView === "trend" && <TrendRangeToggle trendRange={trendRange} setTrendRange={setTrendRange} />}
+                    </div>
                   </div>
 
-                  {statsView === "snapshot" ? (
+                  {(statsView === "snapshot" ? (
                     <div className={styles.metricCardRow}>
                       <Card theme="light" className={styles.metricCard}>
                         <div className={styles.metricCardTop}>
@@ -1196,9 +1525,19 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                         chip
                       />
                     </div>
-                  )}
+                  ))}
                 </div>
+                )}
 
+          </div>
+
+          {/* Collapsed shows just the one divider above (already separating
+              the header meta from whatever's next) — a second one right
+              after it, with nothing in between, would read as two lines
+              instead of one. */}
+          {!performanceCollapsed && <hr className={styles.sectionDivider} />}
+
+          <div className={[sharedStyles.sectionStack, styles.sectionStackTight].join(" ")}>
                 {/* Work: All / Verifications / Audits filter pills, then
                     View by / Filter / Sort plus a Grid / List segmented
                     control, then the evidence grid itself. */}
@@ -1216,14 +1555,14 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                         label="View by"
                         value={cardGranularity}
                         onChange={(v) => setCardGranularity(v as CardGranularity)}
-                        options={CARD_GRANULARITY_OPTIONS.map((o) => ({ value: o.id, label: o.label }))}
+                        options={availableCardGranularityOptions.map((o) => ({ value: o.id, label: o.label }))}
                         ariaLabel="View evidence by area type, area, element, or service"
                       />
                       <DsSelect
                         label="Filter"
                         value={taskTypeFilter}
                         onChange={setTaskTypeFilter}
-                        options={[{ value: ALL, label: "All Services" }, ...taskTypes.map((t) => ({ value: t, label: t }))]}
+                        options={SERVICE_FILTER_OPTIONS}
                         ariaLabel="Filter by service type"
                       />
                       <DsSelect
@@ -1253,6 +1592,15 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                         <WorkCard key={data.key} data={data} />
                       ))}
                     </div>
+                  ) : cardGranularity === "areaType" ? (
+                    <AreaTypeListTable items={gridCards} onSelect={(building, name) => selectAreaType(building, name)} />
+                  ) : cardGranularity === "area" ? (
+                    <AreaListTable
+                      items={gridCards}
+                      onSelect={(building, areaTypeName, areaId) => selectArea(building, areaTypeName, areaId)}
+                    />
+                  ) : cardGranularity === "service" ? (
+                    <ServiceListTable items={gridCards} onView={setViewedServiceItem} showAreaColumn={!selectedArea} />
                   ) : (
                     <ActivityList items={gridCards} />
                   )}
@@ -1283,6 +1631,22 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
           <p className={styles.emptyNote}>No detailed task list available for this selection.</p>
         ) : (
           <Accordion theme="light" items={scopeAccordionItems} openIds={openScopeIds} onToggle={toggleScopeItem} />
+        )}
+      </Modal>
+
+      <Modal open={!!viewedServiceItem} onClose={() => setViewedServiceItem(null)} theme="light" title={viewedServiceItem?.location}>
+        {viewedServiceItem && (
+          <>
+            {viewedServiceItem.photo ? (
+              <img src={viewedServiceItem.photo} alt="" className={styles.serviceViewPhoto} />
+            ) : (
+              <p className={styles.emptyNote}>No photo available for this service.</p>
+            )}
+            <p className={styles.emptyNote}>
+              {viewedServiceItem.title} by {viewedServiceItem.personName} · Score {viewedServiceItem.score.toFixed(2)} ·{" "}
+              {viewedServiceItem.timeAgo}
+            </p>
+          </>
         )}
       </Modal>
     </div>
@@ -1329,6 +1693,337 @@ function ActivityList({ items }: { items: WorkCardData[] }) {
 }
 
 /**
+ * "View by: Area Type" + List — a dedicated table (Figma fileKey
+ * SWFMjlBJ4u9vSrVaomRe12, node 118:17921) rather than ActivityList's
+ * generic columns: Area Type (+ area count), Last Serviced, Avg Score,
+ * Total Services, an Expected Services progress bar, and an Areas
+ * Serviced progress bar (checked once every area's had at least one
+ * service today). Areas Serviced has no real per-area tracking in this
+ * dataset — it's a deterministic seeded stand-in, same spirit as the
+ * Element grid's fabricated fixture counts. Every row is clickable
+ * (and keyboard-operable) to drill into that area type, same
+ * destination as clicking it in the sidebar tree.
+ */
+type AreaTypeSortKey = "areaType" | "lastServiced" | "avgScore" | "totalsServices" | "expectedServices" | "areasServiced";
+
+function areaTypeSortValue(item: WorkCardData, key: AreaTypeSortKey): string | number {
+  const areaCount = item.areaCount ?? 0;
+  switch (key) {
+    case "areaType":
+      return item.title;
+    case "lastServiced":
+      return TIME_AGO_OPTIONS.indexOf(item.timeAgo);
+    case "avgScore":
+      return item.score;
+    case "totalsServices":
+      return item.progress?.servicedToday ?? 0;
+    case "expectedServices":
+      return item.progress?.percent ?? 0;
+    case "areasServiced":
+      return areaCount > 0 ? (item.areasServicedCount ?? 0) / areaCount : 0;
+  }
+}
+
+function AreaTypeListTable({ items, onSelect }: { items: WorkCardData[]; onSelect: (building: string, name: string) => void }) {
+  const [sortState, setSortState] = useState<SortState<AreaTypeSortKey>>(null);
+  const sortedItems = useMemo(() => sortByValue(items, sortState, areaTypeSortValue), [items, sortState]);
+  const onSort = (key: AreaTypeSortKey) => setSortState((prev) => toggleSort(key, prev));
+
+  return (
+    <div className={styles.areaTypeTableWrap}>
+      <div className={[styles.areaTypeTableHeaderRow, styles.cols6].join(" ")}>
+        <SortableHeaderCell label="Area Type" columnKey="areaType" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Last Serviced" columnKey="lastServiced" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Avg Score" columnKey="avgScore" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Totals Services" columnKey="totalsServices" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Expected Services" columnKey="expectedServices" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Areas Serviced" columnKey="areasServiced" sortState={sortState} onSort={onSort} />
+      </div>
+
+      <div className={styles.areaTypeTableRows}>
+        {sortedItems.map((item) => {
+          const areaCount = item.areaCount ?? 0;
+          const areasServicedCount = item.areasServicedCount ?? 0;
+          const expectedPercent = Math.min(100, item.progress?.percent ?? 0);
+          const areasServicedPercent = areaCount > 0 ? Math.min(100, (areasServicedCount / areaCount) * 100) : 0;
+          const fullyServiced = areaCount > 0 && areasServicedCount >= areaCount;
+          return (
+            <div
+              key={item.key}
+              className={[styles.areaTypeTableRow, styles.cols6].join(" ")}
+              tabIndex={0}
+              role="button"
+              aria-label={`View ${item.title}`}
+              onClick={() => onSelect(item.building ?? "", item.title)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(item.building ?? "", item.title);
+                }
+              }}
+            >
+              <span className={styles.areaTypeTableNameCell}>
+                <span className={styles.areaTypeTableName}>{item.title}</span>
+                <span className={styles.areaTypeTableNameSub}>
+                  {areaCount} Area{areaCount === 1 ? "" : "s"}
+                </span>
+              </span>
+
+              <span className={styles.areaTypeTableCellText}>{item.timeAgo}</span>
+
+              <span>
+                <span className={styles.areaTypeTableScoreChip}>{item.score.toFixed(1)}</span>
+              </span>
+
+              <span className={styles.areaTypeTableCellTextMedium}>{item.progress?.servicedToday ?? 0}</span>
+
+              <span>
+                <span className={styles.areaTypeTableProgressTrack}>
+                  <span className={styles.areaTypeTableProgressFill} style={{ width: `${expectedPercent}%` }}>
+                    <span className={styles.areaTypeTableProgressLabel}>
+                      {item.progress?.servicedToday ?? 0} of {item.progress?.expected ?? 0}
+                    </span>
+                  </span>
+                </span>
+              </span>
+
+              <span>
+                <span className={styles.areaTypeTableProgressTrack}>
+                  <span
+                    className={[styles.areaTypeTableProgressFill, styles.areaTypeTableProgressFillSuccess].join(" ")}
+                    style={{ width: `${areasServicedPercent}%` }}
+                  >
+                    <span className={styles.areaTypeTableProgressLabel}>
+                      {areasServicedCount} of {areaCount}
+                      {fullyServiced && (
+                        <i className={["fa-solid fa-check", styles.areaTypeTableCheck].join(" ")} aria-hidden="true" />
+                      )}
+                    </span>
+                  </span>
+                </span>
+              </span>
+
+              <span className={styles.areaTypeTableArrowCell}>
+                <i className="fa-solid fa-arrow-right" aria-hidden="true" />
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "View by: Area" + List — Figma fileKey SWFMjlBJ4u9vSrVaomRe12, node
+ * 118:19385. Same row-card pattern as AreaTypeListTable, minus the
+ * Areas Serviced column (a single area has no further area-count
+ * breakdown), and the name cell's subtitle is a "Building • Area
+ * Type" breadcrumb (grey, with a lighter neutral-500 bullet) instead
+ * of an area count. Rows click through to that specific area, same
+ * destination as clicking it in the sidebar tree.
+ */
+type AreaSortKey = "area" | "lastServiced" | "avgScore" | "totalsServices" | "expectedServices";
+
+function areaSortValue(item: WorkCardData, key: AreaSortKey): string | number {
+  switch (key) {
+    case "area":
+      return item.title;
+    case "lastServiced":
+      return TIME_AGO_OPTIONS.indexOf(item.timeAgo);
+    case "avgScore":
+      return item.score;
+    case "totalsServices":
+      return item.progress?.servicedToday ?? 0;
+    case "expectedServices":
+      return item.progress?.percent ?? 0;
+  }
+}
+
+function AreaListTable({
+  items,
+  onSelect,
+}: {
+  items: WorkCardData[];
+  onSelect: (building: string, areaTypeName: string, areaId: string) => void;
+}) {
+  const [sortState, setSortState] = useState<SortState<AreaSortKey>>(null);
+  const sortedItems = useMemo(() => sortByValue(items, sortState, areaSortValue), [items, sortState]);
+  const onSort = (key: AreaSortKey) => setSortState((prev) => toggleSort(key, prev));
+
+  return (
+    <div className={styles.areaTypeTableWrap}>
+      <div className={[styles.areaTypeTableHeaderRow, styles.cols5].join(" ")}>
+        <SortableHeaderCell label="Area" columnKey="area" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Last Serviced" columnKey="lastServiced" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Avg Score" columnKey="avgScore" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Totals Services" columnKey="totalsServices" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Expected Services" columnKey="expectedServices" sortState={sortState} onSort={onSort} />
+      </div>
+
+      <div className={styles.areaTypeTableRows}>
+        {sortedItems.map((item) => {
+          const expectedPercent = Math.min(100, item.progress?.percent ?? 0);
+          return (
+            <div
+              key={item.key}
+              className={[styles.areaTypeTableRow, styles.cols5].join(" ")}
+              tabIndex={0}
+              role="button"
+              aria-label={`View ${item.title}`}
+              onClick={() => onSelect(item.building ?? "", item.areaTypeName ?? "", item.key)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(item.building ?? "", item.areaTypeName ?? "", item.key);
+                }
+              }}
+            >
+              <span className={styles.areaTypeTableNameCell}>
+                <span className={styles.areaTypeTableName}>{item.title}</span>
+                <span className={styles.areaTableNameSub}>
+                  <span>{item.building}</span>
+                  <span className={styles.areaTableNameSubDot}>•</span>
+                  <span>{item.areaTypeName}</span>
+                </span>
+              </span>
+
+              <span className={styles.areaTypeTableCellText}>{item.timeAgo}</span>
+
+              <span>
+                <span className={styles.areaTypeTableScoreChip}>{item.score.toFixed(1)}</span>
+              </span>
+
+              <span className={styles.areaTypeTableCellTextMedium}>{item.progress?.servicedToday ?? 0}</span>
+
+              <span>
+                <span className={styles.areaTypeTableProgressTrack}>
+                  <span className={styles.areaTypeTableProgressFill} style={{ width: `${expectedPercent}%` }}>
+                    <span className={styles.areaTypeTableProgressLabel}>
+                      {item.progress?.servicedToday ?? 0} of {item.progress?.expected ?? 0}
+                    </span>
+                  </span>
+                </span>
+              </span>
+
+              <span className={styles.areaTypeTableArrowCell}>
+                <i className="fa-solid fa-arrow-right" aria-hidden="true" />
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "View by: Service" + List — Figma fileKey SWFMjlBJ4u9vSrVaomRe12,
+ * node 118:17045 (columns) and node 118:20809 (icon/color + Area/Area
+ * Type treatment, shared with WorkCard's Grid "Service" variant via
+ * iconForServiceTag/colorForServiceTag). No row navigation — a single
+ * service instance isn't a node in the sidebar tree — "View" instead
+ * opens that event's own captured photo.
+ */
+type ServiceSortKey = "area" | "serviceType" | "employeeName" | "score" | "end" | "serviced" | "start";
+
+function serviceSortValue(item: WorkCardData, key: ServiceSortKey): string | number {
+  switch (key) {
+    case "area":
+      return item.areaDisplayName ?? item.location ?? "";
+    case "serviceType":
+      return item.title;
+    case "employeeName":
+      return item.personName ?? "";
+    case "score":
+      return item.score;
+    case "end":
+      return parseTimeLabelToMinutes(item.endLabel ?? "");
+    case "serviced":
+      return parseDurationLabelToSeconds(item.servicedLabel ?? "");
+    case "start":
+      return parseTimeLabelToMinutes(item.startLabel ?? "");
+  }
+}
+
+function ServiceListTable({
+  items,
+  onView,
+  showAreaColumn = true,
+}: {
+  items: WorkCardData[];
+  onView: (item: WorkCardData) => void;
+  /** False when the sidebar tree already has one specific area selected — every row would repeat the same area, so the column is redundant. */
+  showAreaColumn?: boolean;
+}) {
+  const rowColsClass = showAreaColumn ? styles.cols7 : styles.cols6Service;
+  const [sortState, setSortState] = useState<SortState<ServiceSortKey>>(null);
+  const sortedItems = useMemo(() => sortByValue(items, sortState, serviceSortValue), [items, sortState]);
+  const onSort = (key: ServiceSortKey) => setSortState((prev) => toggleSort(key, prev));
+
+  return (
+    <div className={styles.areaTypeTableWrap}>
+      <div className={[styles.areaTypeTableHeaderRow, rowColsClass].join(" ")}>
+        {showAreaColumn && <SortableHeaderCell label="Area" columnKey="area" sortState={sortState} onSort={onSort} />}
+        <SortableHeaderCell label="Service Type" columnKey="serviceType" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Employee Name" columnKey="employeeName" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Score" columnKey="score" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="End" columnKey="end" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Serviced" columnKey="serviced" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Start" columnKey="start" sortState={sortState} onSort={onSort} />
+      </div>
+
+      <div className={styles.areaTypeTableRows}>
+        {sortedItems.map((item) => (
+          <div key={item.key} className={[styles.areaTypeTableRow, rowColsClass].join(" ")}>
+            {showAreaColumn && (
+              <span className={styles.areaTypeTableNameCell}>
+                <span className={styles.areaTypeTableName}>{item.areaDisplayName ?? item.location}</span>
+                {item.areaTypeName && <span className={styles.serviceTableAreaTypeSub}>{item.areaTypeName}</span>}
+              </span>
+            )}
+
+            <span className={styles.serviceTypeCell}>
+              {item.serviceIcon && (
+                <i
+                  className={[item.serviceIcon, styles.serviceTypeIcon].join(" ")}
+                  style={item.serviceIconColor ? { color: item.serviceIconColor } : undefined}
+                  aria-hidden="true"
+                />
+              )}
+              <span className={styles.serviceTypeLabel}>{item.title}</span>
+            </span>
+
+            <span className={styles.employeeCell}>
+              <img src={item.personAvatar} alt="" className={styles.employeeAvatar} />
+              <span className={styles.employeeInfo}>
+                <span className={styles.employeeName}>{item.personName}</span>
+                {item.personRole && <span className={styles.employeeSub}>{item.personRole}</span>}
+              </span>
+            </span>
+
+            <span>
+              <span className={styles.areaTypeTableScoreChip}>{item.score.toFixed(1)}</span>
+            </span>
+
+            <span className={styles.areaTypeTableCellTextMedium}>{item.endLabel}</span>
+
+            <span className={styles.areaTypeTableCellText}>{item.servicedLabel}</span>
+
+            <span className={styles.areaTypeTableCellTextMedium}>{item.startLabel}</span>
+
+            <button type="button" className={styles.serviceTableViewLink} onClick={() => onView(item)}>
+              <i className="fa-solid fa-image" aria-hidden="true" />
+              View
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
  * One evidence card, reshaped per the "View by" granularity — Figma's
  * Area / Area Type / Element / Service card variants (fileKey
  * SWFMjlBJ4u9vSrVaomRe12, node 100:21953). All four share the same
@@ -1356,47 +2051,72 @@ function WorkCard({ data }: { data: WorkCardData }) {
       </div>
       <div className={styles.workCardBody}>
         {data.variant === "service" ? (
-          <div className={styles.workCardServiceHeaderRow}>
-            {data.serviceIcon && <i className={[data.serviceIcon, styles.workCardServiceIcon].join(" ")} aria-hidden="true" />}
-            <span className={styles.workCardServiceTitleGroup}>
-              <span className={styles.workCardTag}>{data.title}</span>
-              {data.location && <span className={styles.workCardSubLabel}>{data.location}</span>}
-            </span>
-            <span className={styles.workCardScore}>{data.score.toFixed(2)}</span>
-          </div>
-        ) : (
-          <div className={styles.workCardHeaderRow}>
-            <span className={styles.workCardTag}>{data.title}</span>
-            <span className={styles.workCardScore}>{data.score.toFixed(2)}</span>
-          </div>
-        )}
-
-        {data.personName && (
-          <span className={styles.workCardPerson}>
-            <img src={data.personAvatar} alt="" className={sharedStyles.avatarSmall} />
-            {data.personName}
-          </span>
-        )}
-
-        {data.progress && (
           <>
-            <div className={styles.workCardProgressLine}>
-              <span className={styles.workCardProgressLabel}>
-                {data.progress.servicedToday} of {data.progress.expected} Expected Services
+            <div className={styles.workCardServiceHeaderRow}>
+              {data.serviceIcon && (
+                <i
+                  className={[data.serviceIcon, styles.workCardServiceIcon].join(" ")}
+                  style={data.serviceIconColor ? { color: data.serviceIconColor } : undefined}
+                  aria-hidden="true"
+                />
+              )}
+              <span className={styles.workCardServiceTitleGroup}>
+                <span className={styles.workCardTag}>{data.title}</span>
               </span>
-              <span className={styles.workCardProgressPercent}>{Math.round(data.progress.percent)}%</span>
+              <span className={styles.workCardScore}>{data.score.toFixed(2)}</span>
             </div>
-            <span className={styles.workCardProgressTrack}>
-              <span className={styles.workCardProgressFill} style={{ width: `${Math.min(100, data.progress.percent)}%` }} />
-            </span>
-          </>
-        )}
 
-        {data.capturedLabel && (
-          <span className={styles.workCardFooterRow}>
-            <i className="fa-regular fa-clock" aria-hidden="true" />
-            {data.capturedLabel}
-          </span>
+            {(data.areaDisplayName || data.areaTypeName) && (
+              <span className={styles.workCardAreaLine}>
+                {data.areaDisplayName && <span>{data.areaDisplayName}</span>}
+                {data.areaDisplayName && data.areaTypeName && <span className={styles.workCardAreaLineDot}>•</span>}
+                {data.areaTypeName && <span>{data.areaTypeName}</span>}
+              </span>
+            )}
+
+            <div className={styles.workCardServiceFooterRow}>
+              {data.personName && (
+                <span className={styles.workCardPerson}>
+                  <img src={data.personAvatar} alt="" className={sharedStyles.avatarSmall} />
+                  {data.personName}
+                </span>
+              )}
+              {data.capturedLabel && !data.title.includes("Audit") && (
+                <span className={styles.workCardFooterRow}>
+                  <i className="fa-regular fa-clock" aria-hidden="true" />
+                  {data.capturedLabel}
+                </span>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className={styles.workCardHeaderRow}>
+              <span className={styles.workCardTag}>{data.title}</span>
+              <span className={styles.workCardScore}>{data.score.toFixed(2)}</span>
+            </div>
+
+            {data.progress && (
+              <>
+                <div className={styles.workCardProgressLine}>
+                  <span className={styles.workCardProgressLabel}>
+                    {data.progress.servicedToday} of {data.progress.expected} Expected Services
+                  </span>
+                  <span className={styles.workCardProgressPercent}>{Math.round(data.progress.percent)}%</span>
+                </div>
+                <span className={styles.workCardProgressTrack}>
+                  <span className={styles.workCardProgressFill} style={{ width: `${Math.min(100, data.progress.percent)}%` }} />
+                </span>
+              </>
+            )}
+
+            {data.capturedLabel && (
+              <span className={styles.workCardFooterRow}>
+                <i className="fa-regular fa-clock" aria-hidden="true" />
+                {data.capturedLabel}
+              </span>
+            )}
+          </>
         )}
       </div>
     </Card>

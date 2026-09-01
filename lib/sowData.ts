@@ -168,6 +168,9 @@ export type VerificationEvent = {
   location: string;
   score: number;
   timeAgo: string;
+  /** The real contract area/area-type this event is tagged against, when the caller has that context (SowHierarchyPage attaches these after calling verificationsForArea — see its withAreaTagging helper). Falls back to `location` display when absent. */
+  areaDisplayName?: string;
+  areaTypeName?: string;
 };
 
 const SHIFTS: VerificationEvent["shift"][] = ["Day", "Night", "Swing", "Graveyard"];
@@ -188,25 +191,58 @@ export const recentVerifications: VerificationEvent[] = [
   { type: "Spot Clean", personName: "Allison Black", personAvatar: "https://cdn.4insite.com/assets/98e43f08a54d44efb022f444da0a392d_Anthony_t.jpg", position: "Recycle Tech", shift: "Day", location: "Baggage Check — HH3", score: 5, timeAgo: "3 minutes ago" },
 ];
 
-/** Illustrative per-area verification samples — cycles through the same real associate rows (and real positions) as recentVerifications. */
+/**
+ * A broad sample of real associate rows (data/associates.csv) to draw
+ * from — verificationsForArea rotates through this whole pool
+ * (seeded per area name) rather than always the same 2-3 people, so
+ * different areas across the site show different real associates
+ * instead of the same few faces repeating everywhere.
+ */
+const ASSOCIATE_POOL = [
+  { name: "Aaron Ryan", avatar: "https://cdn.4insite.com/image/64d3d91b-36e2-3cba-3b25-ef668df1dcdf_t.png", position: "CSR" },
+  { name: "Adam Craft", avatar: "https://cdn.4insite.com/assets/375f69e40ded4cb7be9baa2cc7429eb0_20241215_140710_t.jpg", position: "Custodian" },
+  { name: "Alicia Langley", avatar: "https://cdn.4insite.com/assets/r2d40f3ab68084c50874cf1163069d0ae_Adelina2_t.jpg", position: "Custodial Supervisor" },
+  { name: "Allen Burgess", avatar: "https://cdn.4insite.com/assets/909695ae86d84dd5917532dd3037af8c_AgustinaGarcia_DB_1_t.jpg", position: "Sr Custodial Lead" },
+  { name: "Allison Black", avatar: "https://cdn.4insite.com/assets/98e43f08a54d44efb022f444da0a392d_Anthony_t.jpg", position: "Recycle Tech" },
+  { name: "Allison Hardin", avatar: "https://cdn.4insite.com/assets/c4a0cedc304a4ce5823e773cfd378cd2_Arnoldo_t.jpg", position: "CSR Lead" },
+  { name: "Amy Sargent", avatar: "https://cdn.4insite.com/assets/6d8af4de2aaf4830b4afeeb317868995_AliciaPrimus_t.jpg", position: "CSR, Exterior" },
+  { name: "Ana Burnett", avatar: "https://cdn.4insite.com/assets/50391811774747b08381a4916da1d4c8_20240816_072045_t.jpg", position: "Cleanroom Tech" },
+  { name: "Andre Barnett", avatar: "https://cdn.4insite.com/assets/c82f8a6dab1f409fbcc6128af4742c35_Weston_t.jpg", position: "Custodial Lead" },
+  { name: "Andrea Hickman", avatar: "https://cdn.4insite.com/assets/2aaabfc1c8d34c59ad7e469c4207aad4_AMALIAMATEOS_t.jpg", position: "Custodial Lead II" },
+  { name: "Andrew Austin", avatar: "https://cdn.4insite.com/assets/r14876ff55e7c49cbb37f9ed1db6b0221_IMG_08721_t.jpg", position: "Custodial Lead, Safety" },
+  { name: "Andy Raymond", avatar: "https://cdn.4insite.com/assets/b99a141d156b40799d376d5f0ca7c6cc_1000002586_t.jpg", position: "Cust Foreperson" },
+  { name: "Angela Fernandez", avatar: "https://cdn.4insite.com/assets/067d5aee17754d9898db1d1f6d12d927_AlesajaCrayton_t.jpg", position: "Custodial Supervisor" },
+  { name: "Annette Kidd", avatar: "https://cdn.4insite.com/assets/f4af2fa5406247e4b22ee422519139ed_ArmandoMunguiaChubb_t.jpg", position: "Customer Service Rep" },
+  { name: "Anthony Salas", avatar: "https://cdn.4insite.com/assets/5f1644dcb6cb46e5bfded64ea8133307_IMG_2611_t.jpg", position: "Floor Tech" },
+  { name: "Antonio Kramer", avatar: "https://cdn.4insite.com/assets/586c0dfdb23545119eefda790711d3f8_IMG_1889_t.jpg", position: "GMP Floor Tech" },
+  { name: "Antonio Potts", avatar: "https://cdn.4insite.com/assets/c011422cd51a4c96b3e6e67af1a3ef34_IMG_2627_t.jpg", position: "Maintenence Tech" },
+  { name: "April May", avatar: "https://cdn.4insite.com/assets/7c18e2f66942433a9cee39601f83eb7d_20230221_130515_t.jpg", position: "CSR" },
+  { name: "Arnold Knapp", avatar: "https://cdn.4insite.com/assets/1604509629.9173334_BLewispicture_t.jpg", position: "Custodian" },
+  { name: "Billie Zamora", avatar: "https://cdn.4insite.com/assets/r2cbbe1d30f314fdf8281ea25b50625f3_image_t.jpg", position: "Custodial Supervisor" },
+  { name: "Bobbie Cohen", avatar: "https://cdn.4insite.com/assets/9ee70832ab44406b9707a4bda77482b7_CAthy_t.jpg", position: "Sr Custodial Lead" },
+  { name: "Bobbie Wong", avatar: "https://cdn.4insite.com/assets/r594bbe6a515d4b3bbc5e6b8d9211898a_MicrosoftTeamsimage6_t.png", position: "Recycle Tech" },
+  { name: "Bobby Davidson", avatar: "https://cdn.4insite.com/assets/465c0fd23241404e8859de5b43cdc2ce_image_t.jpg", position: "CSR Lead" },
+  { name: "Bonnie Foley", avatar: "https://cdn.4insite.com/assets/6fa34aa76bd24c7f9e02f22bd04fc227_ChinhQuang2_t.jpg", position: "CSR, Exterior" },
+];
+
+/** Illustrative per-area verification samples — three associates rotated (seeded per area name) out of the full ASSOCIATE_POOL. */
 export function verificationsForArea(areaName: string): VerificationEvent[] {
-  const people = [
-    { name: "Ana Burnett", avatar: "https://cdn.4insite.com/assets/50391811774747b08381a4916da1d4c8_20240816_072045_t.jpg", position: "Cleanroom Tech" },
-    { name: "Andre Barnett", avatar: "https://cdn.4insite.com/assets/c82f8a6dab1f409fbcc6128af4742c35_Weston_t.jpg", position: "Custodial Lead" },
-    { name: "Andrea Hickman", avatar: "https://cdn.4insite.com/assets/2aaabfc1c8d34c59ad7e469c4207aad4_AMALIAMATEOS_t.jpg", position: "Custodial Lead II" },
-  ];
   const types: VerificationEvent["type"][] = ["Spot Clean", "Full Service", "Periodic"];
-  const seed = areaName.length;
-  return people.map((person, i) => ({
-    type: types[(seed + i) % types.length],
-    personName: person.name,
-    personAvatar: person.avatar,
-    position: person.position,
-    shift: SHIFTS[(seed + i) % SHIFTS.length],
-    location: `${areaName} — Zone ${i + 1}`,
-    score: Number((4.7 + ((seed + i) % 3) * 0.1).toFixed(2)),
-    timeAgo: `${5 + i * 12} minutes ago`,
-  }));
+  const seed = hashSeed(areaName);
+  const start = seed % ASSOCIATE_POOL.length;
+  return Array.from({ length: 3 }, (_, i) => {
+    const person = ASSOCIATE_POOL[(start + i) % ASSOCIATE_POOL.length];
+    return {
+      type: types[(seed + i) % types.length],
+      personName: person.name,
+      personAvatar: person.avatar,
+      position: person.position,
+      shift: SHIFTS[(seed + i) % SHIFTS.length],
+      location: `${areaName} — Zone ${i + 1}`,
+      score: Number((4.7 + ((seed + i) % 3) * 0.1).toFixed(2)),
+      timeAgo: `${5 + i * 12} minutes ago`,
+    };
+  });
 }
 
 export type AreaVerification = VerificationEvent & { areaName: string; building: string; floor: string };
@@ -316,6 +352,35 @@ export function capturedDurationLabel(seedKey: string, dayOffset: number): strin
   return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
 }
 
+function formatTimeOfDay(totalMinutes: number): string {
+  const hour24 = Math.floor(totalMinutes / 60) % 24;
+  const minute = totalMinutes % 60;
+  const period = hour24 >= 12 ? "PM" : "AM";
+  const hour12 = ((hour24 + 11) % 12) + 1;
+  return `${hour12}:${String(minute).padStart(2, "0")} ${period}`;
+}
+
+/**
+ * A single service instance's End/Serviced/Start trio — for
+ * SowHierarchyPage's "View by: Service" list table. Internally
+ * consistent (Start = End − Serviced) rather than three independently
+ * random strings, same generator family as capturedDurationLabel and
+ * timeOfDayForSeed.
+ */
+export function serviceTimingForSeed(seedKey: string, dayOffset: number): { startLabel: string; endLabel: string; servicedLabel: string } {
+  const durationSeconds = 60 + Math.round(scaleForDay(`${seedKey}-duration`, dayOffset, 0, 720));
+  const durationMinutes = Math.round(durationSeconds / 60);
+  const endTotalMinutes = 7 * 60 + (hashSeed(`${seedKey}-end`) % (12 * 60));
+  const startTotalMinutes = Math.max(0, endTotalMinutes - durationMinutes);
+  const minutes = Math.floor(durationSeconds / 60);
+  const seconds = durationSeconds % 60;
+  return {
+    endLabel: formatTimeOfDay(endTotalMinutes),
+    startLabel: formatTimeOfDay(startTotalMinutes),
+    servicedLabel: `${minutes}m ${String(seconds).padStart(2, "0")}s`,
+  };
+}
+
 /** A plausible time-of-day (7:00 AM–6:59 PM) for a past day's verification timestamp, since "X minutes ago" only makes sense for today. */
 export function timeOfDayForSeed(seed: string): string {
   const hash = hashSeed(seed);
@@ -345,6 +410,9 @@ export type AuditEvent = {
   location: string;
   score: number;
   timeAgo: string;
+  /** See VerificationEvent's matching fields — same tagging convention. */
+  areaDisplayName?: string;
+  areaTypeName?: string;
 };
 
 const AUDITORS = [
@@ -358,17 +426,43 @@ export const recentAudits: AuditEvent[] = [
   { auditType: "Joint", auditorName: "Dwayne Wells", auditorAvatar: AUDITORS[1].avatar, location: "Joint Audit — Gate 72", score: 4.6, timeAgo: "5 hours ago" },
 ];
 
-/** Illustrative per-area audit samples, same shape/spirit as verificationsForArea. */
+/**
+ * A broader sample of real manager rows (data/managers.csv) —
+ * auditsForArea rotates through this whole pool (seeded per area
+ * name) instead of always the same 2 auditors, so different areas
+ * show different real people. AUDITORS above stays untouched since
+ * recentAudits indexes into it directly.
+ */
+const AUDITOR_POOL = [
+  { name: "Christina Delacruz", avatar: "https://cdn.4insite.com/assets/3945ad92d52340539a4c70a4e02045bc_ahmed_t.jpg" },
+  { name: "Dwayne Wells", avatar: "https://cdn.4insite.com/assets/95213175388a42e2853c7f8b7c179da6_20230417_074714_t.jpg" },
+  { name: "Jazmin Lin", avatar: "https://cdn.4insite.com/assets/d59260db4c624794aa21a73c958b5e09_FB_IMG_1750046846456_t.jpg" },
+  { name: "Kasey Douglas", avatar: "https://cdn.4insite.com/assets/rc7c1a163596546e097a3312917128ab4_be_t.jpg" },
+  { name: "Mia Moyer", avatar: "https://cdn.4insite.com/assets/r39179793193e423d898d1724715c3f26_Headshot20264_t.png" },
+  { name: "Maya Valenzuela", avatar: "https://cdn.4insite.com/assets/61c4197397a9465383b2fa6fbb46e986_ProfessionalHeadshotCENTERED_t.jpg" },
+  { name: "Kasey Dunn", avatar: "https://cdn.4insite.com/assets/3e80ff336dac4d83aa4060231556d5e9_cropped7432398783125274680.jpg" },
+  { name: "Brendon Lee", avatar: "https://cdn.4insite.com/assets/r0a1cee2e179841c9b22f813f635edc13_portrait_t.jpg" },
+  { name: "Chad Espinoza", avatar: "https://cdn.4insite.com/assets/027bad2c2a994309a2f5343d78902060_Headshort_t.jpg" },
+  { name: "Yurem Richards", avatar: "https://cdn.4insite.com/assets/1598016323.0497205_CB_t.png" },
+  { name: "Crystal Oneal", avatar: "https://cdn.4insite.com/assets/e5b8147192464b1d978e40c4a3ea44ac_Profilepic_t.jpg" },
+  { name: "Cortez Cook", avatar: "https://cdn.4insite.com/assets/4a3cd2e66af74e67a86f8141db8a8c50_20240429_174001_t.jpg" },
+];
+
+/** Illustrative per-area audit samples — two auditors rotated (seeded per area name) out of the full AUDITOR_POOL. */
 export function auditsForArea(areaName: string): AuditEvent[] {
   const seed = hashSeed(areaName);
-  return AUDITORS.map((auditor, i) => ({
-    auditType: AUDIT_TYPES[(seed + i) % AUDIT_TYPES.length],
-    auditorName: auditor.name,
-    auditorAvatar: auditor.avatar,
-    location: `${areaName} — Inspection ${i + 1}`,
-    score: Number((4.6 + ((seed + i) % 3) * 0.12).toFixed(2)),
-    timeAgo: `${2 + i * 3} hours ago`,
-  }));
+  const start = seed % AUDITOR_POOL.length;
+  return Array.from({ length: 2 }, (_, i) => {
+    const auditor = AUDITOR_POOL[(start + i) % AUDITOR_POOL.length];
+    return {
+      auditType: AUDIT_TYPES[(seed + i) % AUDIT_TYPES.length],
+      auditorName: auditor.name,
+      auditorAvatar: auditor.avatar,
+      location: `${areaName} — Inspection ${i + 1}`,
+      score: Number((4.6 + ((seed + i) % 3) * 0.12).toFixed(2)),
+      timeAgo: `${2 + i * 3} hours ago`,
+    };
+  });
 }
 
 export type AreaAudit = AuditEvent & { areaName: string; building: string; floor: string };
@@ -398,6 +492,9 @@ export type ActivityItem = {
   shift?: VerificationEvent["shift"];
   /** The area type's supplied verification/audit photo (public/SOWimages, lib/sowImages.ts), resolved from `location`. Undefined when no photo was supplied for that area type. */
   areaPhoto?: string;
+  /** See VerificationEvent's matching fields — same tagging convention. */
+  areaDisplayName?: string;
+  areaTypeName?: string;
 };
 
 export function verificationToActivity(v: VerificationEvent): ActivityItem {
@@ -412,6 +509,8 @@ export function verificationToActivity(v: VerificationEvent): ActivityItem {
     position: v.position,
     shift: v.shift,
     areaPhoto: photoForLocation(v.location, `${v.location}|${v.personName}`),
+    areaDisplayName: v.areaDisplayName,
+    areaTypeName: v.areaTypeName,
   };
 }
 
@@ -425,6 +524,8 @@ export function auditToActivity(a: AuditEvent): ActivityItem {
     score: a.score,
     timeAgo: a.timeAgo,
     areaPhoto: photoForLocation(a.location, `${a.location}|${a.auditorName}`),
+    areaDisplayName: a.areaDisplayName,
+    areaTypeName: a.areaTypeName,
   };
 }
 

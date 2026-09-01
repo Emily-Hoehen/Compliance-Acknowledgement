@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import styles from "./Select.module.css";
 
 export type SelectOption<T extends string> = {
@@ -15,31 +18,74 @@ export type DsSelectProps<T extends string> = {
 };
 
 /**
- * DsSelect — a native `<select>` restyled to the design system's
- * "Dropdown" component (Figma fileKey SWFMjlBJ4u9vSrVaomRe12): the
- * browser's own caret is suppressed (`appearance: none`) in favor of
- * a Font Awesome chevron laid on top, so it reads the same as every
- * other dropdown in the reference instead of the platform default.
- * Shared across every page with a "Filter / Sort / View by"-style
- * control row (SowHierarchyPage, SowTimeFirstPage).
+ * DsSelect — the design system's "Dropdown" component (Figma fileKey
+ * SWFMjlBJ4u9vSrVaomRe12, node 118:16287, "Dropdown Drawer"): a custom
+ * button + listbox rather than a native `<select>`, since the open
+ * drawer's per-row selected state (a blue tint fill plus a trailing
+ * checkmark, not the browser's own highlight) isn't reproducible by
+ * restyling a native option list. Closes on outside click or Escape,
+ * same idiom as the page's date-preset menu. Shared across every page
+ * with a "Filter / Sort / View by"-style control row (SowHierarchyPage,
+ * SowTimeFirstPage).
  */
 export function DsSelect<T extends string>({ value, onChange, options, ariaLabel, label }: DsSelectProps<T>) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selected = options.find((o) => o.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
   const select = (
-    <span className={styles.selectWrap}>
-      <select
+    <div className={styles.selectWrap} ref={rootRef}>
+      <button
+        type="button"
         className={styles.dsSelect}
-        value={value}
-        onChange={(e) => onChange(e.target.value as T)}
         aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
       >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <i className={["fa-solid fa-chevron-down", styles.selectCaret].join(" ")} aria-hidden="true" />
-    </span>
+        <span className={styles.dsSelectValue}>{selected?.label ?? ""}</span>
+        <i className={["fa-solid fa-chevron-down", styles.selectCaret].join(" ")} aria-hidden="true" />
+      </button>
+      {open && (
+        <div className={styles.dropdownDrawer} role="listbox" aria-label={ariaLabel}>
+          {options.map((o) => {
+            const isSelected = o.value === value;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                className={[styles.dropdownItem, isSelected ? styles.dropdownItemSelected : ""].filter(Boolean).join(" ")}
+                onClick={() => {
+                  onChange(o.value);
+                  setOpen(false);
+                }}
+              >
+                <span className={styles.dropdownItemLabel}>{o.label}</span>
+                {isSelected && <i className={["fa-solid fa-check", styles.dropdownItemCheck].join(" ")} aria-hidden="true" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 
   if (!label) return select;

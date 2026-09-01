@@ -85,6 +85,38 @@ export type ContractTaskDef = {
   shifts: string[];
 };
 
+/**
+ * A task's frequency, normalized off its free-text label — "Daily" /
+ * "Weekly" / "Monthly" schedules are on a fixed cycle; "As Needed"
+ * isn't. Shared by every page that needs "is this task due for a
+ * given period" (SowTimeFirstPage's Scope & Frequency section,
+ * SowHierarchyPage's scope modal) so they agree on the same rule
+ * instead of each parsing frequency text its own way.
+ */
+export type FreqPeriod = "Daily" | "Weekly" | "Monthly" | "As Needed" | "Other";
+
+/** Cycle length in days for each schedule-driven frequency — a task is "due" for a period once the period spans at least one full cycle. "As Needed" and "Other" aren't on a fixed schedule, so they're never counted as due; they're surfaced separately instead. */
+export const FREQ_CYCLE_DAYS: Record<FreqPeriod, number | null> = {
+  Daily: 1,
+  Weekly: 7,
+  Monthly: 30,
+  "As Needed": null,
+  Other: null,
+};
+
+export function frequencyPeriod(freq: string): FreqPeriod {
+  if (/as needed/i.test(freq)) return "As Needed";
+  if (/daily/i.test(freq)) return "Daily";
+  if (/weekly/i.test(freq)) return "Weekly";
+  if (/monthly/i.test(freq)) return "Monthly";
+  return "Other";
+}
+
+export function isTaskDueForPeriod(freq: string, periodDays: number): boolean {
+  const cycle = FREQ_CYCLE_DAYS[frequencyPeriod(freq)];
+  return cycle !== null && cycle <= periodDays;
+}
+
 export type ContractAreaType = {
   name: string;
   building: string;

@@ -275,6 +275,7 @@
   --wash-success-15: rgba(0, 134, 73, 0.15); /* Text/Success @15% */
   --wash-danger-15: rgba(204, 0, 82, 0.15); /* Danger/700 @15% */
   --wash-pinkle-light-15: rgba(217, 128, 255, 0.15); /* Datavis Pinkle/100 @15% */
+  --wash-bubblegum-15: rgba(255, 128, 233, 0.15); /* Datavis Bubblegum/100 @15% */
   --wash-neutral-15: rgba(167, 177, 185, 0.15); /* Core/Neutral/500 @15% */
 }
 

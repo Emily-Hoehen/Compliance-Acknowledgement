@@ -26,7 +26,15 @@ import {
   type VerificationEvent,
 } from "../../lib/sowData";
 import { photoForAreaType } from "../../lib/sowImages";
-import type { ContractArea, ContractAreaType, ContractBuilding, ContractTaskDef } from "../../lib/sowContract";
+import {
+  frequencyPeriod,
+  isTaskDueForPeriod,
+  type ContractArea,
+  type ContractAreaType,
+  type ContractBuilding,
+  type ContractTaskDef,
+  type FreqPeriod,
+} from "../../lib/sowContract";
 import type { RosterPerson } from "../../lib/csv";
 import sharedStyles from "./SowPage.module.css";
 import styles from "./SowTimeFirstPage.module.css";
@@ -323,27 +331,6 @@ type RosterKind = "associates" | "managers";
 
 // ---------------- Scope & Frequency tab: real contracted tasks, grouped by
 // Area Type / Building / Area, due for the selected period ----------------
-
-type FreqPeriod = "Daily" | "Weekly" | "Monthly" | "As Needed" | "Other";
-/** Cycle length in days for each schedule-driven frequency — a task is "due" for a period once the period spans at least one full cycle. "As Needed" and "Other" aren't on a fixed schedule, so they're never counted as due; they're surfaced separately instead. */
-const FREQ_CYCLE_DAYS: Record<FreqPeriod, number | null> = {
-  Daily: 1,
-  Weekly: 7,
-  Monthly: 30,
-  "As Needed": null,
-  Other: null,
-};
-function frequencyPeriod(freq: string): FreqPeriod {
-  if (/as needed/i.test(freq)) return "As Needed";
-  if (/daily/i.test(freq)) return "Daily";
-  if (/weekly/i.test(freq)) return "Weekly";
-  if (/monthly/i.test(freq)) return "Monthly";
-  return "Other";
-}
-function isTaskDueForPeriod(freq: string, periodDays: number): boolean {
-  const cycle = FREQ_CYCLE_DAYS[frequencyPeriod(freq)];
-  return cycle !== null && cycle <= periodDays;
-}
 
 const FREQUENCY_FILTER_OPTIONS: { value: FreqPeriod | "all"; label: string }[] = [
   { value: "all", label: "All Frequencies" },

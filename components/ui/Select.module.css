@@ -1,6 +1,7 @@
 /* ============================================================
-   DsSelect — design-system dropdown: native <select>, custom caret.
-   Design tokens only (colors, type all from app/globals.css).
+   DsSelect — design-system dropdown: button trigger + custom
+   listbox drawer. Design tokens only (colors, type all from
+   app/globals.css).
    ============================================================ */
 
 .filterField {
@@ -25,9 +26,13 @@
 .dsSelect {
   appearance: none;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   min-width: 150px;
   height: 40px;
-  padding: 0 32px 0 12px;
+  padding: 0 12px;
   border-radius: 4px;
   background-color: var(--surface-lt-card);
   border: 1px solid var(--color-neutral-400);
@@ -36,12 +41,72 @@
   font-size: var(--type-body-md-size);
 }
 
+.dsSelectValue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .selectCaret {
-  position: absolute;
-  top: 50%;
-  right: 12px;
-  transform: translateY(-50%);
-  pointer-events: none;
+  flex-shrink: 0;
   font-size: 14px;
   color: var(--color-neutral-500);
+}
+
+/* Open drawer — Figma "Dropdown Drawer" (node 118:16287): edge-to-edge
+   40px rows, no container padding. The selected row alone gets a
+   Primary/500 @15% tint and a trailing blue checkmark instead of the
+   browser's own option highlight. */
+.dropdownDrawer {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  min-width: 100%;
+  width: max-content;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--surface-lt-card);
+  border-radius: 4px;
+  box-shadow: var(--shadow-lt-popup-menu);
+  overflow: hidden;
+}
+
+.dropdownItem {
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 40px;
+  padding: 0 16px;
+  text-align: left;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-default);
+}
+
+.dropdownItem:hover {
+  background-color: var(--color-neutral-200);
+}
+
+.dropdownItemSelected,
+.dropdownItemSelected:hover {
+  padding: 0 8px 0 12px;
+  background-color: var(--btn-ghost-lt-primary-static);
+}
+
+.dropdownItemLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdownItemCheck {
+  flex-shrink: 0;
+  font-size: 20px;
+  color: var(--color-primary-500);
 }
