@@ -232,6 +232,20 @@ const ASSOCIATE_POOL = [
 ];
 
 /**
+ * "5 minutes ago" only reads right just past midnight — everything
+ * else on a busy today reads better as "Xh Ym ago" than a triple-digit
+ * minute count (grouped views like Tasks/Employee surface original,
+ * far-apart indices side by side within one group, so `i` here can
+ * run well past 60 even though every row is still "today").
+ */
+function formatMinutesAgo(totalMinutes: number): string {
+  if (totalMinutes < 60) return `${totalMinutes} minute${totalMinutes === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes === 0 ? `${hours}h ago` : `${hours}h ${minutes}m ago`;
+}
+
+/**
  * "5 minutes ago" only reads right for today's own feed — anything
  * else (Yesterday, a week, a month...) shows a real calendar date
  * instead, spread across the selected range (oldest items near the
@@ -240,7 +254,7 @@ const ASSOCIATE_POOL = [
  */
 function timeAgoForIndex(i: number, count: number, dayOffset: number, periodDays: number, seed: string): string {
   const isToday = dayOffset === 0 && periodDays <= 1;
-  if (isToday || count <= 1) return `${5 + i * 12} minutes ago`;
+  if (isToday || count <= 1) return formatMinutesAgo(5 + i * 12);
   const daysAgo =
     periodDays <= 1 ? dayOffset : dayOffset + Math.min(periodDays - 1, Math.floor(((i + 0.5) / count) * periodDays));
   const d = new Date();
@@ -419,7 +433,7 @@ export function capturedDurationLabel(seedKey: string, dayOffset: number): strin
   return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
 }
 
-function formatTimeOfDay(totalMinutes: number): string {
+export function formatTimeOfDay(totalMinutes: number): string {
   const hour24 = Math.floor(totalMinutes / 60) % 24;
   const minute = totalMinutes % 60;
   const period = hour24 >= 12 ? "PM" : "AM";
@@ -730,4 +744,93 @@ export function teamForNode(
           : timeOfDayForSeed(`${personSeed}-${dayOffset}-recent`),
     };
   });
+}
+
+/* ============================================================
+ * Flights — the Arrivals/Departing board behind a Gates or Jet
+ * Bridges area/area type's "Flights" modal on SowHierarchyPage.
+ * There's no real flight schedule behind this dataset, so it's a
+ * plausible LGA-shaped board (real domestic routes, deterministic
+ * per seed+day like the rest of this file) rather than live data —
+ * the Gate column draws from the selection's own real gate/jet-
+ * bridge area names, so it still ties back to the actual SOW.
+ * ============================================================ */
+
+const FLIGHT_CITIES = [
+  "Nashville",
+  "Minneapolis",
+  "Boston",
+  "Dallas-Fort Worth",
+  "Detroit",
+  "Chicago",
+  "Houston",
+  "Atlanta",
+  "Denver",
+  "Miami",
+  "Albany",
+  "Portland",
+  "Bangor",
+  "Buffalo",
+  "Syracuse",
+  "Rochester",
+  "Toronto",
+  "Burlington",
+  "Charlottesville",
+  "Raleigh-Durham",
+  "Charlotte",
+  "Philadelphia",
+  "Washington DC",
+  "Cleveland",
+  "Cincinnati",
+  "Indianapolis",
+  "St. Louis",
+  "New Orleans",
+  "Tampa",
+  "Orlando",
+];
+
+export type FlightRow = {
+  key: string;
+  place: string;
+  flightNumber: string;
+  date: string;
+  scheduledTime: string;
+  status: "onTime" | "delayed";
+  /** Only set when status is "delayed" — the revised time shown in place of "On Time". */
+  updatedTime?: string;
+  gate: string;
+};
+
+function flightBoardForSeed(seedKey: string, dateLabel: string, count: number, gates: string[]): FlightRow[] {
+  const latestMinutes = 16 * 60 + (hashSeed(`${seedKey}-start`) % 90);
+  return Array.from({ length: count }, (_, i) => {
+    const rowSeed = `${seedKey}-${i}`;
+    const hash = hashSeed(rowSeed);
+    const scheduledMinutes = Math.max(0, latestMinutes - i * (8 + (hash % 8)));
+    const delayed = hash % 6 === 0;
+    return {
+      key: rowSeed,
+      place: FLIGHT_CITIES[hash % FLIGHT_CITIES.length],
+      flightNumber: String(100 + (hash % 9000)),
+      date: dateLabel,
+      scheduledTime: formatTimeOfDay(scheduledMinutes),
+      status: delayed ? "delayed" : "onTime",
+      updatedTime: delayed ? formatTimeOfDay(scheduledMinutes + 4 + (hash % 10)) : undefined,
+      gate: gates.length > 0 ? gates[hash % gates.length] : "—",
+    };
+  });
+}
+
+/** Arrivals + Departing boards for a Gates/Jet Bridges selection — same seed+day determinism as everywhere else, so revisiting a day reproduces the same flight list. */
+export function flightsForNode(
+  seedKey: string,
+  dateLabel: string,
+  gates: string[],
+  arrivalsCount: number,
+  departuresCount: number
+): { arrivals: FlightRow[]; departures: FlightRow[] } {
+  return {
+    arrivals: flightBoardForSeed(`${seedKey}-arr`, dateLabel, arrivalsCount, gates),
+    departures: flightBoardForSeed(`${seedKey}-dep`, dateLabel, departuresCount, gates),
+  };
 }

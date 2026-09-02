@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { SowNav } from "./SowNav";
 import { Card } from "../ui/Card";
 import { Input } from "../ui/Input";
@@ -29,10 +29,12 @@ import {
   hashSeed,
   capturedDurationLabel,
   serviceTimingForSeed,
+  flightsForNode,
   type VerificationEvent,
   type AuditEvent,
   type ActivityItem,
   type ActivityKind,
+  type FlightRow,
 } from "../../lib/sowData";
 import {
   findContractAreaType,
@@ -71,14 +73,35 @@ type GroupBy = "building" | "areaType";
 type ViewMode = "grid" | "list" | "tasks";
 type SortOrder = "recent" | "score-desc" | "score-asc";
 
-/** Which unit each evidence card represents — Figma's "View by" dropdown (Area / Area Type / Element / Service, fileKey SWFMjlBJ4u9vSrVaomRe12, node 100:21953). */
-type CardGranularity = "areaType" | "area" | "element" | "service";
+/** Which unit each evidence card represents — now surfaced as its own count button row above the Work grid, one pill per granularity (fileKey SWFMjlBJ4u9vSrVaomRe12, node 139:29458), rather than a "View by" dropdown. */
+type CardGranularity = "areaType" | "area" | "element" | "service" | "employee";
 
-const CARD_GRANULARITY_OPTIONS: { id: CardGranularity; label: string }[] = [
-  { id: "areaType", label: "Area Type" },
-  { id: "area", label: "Area" },
-  { id: "service", label: "Service" },
-  { id: "element", label: "Element" },
+const CARD_GRANULARITY_OPTIONS: { id: CardGranularity; label: string; pluralLabel: string; icon: ReactNode }[] = [
+  {
+    id: "areaType",
+    label: "Area Type",
+    pluralLabel: "Area Types",
+    icon: <i className="fa-solid fa-object-ungroup" aria-hidden="true" />,
+  },
+  { id: "area", label: "Area", pluralLabel: "Areas", icon: <i className="fa-solid fa-vector-square" aria-hidden="true" /> },
+  {
+    id: "service",
+    label: "Service",
+    pluralLabel: "Services",
+    icon: <i className="fa-solid fa-broom-wide" aria-hidden="true" />,
+  },
+  {
+    id: "element",
+    label: "Element",
+    pluralLabel: "Elements",
+    icon: <i className="fa-solid fa-object-group" aria-hidden="true" />,
+  },
+  {
+    id: "employee",
+    label: "Employee",
+    pluralLabel: "Employees",
+    icon: <i className="fa-solid fa-user-group" aria-hidden="true" />,
+  },
 ];
 
 /**
@@ -318,6 +341,13 @@ function formatDateLabel(offset: number): string {
   return `${weekday}, ${dateStr}`;
 }
 
+/** "09/02/2026" — the Flights modal's date column, distinct from formatDateLabel's "Today, Sep 2, 2026" nav-bar style. */
+function formatSlashDate(offset: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - offset);
+  return d.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
+}
+
 /** Short form for chart axis labels — "Today" / "Yesterday" / "Aug 24". */
 function formatShortDayLabel(offset: number): string {
   if (offset === 0) return "Today";
@@ -526,11 +556,11 @@ function rangeLabelForPreset(preset: DatePreset): string | null {
   return null;
 }
 
-/** "All / Verifications / Audits" filter pills atop the Work grid — Figma's Filter Button row (fileKey SWFMjlBJ4u9vSrVaomRe12, node 100:21986). */
-const TYPE_OPTIONS: ButtonGroupOption<ActivityKind | "all">[] = [
-  { id: "all", label: "All", icon: <i className="fa-solid fa-check-double" aria-hidden="true" /> },
-  { id: "verification", label: "Verifications", icon: <i className="fa-solid fa-badge-check" aria-hidden="true" /> },
-  { id: "audit", label: "Audits", icon: <i className="fa-solid fa-clipboard-check" aria-hidden="true" /> },
+/** "All / Verifications / Audits" — now the Work section's Type filter dropdown, alongside Filter/Sort (fileKey SWFMjlBJ4u9vSrVaomRe12, node 139:29458), rather than its own filter-pill row. */
+const TYPE_FILTER_OPTIONS: { value: ActivityKind | "all"; label: string }[] = [
+  { value: "all", label: "All Types" },
+  { value: "verification", label: "Verifications" },
+  { value: "audit", label: "Audits" },
 ];
 
 const GROUP_BY_OPTIONS: ButtonGroupOption<GroupBy>[] = [
@@ -614,6 +644,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
   });
   const treeRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLElement>(null);
+  const workSectionRef = useRef<HTMLDivElement>(null);
 
   // Two independent scroll adjustments on every new tree selection: the
   // main content pane's own top scrolls into view (not the whole page —
@@ -722,6 +753,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
   const [scopeModalOpen, setScopeModalOpen] = useState(false);
   const [openScopeIds, setOpenScopeIds] = useState<string[]>([]);
   const [viewedServiceItem, setViewedServiceItem] = useState<WorkCardData | null>(null);
+  const [flightsModalOpen, setFlightsModalOpen] = useState(false);
 
   function isModeled(buildingName: string): boolean {
     return contractBuildings.some((cb) => cb.name === buildingName);
@@ -806,7 +838,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
   // back to "Area"); with one specific area picked, "by area" is the same
   // dead end too, so both drop out (falling back to "Element").
   const availableCardGranularityOptions = useMemo(() => {
-    if (selectedArea) return CARD_GRANULARITY_OPTIONS.filter((o) => o.id === "element" || o.id === "service");
+    if (selectedArea) return CARD_GRANULARITY_OPTIONS.filter((o) => o.id === "element" || o.id === "service" || o.id === "employee");
     if (selectedAreaType) return CARD_GRANULARITY_OPTIONS.filter((o) => o.id !== "areaType");
     return CARD_GRANULARITY_OPTIONS;
   }, [selectedArea, selectedAreaType]);
@@ -840,62 +872,119 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
   // (a month reads like a month's worth of services, not always the
   // same flat handful). Split mostly into verifications, a small
   // realistic slice into audits (audits are inherently rarer).
-  function evidenceCountsForArea(areaType: ContractAreaType, area: ContractArea) {
+  function evidenceCountsForArea(areaType: ContractAreaType, area: ContractArea, offset: number = dayOffset) {
     const dailyTaskInstances = areaType.tasks.reduce((sum, t) => sum + (t.freqCount ?? 1), 0);
     const expected = Math.max(1, dailyTaskInstances * periodDays);
-    const completed = Math.max(1, Math.round(expected * scaleForDay(`${area.areaId}-serviced`, dayOffset, 0.2, 0.95)));
+    const completed = Math.max(1, Math.round(expected * scaleForDay(`${area.areaId}-serviced`, offset, 0.2, 0.95)));
     const auditCount = Math.max(1, Math.round(completed * 0.08));
     const verificationCount = Math.max(1, completed - auditCount);
     return { verificationCount, auditCount };
   }
 
-  const evidenceVerifications = useMemo(() => {
-    let base: VerificationEvent[];
-    if (selectedContractAreaType && selectedArea) {
-      const { verificationCount } = evidenceCountsForArea(selectedContractAreaType, selectedArea);
-      base = withForcedArea(
-        verificationsForArea(selectedContractAreaType.name, verificationCount, periodDays, dayOffset),
-        selectedArea.displayName,
-        selectedContractAreaType.name
-      );
-    } else if (selectedContractAreaType) {
-      base = withAreaTagging(verificationsForArea(selectedContractAreaType.name), selectedContractAreaType);
-    } else if (selection.buildingName && isModeled(selection.buildingName)) {
-      const modeled = contractBuildings.find((cb) => cb.name === selection.buildingName)!;
-      base = modeled.areaTypes.flatMap((at) => withAreaTagging(verificationsForArea(at.name), at));
-    } else if (isSiteLevel) {
-      // A few featured area types per building rather than every one — flattening
-      // all ~40 area types across all 7 buildings would produce thousands of cards.
-      base = contractBuildings.flatMap((cb) =>
-        cb.areaTypes.slice(0, 3).flatMap((at) => withAreaTagging(verificationsForArea(at.name), at))
-      );
-    } else {
-      base = [];
-    }
-    return base.filter((v) => taskTypeFilter === ALL || v.type === taskTypeFilter);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedContractAreaType, selectedArea, selection.buildingName, isSiteLevel, contractBuildings, taskTypeFilter, periodDays, dayOffset]);
+  // Same math, summed across every real area the area type has — so
+  // "View by: Service" at the area-type level (no specific area
+  // drilled into) shows the services from ALL of its areas for the
+  // selected range, not a flat handful. Reuses each area's own
+  // areaId-seeded completion fraction, so the area-type total is
+  // always exactly the sum of what each of its areas would show on
+  // its own.
+  function evidenceCountsForAreaType(areaType: ContractAreaType, offset: number = dayOffset) {
+    const dailyTaskInstances = areaType.tasks.reduce((sum, t) => sum + (t.freqCount ?? 1), 0);
+    const expectedPerArea = Math.max(1, dailyTaskInstances * periodDays);
+    const completed = Math.max(
+      1,
+      areaType.areas.reduce(
+        (sum, area) => sum + Math.max(1, Math.round(expectedPerArea * scaleForDay(`${area.areaId}-serviced`, offset, 0.2, 0.95))),
+        0
+      )
+    );
+    const auditCount = Math.max(1, Math.round(completed * 0.08));
+    const verificationCount = Math.max(1, completed - auditCount);
+    return { verificationCount, auditCount };
+  }
 
-  const evidenceAudits = useMemo((): AuditEvent[] => {
-    if (selectedContractAreaType && selectedArea) {
-      const { auditCount } = evidenceCountsForArea(selectedContractAreaType, selectedArea);
-      return withForcedArea(
-        auditsForArea(selectedContractAreaType.name, auditCount, periodDays, dayOffset),
-        selectedArea.displayName,
-        selectedContractAreaType.name
-      );
-    }
-    if (selectedContractAreaType) return withAreaTagging(auditsForArea(selectedContractAreaType.name), selectedContractAreaType);
-    if (selection.buildingName && isModeled(selection.buildingName)) {
-      const modeled = contractBuildings.find((cb) => cb.name === selection.buildingName)!;
-      return modeled.areaTypes.flatMap((at) => withAreaTagging(auditsForArea(at.name), at));
-    }
-    if (isSiteLevel) {
-      return contractBuildings.flatMap((cb) => cb.areaTypes.slice(0, 3).flatMap((at) => withAreaTagging(auditsForArea(at.name), at)));
-    }
-    return [];
+  // Parameterized on an arbitrary day offset (rather than reading
+  // dayOffset from state directly) so the exact same real generation
+  // logic can be replayed for past days — used both for "today's"
+  // evidence below and for the Employees trend line's day-by-day
+  // headcount (employeesCountForOffset), so the two never disagree.
+  // Split into an unfiltered base (every real verification for this
+  // area/time) plus a taskTypeFilter pass on top, because the
+  // Performance Summary's Employees count needs the base — it reflects
+  // who serviced this area over this time range, not whatever Type/
+  // Service filter happens to be set in the Work section below.
+  const buildVerificationsBaseForOffset = useCallback(
+    (offset: number): VerificationEvent[] => {
+      if (selectedContractAreaType && selectedArea) {
+        const { verificationCount } = evidenceCountsForArea(selectedContractAreaType, selectedArea, offset);
+        return withForcedArea(
+          verificationsForArea(selectedContractAreaType.name, verificationCount, periodDays, offset),
+          selectedArea.displayName,
+          selectedContractAreaType.name
+        );
+      }
+      if (selectedContractAreaType) {
+        const { verificationCount } = evidenceCountsForAreaType(selectedContractAreaType, offset);
+        return withAreaTagging(
+          verificationsForArea(selectedContractAreaType.name, verificationCount, periodDays, offset),
+          selectedContractAreaType
+        );
+      }
+      if (selection.buildingName && isModeled(selection.buildingName)) {
+        const modeled = contractBuildings.find((cb) => cb.name === selection.buildingName)!;
+        return modeled.areaTypes.flatMap((at) => withAreaTagging(verificationsForArea(at.name), at));
+      }
+      if (isSiteLevel) {
+        // A few featured area types per building rather than every one — flattening
+        // all ~40 area types across all 7 buildings would produce thousands of cards.
+        return contractBuildings.flatMap((cb) =>
+          cb.areaTypes.slice(0, 3).flatMap((at) => withAreaTagging(verificationsForArea(at.name), at))
+        );
+      }
+      return [];
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedContractAreaType, selectedArea, selection.buildingName, isSiteLevel, contractBuildings, periodDays, dayOffset]);
+    [selectedContractAreaType, selectedArea, selection.buildingName, isSiteLevel, contractBuildings, periodDays]
+  );
+
+  const buildEvidenceVerifications = useCallback(
+    (offset: number): VerificationEvent[] =>
+      buildVerificationsBaseForOffset(offset).filter((v) => taskTypeFilter === ALL || v.type === taskTypeFilter),
+    [buildVerificationsBaseForOffset, taskTypeFilter]
+  );
+
+  const buildEvidenceAudits = useCallback(
+    (offset: number): AuditEvent[] => {
+      if (selectedContractAreaType && selectedArea) {
+        const { auditCount } = evidenceCountsForArea(selectedContractAreaType, selectedArea, offset);
+        return withForcedArea(
+          auditsForArea(selectedContractAreaType.name, auditCount, periodDays, offset),
+          selectedArea.displayName,
+          selectedContractAreaType.name
+        );
+      }
+      if (selectedContractAreaType) {
+        const { auditCount } = evidenceCountsForAreaType(selectedContractAreaType, offset);
+        return withAreaTagging(
+          auditsForArea(selectedContractAreaType.name, auditCount, periodDays, offset),
+          selectedContractAreaType
+        );
+      }
+      if (selection.buildingName && isModeled(selection.buildingName)) {
+        const modeled = contractBuildings.find((cb) => cb.name === selection.buildingName)!;
+        return modeled.areaTypes.flatMap((at) => withAreaTagging(auditsForArea(at.name), at));
+      }
+      if (isSiteLevel) {
+        return contractBuildings.flatMap((cb) => cb.areaTypes.slice(0, 3).flatMap((at) => withAreaTagging(auditsForArea(at.name), at)));
+      }
+      return [];
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedContractAreaType, selectedArea, selection.buildingName, isSiteLevel, contractBuildings, periodDays]
+  );
+
+  const evidenceVerifications = useMemo(() => buildEvidenceVerifications(dayOffset), [buildEvidenceVerifications, dayOffset]);
+  const evidenceAudits = useMemo(() => buildEvidenceAudits(dayOffset), [buildEvidenceAudits, dayOffset]);
 
   const evidenceActivity = useMemo(() => {
     const verificationItems = evidenceVerifications.map(verificationToActivity);
@@ -904,6 +993,16 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
     if (activityFilter === "audit") return auditItems;
     return [...verificationItems, ...auditItems];
   }, [evidenceVerifications, evidenceAudits, activityFilter]);
+
+  /** Distinct employee headcount for an arbitrary day — replays the same real verification/audit generation "today's" evidence uses (just for a different offset), off the unfiltered base rather than buildEvidenceVerifications, so it reflects who serviced this area/time range regardless of the Work section's Type/Service filters below (those are for browsing evidence, not for defining "how many employees"). */
+  const employeesCountForOffset = useCallback(
+    (offset: number): number => {
+      const verificationItems = buildVerificationsBaseForOffset(offset).map(verificationToActivity);
+      const auditItems = buildEvidenceAudits(offset).map(auditToActivity);
+      return new Set([...verificationItems, ...auditItems].map((item) => item.personName)).size;
+    },
+    [buildVerificationsBaseForOffset, buildEvidenceAudits]
+  );
 
   const metricSeedKey = selection.areaTypeName ?? selection.buildingName ?? "site";
   // Hours Captured specifically gets a per-area seed once a specific
@@ -1056,7 +1155,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
 
   const gridCards: WorkCardData[] = useMemo(() => {
     const base =
-      cardGranularity === "service"
+      cardGranularity === "service" || cardGranularity === "employee"
         ? serviceCards
         : cardGranularity === "area"
           ? areaCards
@@ -1094,6 +1193,60 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
     }
     const completed = facilitySummary.verificationsCompleted * scaleForDay("site-completed", offset);
     return facilitySummary.verificationsExpected > 0 ? Math.min(100, (completed / facilitySummary.verificationsExpected) * 100) : 0;
+  }
+
+  // Employees metric card: who serviced this exact area over this exact
+  // time range — built from the unfiltered verification/audit base
+  // (buildVerificationsBaseForOffset + buildEvidenceAudits), not
+  // serviceCards, so it stays put regardless of whatever Type/Service
+  // filter is set in the Work section below. Those filters are for
+  // browsing evidence; they shouldn't make the summary's headcount
+  // wobble.
+  const employeesForSelection = useMemo(() => {
+    const verificationItems = buildVerificationsBaseForOffset(dayOffset).map(verificationToActivity);
+    const auditItems = buildEvidenceAudits(dayOffset).map(auditToActivity);
+    const byPerson = new Map<string, { name: string; avatar?: string }>();
+    [...verificationItems, ...auditItems].forEach((item) => {
+      if (!byPerson.has(item.personName)) byPerson.set(item.personName, { name: item.personName, avatar: item.personAvatar });
+    });
+    return Array.from(byPerson.values());
+  }, [buildVerificationsBaseForOffset, buildEvidenceAudits, dayOffset]);
+
+  const teamMembersCount = employeesForSelection.length;
+
+  // Distinct employees actually present in the (filtered) Work section
+  // grid — separate from teamMembersCount above, since the "Employees"
+  // view button's own badge should reflect the same rows its list
+  // would show once you switch to it, filters and all.
+  const workSectionEmployeesCount = useMemo(
+    () => new Set(serviceCards.map((item) => item.personName ?? "Unassigned")).size,
+    [serviceCards]
+  );
+
+  // How many items each granularity would show for this exact selection —
+  // powers the count badges on the "View by" buttons above the Work grid
+  // (e.g. "24 Area Types").
+  const cardGranularityCounts: Record<CardGranularity, number> = {
+    areaType: areaTypeCards.length,
+    area: areaCards.length,
+    service: serviceCards.length,
+    element: elementCards.length,
+    employee: workSectionEmployeesCount,
+  };
+
+  const teamMembersPreview = employeesForSelection.slice(0, 5);
+  const teamMembersNamedCount = Math.min(3, teamMembersPreview.length);
+  const teamMembersOverflow = teamMembersCount - teamMembersNamedCount;
+  const teamMembersDescription = `${teamMembersPreview
+    .slice(0, teamMembersNamedCount)
+    .map((m) => m.name)
+    .join(", ")}${teamMembersOverflow > 0 ? ` +${teamMembersOverflow.toLocaleString()} more` : ""} serviced this area`;
+
+  /** Employees card click — jump the Work section's "View by" down to Employee (List view, so EmployeeListTable actually renders) and scroll it into view, so every employee who serviced the current selection is right there. */
+  function viewEmployeesForArea() {
+    setCardGranularity("employee");
+    setViewMode("list");
+    workSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   const dayAreaServicedToday = selectedAreaType
@@ -1136,6 +1289,9 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
   const auditScoreTrendSeries = Array.from({ length: metricTrendDays }, (_, i) =>
     scoreForDay(`${metricSeedKey}-audit-score`, dayOffset + (metricTrendDays - 1 - i))
   );
+  const teamMembersTrendSeries = Array.from({ length: metricTrendDays }, (_, i) =>
+    employeesCountForOffset(dayOffset + (metricTrendDays - 1 - i))
+  );
 
   const metaFloorCount = selectedContractAreaType
     ? new Set(selectedContractAreaType.areas.map((a) => a.floor)).size
@@ -1143,21 +1299,68 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
       ? new Set(selectedBuildingContract.areaTypes.flatMap((at) => at.areas.map((a) => a.floor))).size
       : 0;
   const metaAreaCount = selectedContractAreaType ? selectedContractAreaType.areas.length : (selectedBuildingContract?.areaCount ?? 0);
+  const metaAreaTypeCount = selectedBuildingContract && !selectedContractAreaType ? selectedBuildingContract.areaTypes.length : null;
+  // Only meaningful for a cross-building "Group by: Area Type" selection
+  // (e.g. "Restrooms" across every building that has one) — how many
+  // distinct buildings actually contribute to this area type's areas.
+  const metaBuildingCount =
+    selection.crossBuilding && selection.areaTypeName
+      ? (areaTypeGroups.find((g) => g.areaTypeName === selection.areaTypeName)?.instances.length ?? null)
+      : null;
   const hasHeaderMeta = !!selectedContractAreaType || !!selectedBuildingContract;
+
+  // Flights alert: Gates/Jet Bridges areas and area types are the only
+  // spaces that actually support flights, so the banner + modal only
+  // ever show for those — a specific gate (selectedArea) or the whole
+  // area type (single building or the cross-building group).
+  const flightAreaSelected = !!selectedContractAreaType && /gate|jet bridge/i.test(selectedContractAreaType.name);
+  const flightGateLabels = flightAreaSelected
+    ? selectedArea
+      ? [selectedArea.displayName]
+      : selectedContractAreaType!.areas.map((a) => a.displayName)
+    : [];
+  // Roughly 1.5 arrivals + 1.5 departures per real gate/jet-bridge area
+  // per day, varied like every other per-day count on this page —
+  // capped so the modal's tables stay a readable length even when a
+  // whole area type (many gates) is in view.
+  const flightAreaCount = selectedArea ? 1 : (selectedContractAreaType?.areas.length ?? 0);
+  const flightArrivalsCount = flightAreaSelected
+    ? Math.max(1, Math.min(12, Math.round(flightAreaCount * 1.5 * scaleForDay(`${metricSeedKey}-flights-arr`, dayOffset, 0.7, 1.3))))
+    : 0;
+  const flightDeparturesCount = flightAreaSelected
+    ? Math.max(1, Math.min(12, Math.round(flightAreaCount * 1.5 * scaleForDay(`${metricSeedKey}-flights-dep`, dayOffset, 0.7, 1.3))))
+    : 0;
+  const flightsSupportedCount = flightArrivalsCount + flightDeparturesCount;
+  const { arrivals: flightArrivals, departures: flightDepartures } = flightAreaSelected
+    ? flightsForNode(metricSeedKey, formatSlashDate(dayOffset), flightGateLabels, flightArrivalsCount, flightDeparturesCount)
+    : { arrivals: [] as FlightRow[], departures: [] as FlightRow[] };
 
   // "Delta LGA / All Buildings / Conference Rooms" — site, then the
   // building (or "All Buildings" for a cross-building area type group),
   // then whatever leaf is selected. Only shown once you've drilled past
-  // the site level, same as a real breadcrumb trail.
-  const breadcrumbLabel = useMemo(() => {
+  // the site level, same as a real breadcrumb trail. Every segment that
+  // isn't the current page is clickable and jumps straight back to
+  // that level — "All Buildings" and the trailing leaf have no
+  // shallower state of their own to jump to (crossBuilding always
+  // carries an area type with it, and the leaf is just where you
+  // already are), so those two stay plain text.
+  const breadcrumbSegments = useMemo(() => {
     if (isSiteLevel) return null;
     const siteCode = siteInfo.siteName.split("-")[0];
-    const segments = [`${siteInfo.client} ${siteCode}`];
-    if (selection.crossBuilding) segments.push("All Buildings");
-    else if (selection.buildingName) segments.push(selection.buildingName);
-    if (selectedArea) segments.push(selectedArea.displayName);
-    else if (selectedAreaType) segments.push(selectedAreaType.name);
-    return segments.join(" / ");
+    const hasLeaf = !!selectedArea || !!selectedAreaType;
+    const segments: { label: string; onClick?: () => void }[] = [{ label: `${siteInfo.client} ${siteCode}`, onClick: selectSite }];
+    if (selection.crossBuilding) {
+      segments.push({ label: "All Buildings" });
+    } else if (selection.buildingName) {
+      const buildingName = selection.buildingName;
+      segments.push({
+        label: buildingName,
+        onClick: hasLeaf ? () => setSelection({ buildingName, areaTypeName: null, areaId: null }) : undefined,
+      });
+    }
+    if (selectedArea) segments.push({ label: selectedArea.displayName });
+    else if (selectedAreaType) segments.push({ label: selectedAreaType.name });
+    return segments;
   }, [isSiteLevel, selection.crossBuilding, selection.buildingName, selectedArea, selectedAreaType]);
 
   // "View Scope for this Area" opens the task list in a modal instead of a
@@ -1398,9 +1601,9 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
     );
   }
 
-  // Shared by every "meta row" variant below (site-level, area/area-type,
-  // and the no-meta fallback) so the toggle always sits on the same line
-  // as whatever meta text is there, right under "View Scope for this Area".
+  // Sits on the Performance section's own header row, right-aligned
+  // alongside the Snapshot/Trend toggle — rendered outside the
+  // performanceCollapsed check below so it's always there to re-expand.
   function renderPerformanceToggle() {
     return (
       <button
@@ -1592,9 +1795,22 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
         </aside>
 
         <main className={styles.content} ref={contentRef}>
-          {breadcrumbLabel && (
+          {breadcrumbSegments && (
             <div className={styles.contentBreadcrumbRow}>
-              <p className={styles.breadcrumb}>{breadcrumbLabel}</p>
+              <p className={styles.breadcrumb}>
+                {breadcrumbSegments.map((segment, i) => (
+                  <span key={i}>
+                    {i > 0 && " / "}
+                    {segment.onClick ? (
+                      <button type="button" className={styles.breadcrumbLink} onClick={segment.onClick}>
+                        {segment.label}
+                      </button>
+                    ) : (
+                      segment.label
+                    )}
+                  </span>
+                ))}
+              </p>
               <Button variant="secondary" theme="light" onClick={openScopeModal}>
                 View Scope for this Area
               </Button>
@@ -1614,7 +1830,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                 {selectedArea?.displayName ?? selectedAreaType?.name ?? selectedBuilding!.name}
               </h1>
             )}
-            {!breadcrumbLabel && (
+            {!breadcrumbSegments && (
               <Button variant="secondary" theme="light" onClick={openScopeModal}>
                 View Scope for this Site
               </Button>
@@ -1638,9 +1854,7 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                 <span className={styles.treeRowMetaItem}>
                   <i className="fa-solid fa-vector-square" aria-hidden="true" /> Areas: {siteContractStats.areas}
                 </span>
-              </p>
-              {renderPerformanceToggle()}
-            </div>
+              </p>            </div>
           ) : selectedArea && selectedContractAreaType ? (
             <div className={styles.contentHeaderMetaRow}>
               <p className={styles.contentHeaderMeta}>
@@ -1652,67 +1866,104 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                 <span className={styles.treeRowMetaItem}>
                   <i className="fa-solid fa-ballot-check" aria-hidden="true" /> Tasks: {selectedContractAreaType.tasks.length}
                 </span>
-              </p>
-              {renderPerformanceToggle()}
-            </div>
+              </p>            </div>
           ) : hasHeaderMeta ? (
             <div className={styles.contentHeaderMetaRow}>
               <p className={styles.contentHeaderMeta}>
+                {metaBuildingCount !== null && (
+                  <>
+                    <span className={styles.treeRowMetaItem}>
+                      <i className="fa-solid fa-building" aria-hidden="true" /> Buildings: {metaBuildingCount}
+                    </span>
+                    <span>•</span>
+                  </>
+                )}
                 <span className={styles.treeRowMetaItem}>
                   <i className="fa-solid fa-layer-group" aria-hidden="true" /> Floors: {metaFloorCount}
                 </span>
+                {metaAreaTypeCount !== null && (
+                  <>
+                    <span>•</span>
+                    <span className={styles.treeRowMetaItem}>
+                      <i className="fa-solid fa-object-ungroup" aria-hidden="true" /> Area Types: {metaAreaTypeCount}
+                    </span>
+                  </>
+                )}
                 <span>•</span>
                 <span className={styles.treeRowMetaItem}>
                   <i className="fa-solid fa-vector-square" aria-hidden="true" /> Areas: {metaAreaCount}
                 </span>
-              </p>
-              {renderPerformanceToggle()}
-            </div>
+              </p>            </div>
           ) : (
             <div className={styles.contentHeaderMetaRow}>
-              <span />
-              {renderPerformanceToggle()}
+              <span />            </div>
+          )}
+
+          {flightAreaSelected && (
+            <div
+              className={styles.flightsAlert}
+              role="button"
+              tabIndex={0}
+              aria-label={`View supported flights — ${flightsSupportedCount.toLocaleString()} flight${
+                flightsSupportedCount === 1 ? "" : "s"
+              } supported in this area`}
+              onClick={() => setFlightsModalOpen(true)}
+              onKeyDown={(e: ReactKeyboardEvent<HTMLDivElement>) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setFlightsModalOpen(true);
+                }
+              }}
+            >
+              <span className={styles.flightsAlertLeft}>
+                <i className={["fa-solid", "fa-plane", styles.flightsAlertIcon].join(" ")} aria-hidden="true" />
+                <span className={styles.flightsAlertText}>
+                  {flightsSupportedCount.toLocaleString()} flight{flightsSupportedCount === 1 ? "" : "s"} supported in this area
+                </span>
+              </span>
             </div>
           )}
 
-          <hr className={styles.sectionDivider} />
-
-          <div className={[sharedStyles.sectionStack, styles.sectionStackTight].join(" ")}>
+          <div className={[sharedStyles.sectionStack, styles.sectionStackTight, styles.performanceStackGap].join(" ")}>
                 {/* Performance: today's Snapshot (the three metric cards), or a
                     Trend view of daily progress over the past week/month. Same
                     pattern site-wide as it is for a single building/area type —
                     just fed the whole site's aggregate numbers when nothing in
                     the tree is selected. */}
-                {!performanceCollapsed && (
                 <div className={sharedStyles.section}>
                   <div className={styles.performanceSectionHeader}>
                     <div className={styles.workControlsLeft}>
-                      <ButtonGroup
-                        options={STATS_VIEW_OPTIONS}
-                        value={statsView}
-                        onChange={setStatsView}
-                        variant="segmented"
-                        aria-label="Performance view"
-                      />
-                      {statsView === "trend" &&
-                        (isDayPreset ? (
+                      {!performanceCollapsed && (
+                        <>
                           <ButtonGroup
-                            options={TREND_RANGE_OPTIONS}
-                            value={trendRange}
-                            onChange={setTrendRange}
-                            aria-label="Trend look-back range"
+                            options={STATS_VIEW_OPTIONS}
+                            value={statsView}
+                            onChange={setStatsView}
+                            variant="segmented"
+                            aria-label="Performance view"
                           />
-                        ) : (
-                          <span className={styles.trendRangeLabel}>
-                            <i className="fa-solid fa-calendar-days" aria-hidden="true" />
-                            Trend for {rangeLabelForPreset(datePreset) ?? dateLabel} ({metricTrendDays} day
-                            {metricTrendDays === 1 ? "" : "s"})
-                          </span>
-                        ))}
+                          {statsView === "trend" &&
+                            (isDayPreset ? (
+                              <ButtonGroup
+                                options={TREND_RANGE_OPTIONS}
+                                value={trendRange}
+                                onChange={setTrendRange}
+                                aria-label="Trend look-back range"
+                              />
+                            ) : (
+                              <span className={styles.trendRangeLabel}>
+                                <i className="fa-solid fa-calendar-days" aria-hidden="true" />
+                                Trend for {rangeLabelForPreset(datePreset) ?? dateLabel} ({metricTrendDays} day
+                                {metricTrendDays === 1 ? "" : "s"})
+                              </span>
+                            ))}
+                        </>
+                      )}
                     </div>
+                    {renderPerformanceToggle()}
                   </div>
 
-                  {(statsView === "snapshot" ? (
+                  {!performanceCollapsed && (statsView === "snapshot" ? (
                     <div className={styles.metricCardRow}>
                       <Card theme="light" className={styles.metricCard}>
                         <div className={styles.metricCardTop}>
@@ -1750,6 +2001,38 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                           with {siteInfo.client}
                         </span>
                       </Card>
+
+                      <Card
+                        theme="light"
+                        className={[styles.metricCard, styles.metricCardClickable].join(" ")}
+                        role="button"
+                        tabIndex={0}
+                        aria-label="View all employees who serviced this area"
+                        onClick={viewEmployeesForArea}
+                        onKeyDown={(e: ReactKeyboardEvent<HTMLDivElement>) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            viewEmployeesForArea();
+                          }
+                        }}
+                      >
+                        <div className={styles.metricCardTop}>
+                          <span className={styles.metricCardLabel}>Employees</span>
+                          <div className={styles.metricCardValueRow}>
+                            <span className={styles.metricCardValue}>{teamMembersCount.toLocaleString()}</span>
+                            {teamMembersPreview.length > 0 && (
+                              <ul className={styles.metricCardAvatarStack}>
+                                {teamMembersPreview.map((member) => (
+                                  <li key={member.name} className={styles.metricCardAvatarTile}>
+                                    <img src={member.avatar} alt="" className={styles.metricCardAvatarImage} />
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </div>
+                        <span className={styles.metricCardDescription}>{teamMembersDescription}</span>
+                      </Card>
                     </div>
                   ) : (
                     <div className={styles.metricCardRow}>
@@ -1778,47 +2061,57 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                         description={`Across ${auditSummary.totalAudits.toLocaleString()} audits · ${auditSummary.jointAudits.toLocaleString()} joint with ${siteInfo.client}`}
                         chip
                       />
+                      <MetricTrendCard
+                        label="Employees"
+                        series={teamMembersTrendSeries}
+                        formatValue={(v) => Math.round(v).toLocaleString()}
+                        dayOffset={dayOffset}
+                        color="var(--color-datavis-orange-500)"
+                        description={teamMembersDescription}
+                        onClick={viewEmployeesForArea}
+                        ariaLabel="View all employees who serviced this area"
+                      />
                     </div>
                   ))}
                 </div>
-                )}
 
           </div>
 
-          {/* Collapsed shows just the one divider above (already separating
-              the header meta from whatever's next) — a second one right
-              after it, with nothing in between, would read as two lines
-              instead of one. */}
-          {!performanceCollapsed && <hr className={styles.sectionDivider} />}
+          <div className={[sharedStyles.sectionStack, styles.sectionStackTight, styles.workStackGap].join(" ")}>
+                {/* Work: a Type/Filter/Sort row plus a Grid / List
+                    segmented control, then View-by count buttons (Area
+                    Type/Area/Service/Element/Employee, each badged with
+                    how many that granularity holds for this selection),
+                    then the evidence grid itself. */}
+                <div ref={workSectionRef} className={[sharedStyles.section, styles.workSectionGap].join(" ")}>
+                  <div className={styles.filterFieldGroup}>
+                    <DsSelect
+                      label="Filter"
+                      value={activityFilter}
+                      onChange={(v) => setActivityFilter(v)}
+                      options={TYPE_FILTER_OPTIONS}
+                      ariaLabel="Filter by activity type"
+                    />
+                    <DsSelect
+                      value={taskTypeFilter}
+                      onChange={setTaskTypeFilter}
+                      options={SERVICE_FILTER_OPTIONS}
+                      ariaLabel="Filter by service type"
+                    />
+                  </div>
 
-          <div className={[sharedStyles.sectionStack, styles.sectionStackTight].join(" ")}>
-                {/* Work: All / Verifications / Audits filter pills, then
-                    View by / Filter / Sort plus a Grid / List segmented
-                    control, then the evidence grid itself. */}
-                <div className={[sharedStyles.section, styles.workSectionGap].join(" ")}>
-                  <ButtonGroup
-                    options={TYPE_OPTIONS}
-                    value={activityFilter}
-                    onChange={(v) => setActivityFilter(v)}
-                    aria-label="Filter by activity type"
-                  />
-
-                  <div className={styles.workControlsRow}>
+                  <div className={styles.workViewsRow}>
+                    <ButtonGroup
+                      options={availableCardGranularityOptions.map((o) => ({
+                        id: o.id,
+                        icon: o.icon,
+                        label: `${cardGranularityCounts[o.id].toLocaleString()} ${o.pluralLabel}`,
+                      }))}
+                      value={cardGranularity}
+                      onChange={(v) => setCardGranularity(v)}
+                      aria-label="View evidence by area type, area, element, service, or employee"
+                    />
                     <div className={styles.filterFieldGroup}>
-                      <DsSelect
-                        label="View by"
-                        value={cardGranularity}
-                        onChange={(v) => setCardGranularity(v as CardGranularity)}
-                        options={availableCardGranularityOptions.map((o) => ({ value: o.id, label: o.label }))}
-                        ariaLabel="View evidence by area type, area, element, or service"
-                      />
-                      <DsSelect
-                        label="Filter"
-                        value={taskTypeFilter}
-                        onChange={setTaskTypeFilter}
-                        options={SERVICE_FILTER_OPTIONS}
-                        ariaLabel="Filter by service type"
-                      />
                       <DsSelect
                         label="Sort"
                         value={sortOrder}
@@ -1826,14 +2119,14 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                         options={SORT_OPTIONS.map((s) => ({ value: s.id, label: s.label }))}
                         ariaLabel="Sort evidence"
                       />
+                      <ButtonGroup
+                        options={availableViewModeOptions}
+                        value={viewMode}
+                        onChange={setViewMode}
+                        variant="segmented"
+                        aria-label="Grid or list view"
+                      />
                     </div>
-                    <ButtonGroup
-                      options={availableViewModeOptions}
-                      value={viewMode}
-                      onChange={setViewMode}
-                      variant="segmented"
-                      aria-label="Grid or list view"
-                    />
                   </div>
 
                   {viewMode === "tasks" && selectedContractAreaType && selectedArea ? (
@@ -1862,6 +2155,8 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
                     />
                   ) : cardGranularity === "service" ? (
                     <ServiceListTable items={gridCards} onView={setViewedServiceItem} showAreaColumn={!selectedArea} />
+                  ) : cardGranularity === "employee" ? (
+                    <EmployeeListTable items={gridCards} onView={setViewedServiceItem} />
                   ) : (
                     <ActivityList items={gridCards} />
                   )}
@@ -1910,6 +2205,54 @@ export function SowHierarchyPage({ contractBuildings }: SowHierarchyPageProps) {
           </>
         )}
       </Modal>
+
+      <Modal open={flightsModalOpen} onClose={() => setFlightsModalOpen(false)} theme="light" title="Flights">
+        <FlightBoard heading="Arrivals" icon="fa-plane-arrival" placeLabel="Origin" rows={flightArrivals} />
+        <hr className={styles.sectionDivider} />
+        <FlightBoard heading="Departing" icon="fa-plane-departure" placeLabel="Destination" rows={flightDepartures} />
+      </Modal>
+    </div>
+  );
+}
+
+/** One direction (Arrivals or Departing) of the Flights modal — a plain, compact table since these rows aren't interactive (nothing to select or drill into). */
+function FlightBoard({ heading, icon, placeLabel, rows }: { heading: string; icon: string; placeLabel: string; rows: FlightRow[] }) {
+  return (
+    <div className={styles.flightsBoard}>
+      <h3 className={styles.flightsBoardHeading}>
+        <i className={["fa-solid", icon].join(" ")} aria-hidden="true" /> {heading}
+      </h3>
+      {rows.length === 0 ? (
+        <p className={styles.emptyNote}>No flights to show.</p>
+      ) : (
+        <div className={styles.flightsTable}>
+          <div className={[styles.flightsTableRow, styles.flightsTableHeaderRow].join(" ")}>
+            <span className={styles.flightsTableHeaderCell}>{placeLabel}</span>
+            <span className={styles.flightsTableHeaderCell}>Flight</span>
+            <span className={styles.flightsTableHeaderCell}>Date</span>
+            <span className={styles.flightsTableHeaderCell}>Status</span>
+            <span className={styles.flightsTableHeaderCell}>Gate</span>
+          </div>
+          {rows.map((row) => (
+            <div key={row.key} className={styles.flightsTableRow}>
+              <span className={styles.flightsTableCell}>{row.place}</span>
+              <span className={styles.flightsTableCell}>{row.flightNumber}</span>
+              <span className={styles.flightsTableCell}>
+                {row.date} {row.scheduledTime}
+              </span>
+              <span
+                className={[
+                  styles.flightsTableCell,
+                  row.status === "delayed" ? styles.flightsStatusDelayed : styles.flightsStatusOnTime,
+                ].join(" ")}
+              >
+                {row.status === "delayed" ? row.updatedTime : "On Time"}
+              </span>
+              <span className={styles.flightsTableCell}>{row.gate}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -2378,6 +2721,159 @@ function TasksListTable({
   );
 }
 
+type EmployeeSortKey = "name" | "count" | "score";
+
+type EmployeeRowData = {
+  personName: string;
+  personAvatar?: string;
+  personRole?: string;
+  count: number;
+  avgScore: number;
+  linked: WorkCardData[];
+};
+
+function employeeSortValue(row: EmployeeRowData, key: EmployeeSortKey): string | number {
+  switch (key) {
+    case "name":
+      return row.personName;
+    case "count":
+      return row.count;
+    case "score":
+      return row.avgScore;
+  }
+}
+
+/**
+ * "View by: Employee" + List — same shared services as "View by:
+ * Service" (gridCards === serviceCards for this granularity too), just
+ * grouped by who performed them instead of listed flat. Same
+ * grouped-with-expand shape as TasksListTable, so a person's own
+ * completed-services count always equals their expanded row count —
+ * no separate sampling.
+ */
+function EmployeeListTable({ items, onView }: { items: WorkCardData[]; onView: (item: WorkCardData) => void }) {
+  const [sortState, setSortState] = useState<SortState<EmployeeSortKey>>(null);
+  const [openKeys, setOpenKeys] = useState<Set<string>>(new Set());
+  const toggleOpen = (key: string) =>
+    setOpenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  const rows: EmployeeRowData[] = useMemo(() => {
+    const byPerson = new Map<string, WorkCardData[]>();
+    items.forEach((item) => {
+      const name = item.personName ?? "Unassigned";
+      const bucket = byPerson.get(name);
+      if (bucket) bucket.push(item);
+      else byPerson.set(name, [item]);
+    });
+    return Array.from(byPerson.entries()).map(([personName, linked]) => ({
+      personName,
+      personAvatar: linked[0].personAvatar,
+      personRole: linked[0].personRole,
+      count: linked.length,
+      avgScore: linked.reduce((sum, item) => sum + item.score, 0) / linked.length,
+      linked,
+    }));
+  }, [items]);
+
+  const sortedRows = useMemo(() => sortByValue(rows, sortState, employeeSortValue), [rows, sortState]);
+  const onSort = (key: EmployeeSortKey) => setSortState((prev) => toggleSort(key, prev));
+
+  if (rows.length === 0) {
+    return <p className={styles.emptyNote}>No services available here — try clearing filters.</p>;
+  }
+
+  return (
+    <div className={styles.areaTypeTableWrap}>
+      <div className={[styles.areaTypeTableHeaderRow, styles.colsEmployees].join(" ")}>
+        <SortableHeaderCell label="Employee" columnKey="name" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Services" columnKey="count" sortState={sortState} onSort={onSort} />
+        <SortableHeaderCell label="Avg. Score" columnKey="score" sortState={sortState} onSort={onSort} />
+        <span aria-hidden="true" />
+      </div>
+
+      <div className={styles.taskListRows}>
+        {sortedRows.map((row) => {
+          const isOpen = openKeys.has(row.personName);
+          return (
+            <div key={row.personName} className={styles.taskCard}>
+              <div className={[styles.taskListRow, styles.colsEmployees].join(" ")}>
+                <span className={styles.employeeCell}>
+                  <img src={row.personAvatar} alt="" className={styles.employeeAvatar} />
+                  <span className={styles.employeeInfo}>
+                    <span className={styles.employeeName}>{row.personName}</span>
+                    {row.personRole && <span className={styles.employeeSub}>{row.personRole}</span>}
+                  </span>
+                </span>
+                <span className={styles.taskListValue}>
+                  {row.count.toLocaleString()} service{row.count === 1 ? "" : "s"}
+                </span>
+                <span className={styles.areaTypeTableScoreChip}>{row.avgScore.toFixed(2)}</span>
+                <button
+                  type="button"
+                  className={styles.taskListChevron}
+                  onClick={() => toggleOpen(row.personName)}
+                  aria-expanded={isOpen}
+                  aria-label={isOpen ? "Hide completed services" : "Show completed services"}
+                >
+                  <i className={["fa-solid", isOpen ? "fa-chevron-up" : "fa-chevron-down"].join(" ")} aria-hidden="true" />
+                </button>
+              </div>
+              {isOpen &&
+                row.linked.map((item) => (
+                  <div
+                    key={item.key}
+                    className={styles.taskEvidenceRow}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`View ${item.title} service`}
+                    onClick={() => onView(item)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onView(item);
+                      }
+                    }}
+                  >
+                    {item.photo ? (
+                      <img src={item.photo} alt="" className={styles.taskEvidenceThumb} />
+                    ) : (
+                      <span className={styles.taskEvidenceThumbPlaceholder} aria-hidden="true" />
+                    )}
+                    <span className={styles.taskEvidenceIconTag}>
+                      <span className={styles.serviceIconBadge} style={{ backgroundColor: badgeColorForServiceTag(item.title) }}>
+                        {item.serviceIcon && (
+                          <i className={item.serviceIcon} style={{ color: item.serviceIconColor }} aria-hidden="true" />
+                        )}
+                      </span>
+                      <span className={styles.taskEvidenceTagText}>{item.title}</span>
+                    </span>
+                    <span className={styles.areaTypeTableNameCell}>
+                      <span className={styles.areaTypeTableName}>{item.areaDisplayName ?? item.location}</span>
+                      {item.areaTypeName && <span className={styles.serviceTableAreaTypeSub}>{item.areaTypeName}</span>}
+                    </span>
+                    <span className={styles.taskEvidenceTime}>{item.timeAgo}</span>
+                    <span className={styles.taskEvidenceScoreCell}>
+                      <span className={styles.areaTypeTableScoreChip}>{item.score.toFixed(1)}</span>
+                    </span>
+                    <span className={styles.serviceTableViewLink}>
+                      <i className="fa-solid fa-eye" aria-hidden="true" />
+                      View
+                    </span>
+                  </div>
+                ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /**
  * "View by: Service" + List — Figma fileKey SWFMjlBJ4u9vSrVaomRe12,
  * node 118:17045 (columns) and node 118:20809 (icon/color + Area/Area
@@ -2607,6 +3103,8 @@ function MetricTrendCard({
   color,
   description,
   chip = false,
+  onClick,
+  ariaLabel,
 }: {
   label: string;
   series: number[];
@@ -2615,6 +3113,9 @@ function MetricTrendCard({
   color: string;
   description: ReactNode;
   chip?: boolean;
+  /** When set, the whole card becomes a button (e.g. jumping to the Work section's Employee view) instead of a static readout. */
+  onClick?: () => void;
+  ariaLabel?: string;
 }) {
   const first = series[0];
   const last = series[series.length - 1];
@@ -2627,8 +3128,27 @@ function MetricTrendCard({
   // the value under the cursor.
   const dayLabels = series.map((_, i) => formatShortDayLabel(dayOffset + (series.length - 1 - i)));
 
+  const interactiveProps = onClick
+    ? {
+        role: "button" as const,
+        tabIndex: 0,
+        "aria-label": ariaLabel,
+        onClick,
+        onKeyDown: (e: ReactKeyboardEvent<HTMLDivElement>) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onClick();
+          }
+        },
+      }
+    : {};
+
   return (
-    <Card theme="light" className={styles.metricCard}>
+    <Card
+      theme="light"
+      className={[styles.metricCard, onClick ? styles.metricCardClickable : ""].filter(Boolean).join(" ")}
+      {...interactiveProps}
+    >
       <div className={styles.metricCardTop}>
         <span className={styles.metricCardLabel}>{label}</span>
         <div className={styles.metricCardTrendValueRow}>

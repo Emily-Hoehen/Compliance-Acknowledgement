@@ -253,7 +253,8 @@
 
 @media (min-width: 900px) {
   .sidebar {
-    width: 420px;
+    width: 100%;
+    max-width: 400px;
     height: calc(100vh - 56px);
     border-bottom: none;
     position: sticky;
@@ -280,20 +281,28 @@
   align-items: center;
   gap: 12px;
   width: 100%;
+  margin-bottom: 16px;
   appearance: none;
   border: none;
-  border-left: 3px solid transparent;
+  /* Same 1px neutral-300 stroke as the other three sides at rest, so
+     the left edge doesn't read as missing its stroke while the site
+     isn't the active selection; .siteCardActive thickens and recolors
+     it into the selection accent. */
+  border-left: 1px solid var(--color-neutral-300);
+  /* Same color as .sectionDivider's line above/below Performance Summary. */
+  border-top: 1px solid var(--color-neutral-300);
+  border-right: 1px solid var(--color-neutral-300);
+  border-bottom: 1px solid var(--color-neutral-300);
   cursor: pointer;
   text-align: left;
   padding: 20px;
   border-radius: 8px;
-  margin-bottom: 16px;
   background-color: var(--surface-lt-card);
   box-shadow: var(--shadow-lt-card);
 }
 
 .siteCardActive {
-  border-left-color: var(--color-primary-500);
+  border-left: 3px solid var(--color-primary-500);
   background-color: var(--wash-primary-15);
 }
 
@@ -356,6 +365,8 @@
 .tree {
   display: flex;
   flex-direction: column;
+  /* Same color as .sectionDivider's line above/below Performance Summary. */
+  border: 1px solid var(--color-neutral-300);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -364,10 +375,14 @@
    900px breakpoint), the tree becomes its own internally-scrolling
    pane within that fixed-height column — the site card/search/group-by
    above it stay in place while a long tree scrolls on its own,
-   instead of the whole sidebar just growing past the viewport. */
+   instead of the whole sidebar just growing past the viewport.
+   flex-grow:0 (not 1) so its own border hugs a short list instead of
+   always stretching to fill the column; flex-shrink:1 + min-height:0
+   still let it compress down and scroll internally once a long list
+   would otherwise overflow the sidebar's fixed height. */
 @media (min-width: 900px) {
   .tree {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
@@ -404,11 +419,11 @@
 }
 
 .treeRowIndent1 {
-  padding-left: 40px;
+  padding-left: 32px;
 }
 
 .treeRowIndent2 {
-  padding-left: 68px;
+  padding-left: 48px;
 }
 
 .treeIconChip {
@@ -450,9 +465,10 @@
 }
 
 .treeRowName {
-  font-family: var(--type-h3-family);
-  font-size: var(--type-h3-size);
-  font-weight: var(--type-h3-weight);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
   color: var(--color-text-lt-default);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -601,12 +617,49 @@
   white-space: nowrap;
 }
 
+/* One clickable ancestor segment — plain text until hovered/focused,
+   so the breadcrumb reads the same as before at rest and only signals
+   interactivity on approach. The trailing leaf and "All Buildings"
+   stay bare text (see breadcrumbSegments' own comment for why). */
+.breadcrumbLink {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.breadcrumbLink:hover,
+.breadcrumbLink:focus-visible {
+  color: var(--color-text-lt-blue);
+  text-decoration: underline;
+}
+
 /* Trims .sectionStack's default 32px section gap down for this page —
    the Performance/Work-to-be-done/View-work-by stack reads tighter
    with the header divider already doing the job of separating the
    header from the content below. */
 .sectionStackTight {
   gap: 38px;
+}
+
+/* Restores breathing room between the Performance Summary section
+   (its cards when shown, or just its Show/Hide toggle row when
+   collapsed) and the Work section's Filter/Sort row below it, now
+   that there's no divider between them. Applied regardless of
+   collapsed state so the gap reads the same either way. */
+.workStackGap {
+  margin-top: 56px;
+}
+
+/* Same idea as .workStackGap, above the Performance Summary section
+   now that there's no divider between it and the header meta row /
+   flights alert above it. */
+.performanceStackGap {
+  margin-top: 56px;
 }
 
 /* Widens .section's default 16px gap for the Work section specifically —
@@ -677,6 +730,115 @@
   padding: 24px 0;
 }
 
+/* ---------------- Flights: Gates/Jet Bridges alert + modal ---------------- */
+
+.flightsAlert {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 16px 0;
+  padding: 16px;
+  border-radius: 8px;
+  background-color: var(--wash-sky-blue-15);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.flightsAlert:hover {
+  background-color: color-mix(in srgb, var(--wash-sky-blue-15), var(--color-accent-lt-sky-blue) 12%);
+}
+
+.flightsAlert:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: -2px;
+}
+
+.flightsAlertLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 0 0;
+  min-width: 0;
+}
+
+.flightsAlertIcon {
+  font-size: 20px;
+  color: var(--color-accent-lt-sky-blue);
+}
+
+.flightsAlertText {
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-leading);
+  color: var(--color-accent-lt-sky-blue);
+}
+
+.flightsBoard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.flightsBoardHeading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  color: var(--color-text-lt-default);
+}
+
+.flightsTable {
+  display: flex;
+  flex-direction: column;
+}
+
+.flightsTableRow {
+  display: grid;
+  grid-template-columns: 1.6fr 0.8fr 1.4fr 1fr 0.9fr;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--color-neutral-300);
+}
+
+.flightsTableRow:last-child {
+  border-bottom: none;
+}
+
+.flightsTableHeaderRow {
+  padding-top: 0;
+}
+
+.flightsTableHeaderCell {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-grey);
+}
+
+.flightsTableCell {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-lt-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flightsStatusOnTime {
+  color: var(--color-text-lt-success);
+  font-weight: 600;
+}
+
+.flightsStatusDelayed {
+  color: var(--color-warning-700);
+  font-weight: 600;
+}
+
 /* ---------------- Metric cards: Service Coverage / Hours Captured / Average Audit Score ---------------- */
 
 .metricCardRow {
@@ -687,7 +849,13 @@
 
 @media (min-width: 768px) {
   .metricCardRow {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .metricCardRow {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
@@ -696,6 +864,20 @@
   flex-direction: column;
   gap: 16px;
   padding: 24px 18px;
+}
+
+.metricCardClickable {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.metricCardClickable:hover {
+  background-color: var(--color-neutral-300);
+}
+
+.metricCardClickable:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: -2px;
 }
 
 .metricCardTop {
@@ -747,6 +929,34 @@
   color: var(--color-text-lt-grey);
 }
 
+/* -- Team Members card: value + a small overlapping avatar preview -- */
+
+.metricCardAvatarStack {
+  display: flex;
+  align-items: center;
+  list-style: none;
+}
+
+.metricCardAvatarTile {
+  width: 32px;
+  height: 32px;
+  margin-left: -10px;
+  border-radius: 100px;
+  border: 2px solid var(--surface-lt-card);
+}
+
+.metricCardAvatarTile:first-child {
+  margin-left: 0;
+}
+
+.metricCardAvatarImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 100px;
+  object-fit: cover;
+}
+
 /* -- Trend view: value + inline delta, e.g. "85% ↑ +5% over last 7 days" -- */
 
 .metricCardTrendValueRow {
@@ -780,9 +990,13 @@
 
 /* ---------------- "View work by" controls ---------------- */
 
-.workControlsRow {
+/* The View-by count buttons (left) and Sort + Grid/List (right) share
+   one row — align-items: flex-end so Sort/Grid-List's shorter row sits
+   flush with the bottom of the (taller, wrapping) button row instead
+   of centering awkwardly against it. */
+.workViewsRow {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
@@ -817,14 +1031,9 @@
   white-space: nowrap;
 }
 
-/* The toggle link lives in the content header (right-aligned, under
-   "View Scope for this Area") rather than inside the Performance
-   section itself — Figma fileKey SWFMjlBJ4u9vSrVaomRe12, node
-   118:18892. */
-/* Meta text (Buildings/Floors/Areas) and the performance toggle share
-   one line, right under "View Scope for this Area" — Figma fileKey
-   SWFMjlBJ4u9vSrVaomRe12, node 118:18892. An empty first child covers
-   the no-meta case so the toggle still gets a row to sit in. */
+/* Meta text (Buildings/Floors/Areas) — an empty first child covers the
+   no-meta case so the row still holds its height when there's nothing
+   to show. */
 .contentHeaderMetaRow {
   display: flex;
   align-items: center;
@@ -1572,6 +1781,14 @@
   grid-template-columns: 2.2fr 0.6fr 0.6fr 200px 24px;
 }
 
+/* "View by: Employee" + List — same card/row language as .colsTasks,
+   just Employee/Services/Avg. Score instead of Task/Shift/Frequency/
+   Completed (an employee has no contracted expected count to bar
+   against, so a plain count + score chip stands in for the pill). */
+.colsEmployees {
+  grid-template-columns: 2.2fr 0.8fr 0.8fr 24px;
+}
+
 /* Each task is its own gapped, shadowed card — same card language as
    AreaTypeListTable/AreaListTable's rows — rather than one continuous
    bordered block. Its (optional) expanded evidence rows live inside
@@ -1659,9 +1876,11 @@
 
 /* One task's linked evidence row — photo, icon-badge + tag, person
    (name + position|shift), time, score, then a "view" eye icon
-   (Figma's exact column order and content), indented further than
-   the task row above it with a hairline divider in place of a
-   border. */
+   (Figma's exact column order and content), with a hairline divider
+   in place of a border. Its left padding lines the photo up with the
+   task label above it (16px row padding + the task icon's own width
+   + its 12px gap to the label — see .taskListNameCell) rather than
+   an arbitrary indent. */
 /* Grid, not flex — the icon/tag, person, time, and score columns
    get one equal share each, so they spread evenly across the row's
    full width instead of clumping left with a dead gap before the
@@ -1671,7 +1890,7 @@
   grid-template-columns: 50px repeat(4, 1fr) 80px;
   align-items: center;
   gap: 24px;
-  padding: 16px 16px 16px 64px;
+  padding: 16px 16px 16px 46px;
   border-top: 1px solid var(--color-neutral-300);
   cursor: pointer;
 }

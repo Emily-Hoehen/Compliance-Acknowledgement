@@ -72,7 +72,7 @@ export function parseSowContractRows(csvText: string): SowContractRow[] {
 export type ContractArea = {
   areaId: string;
   areaNumber: string;
-  /** area_name, falling back to area_number then area_id — ~1,547 source rows have a blank area_name. */
+  /** "{area_number} {area_name}" (e.g. "HH3-143 Training Room"); drops whichever half is blank, falling back to area_id if both are — ~1,547 source rows have a blank area_name. */
   displayName: string;
   floor: number;
   floorDescription: string;
@@ -135,8 +135,11 @@ export type ContractBuilding = {
 const SHIFT_ORDER = ["Day", "Swing", "Graveyard"];
 
 function areaDisplayName(row: SowContractRow): string {
-  if (row.areaName.trim()) return row.areaName;
-  if (row.areaNumber.trim()) return row.areaNumber;
+  const number = row.areaNumber.trim();
+  const name = row.areaName.trim();
+  if (number && name) return `${number} ${name}`;
+  if (name) return name;
+  if (number) return number;
   return row.areaId;
 }
 
