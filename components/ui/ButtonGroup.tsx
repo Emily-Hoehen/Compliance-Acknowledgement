@@ -16,6 +16,8 @@ export type ButtonGroupProps<T extends string> = {
   onChange: (id: T) => void;
   theme?: ButtonGroupTheme;
   variant?: ButtonGroupVariant;
+  /** Overrides the segmented variant's sliding thumb color for one call site (e.g. Our Team's roster tabs), without changing the shared default everywhere else. */
+  thumbColor?: string;
   "aria-label"?: string;
 };
 
@@ -39,6 +41,7 @@ export function ButtonGroup<T extends string>({
   onChange,
   theme = "light",
   variant = "pills",
+  thumbColor,
   ...rest
 }: ButtonGroupProps<T>) {
   const optionRefs = useRef<Partial<Record<T, HTMLButtonElement | null>>>({});
@@ -63,7 +66,11 @@ export function ButtonGroup<T extends string>({
       {variant === "segmented" && thumbRect && (
         <div
           className={styles.thumb}
-          style={{ transform: `translateX(${thumbRect.x}px)`, width: thumbRect.width }}
+          style={{
+            transform: `translateX(${thumbRect.x}px)`,
+            width: thumbRect.width,
+            ...(thumbColor ? { backgroundColor: thumbColor } : {}),
+          }}
           aria-hidden="true"
         />
       )}

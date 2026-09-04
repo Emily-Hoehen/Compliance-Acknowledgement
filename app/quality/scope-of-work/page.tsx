@@ -2,7 +2,7 @@ import { readFile } from "fs/promises";
 import path from "path";
 import { parseCsv, toRosterPeople } from "../../../lib/csv";
 import { loadContractBuildings } from "../../../lib/sowContractLoader";
-import { SowPage } from "../../../components/patterns/SowPage";
+import { ScopeOfWorkPage } from "../../../components/patterns/ScopeOfWorkPage";
 
 async function loadRoster(fileName: string) {
   const filePath = path.join(process.cwd(), "data", fileName);
@@ -10,12 +10,12 @@ async function loadRoster(fileName: string) {
   return toRosterPeople(parseCsv(text));
 }
 
-export default async function QualitySowPage() {
+export default async function QualityScopeOfWorkPage() {
   const [associates, managers, contractBuildings] = await Promise.all([
     loadRoster("associates.csv"),
     loadRoster("managers.csv"),
     loadContractBuildings(),
   ]);
 
-  return <SowPage associates={associates} managers={managers} contractBuildings={contractBuildings} />;
+  return <ScopeOfWorkPage associates={associates} managers={managers} contractBuildings={contractBuildings} />;
 }

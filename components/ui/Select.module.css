@@ -23,6 +23,11 @@
   display: inline-flex;
 }
 
+.selectWrapFull {
+  display: flex;
+  width: 100%;
+}
+
 .dsSelect {
   appearance: none;
   cursor: pointer;
@@ -39,6 +44,10 @@
   color: var(--color-text-lt-default);
   font-family: var(--type-body-md-family);
   font-size: var(--type-body-md-size);
+}
+
+.dsSelectFull {
+  width: 100%;
 }
 
 .dsSelectValue {

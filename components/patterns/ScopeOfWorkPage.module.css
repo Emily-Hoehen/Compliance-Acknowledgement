@@ -1,0 +1,2130 @@
+/* ============================================================
+   ScopeOfWorkPage — "Your Spaces / Our Team / Service Times" Scope
+   of Work exploration. Rebuilt to match the Figma "Area Types"
+   frame (fileKey 8GF1e4t6oVXOTAhw1WU8zQ — Tour Sites branch, node
+   26408:15662) pixel-for-pixel: a full-bleed photo banner (no CSS
+   gradient/plane — the real exported asset, public/scope-of-work-
+   hero.png), a plain title/tabs bar below it (not overlaid on the
+   banner), and every control below built from the project's own
+   design-system primitives (Card, ButtonGroup, DsSelect, Input)
+   rather than one-off markup, per that Figma frame's "Filter
+   Button" chip reused in three different places.
+
+   Light theme only, same as every other Scope of Work variant in
+   this project.
+   ============================================================ */
+
+.page {
+  min-height: 100vh;
+  background-color: var(--surface-lt-page);
+  color: var(--color-text-lt-default);
+}
+
+/* The nav bar itself pins to the viewport top immediately. The
+   banner photo is left in normal flow (it rolls away as you
+   scroll, not sticky) — only .titleBar below (see its own
+   position: sticky) catches up to the nav's bottom edge and locks
+   in alongside it. */
+.stickyNav {
+  position: sticky;
+  top: 0;
+  z-index: 11;
+}
+
+/* ---------------- Banner photo (real asset, not CSS-drawn) ---------------- */
+
+/* Fixed 244px per the Figma "Vertical Banner" spec. A negative bottom
+   margin pulls .titleBar (next in document order, so it paints over
+   this box without needing z-index) up so the title/tabs overlap the
+   photo's lower edge instead of sitting in a hard-cut band below it. */
+.bannerImageWrap {
+  position: relative;
+  width: 100%;
+  height: 244px;
+  overflow: hidden;
+  background-color: #eaf3ff;
+  margin-bottom: -92px;
+}
+
+.bannerImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Fades the photo's own bottom edge into the page background color
+   so the overlapping title/tabs text (transparent background) reads
+   clearly against a near-solid ground rather than the raw photo. */
+.bannerGradient {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 150px;
+  background: linear-gradient(to bottom, transparent 0%, var(--surface-lt-page) 100%);
+  pointer-events: none;
+}
+
+/* ---------------- Title + tabs bar (overlaps the banner's bottom edge) ---------------- */
+
+/* Zero-height marker sitting right where .titleBar's un-stuck position
+   starts — ScopeOfWorkHero observes it to flip .titleBarStuck on only
+   once scrolling has actually pinned the bar under the nav. */
+.stickySentinel {
+  height: 0;
+}
+
+/* Sticks once scrolling brings it up to the nav's bottom edge (Nav's
+   own fixed height, Nav.module.css's .navInner) — the banner above
+   it keeps scrolling away normally since only this bar is sticky.
+   Transparent by default so it overlaps the banner photo underneath;
+   .titleBarStuck (JS-driven, see ScopeOfWorkHero) adds an opaque
+   backdrop only once it's actually pinned, so the grid scrolling
+   beneath doesn't show through its gaps. */
+.titleBar {
+  position: sticky;
+  top: 56px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 1920px;
+  margin: 0 auto;
+  padding: 20px 16px 16px;
+}
+
+@media (min-width: 768px) {
+  .titleBar {
+    padding: 20px 32px 16px;
+  }
+}
+
+.titleBarStuck {
+  background-color: var(--surface-lt-page);
+}
+
+/* Our Team's roster table is a long, plain scroll — pinning the title/
+   tabs bar over it isn't wanted there the way it is over Your Spaces'
+   grid, so this tab opts out of the shared sticky behavior.
+   `relative`, not `static` — a statically positioned box can't use
+   z-index at all, so .titleBar's `z-index: 10` would stop applying
+   and the (position: relative) banner photo behind it would paint on
+   top instead, blanking out the title and tabs entirely. `relative`
+   keeps it eligible for that z-index — but `.titleBar`'s own
+   `top: 56px` (the sticky threshold) would then read as a permanent
+   56px downward offset instead, since `top` on a relative box is a
+   real shift rather than sticky's stick-point, so it has to be reset
+   here too. */
+.titleBarNotSticky {
+  position: relative;
+  top: auto;
+}
+
+/* Tabs (left) + View User Hits / Settings / Date Picker (right) */
+.titleBarTabsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.breadcrumb {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-lt-grey);
+}
+
+.breadcrumbLink {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.breadcrumbLink:hover,
+.breadcrumbLink:focus-visible {
+  color: var(--color-text-lt-blue);
+  text-decoration: underline;
+}
+
+.heroTitle {
+  font-family: var(--type-h1-family);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: 1;
+  color: var(--color-text-lt-default);
+}
+
+.tabRow {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.tab i {
+  font-size: 20px;
+  width: 24px;
+  text-align: center;
+}
+
+.tabLabelStack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
+}
+
+.tabLabel {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+  color: var(--color-text-lt-grey);
+  white-space: nowrap;
+}
+
+.tabLabelActive {
+  color: var(--color-text-lt-default);
+}
+
+.tabUnderline {
+  height: 2px;
+  border-radius: 2px;
+  background-color: transparent;
+}
+
+.tabUnderlineActive {
+  background-color: var(--color-primary-500);
+}
+
+.viewUserHitsLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  appearance: none;
+  background-color: var(--surface-lt-card);
+  border: 1px solid var(--color-primary-500);
+  border-radius: 4px;
+  padding: 0 16px;
+  cursor: pointer;
+  color: var(--color-primary-500);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  white-space: nowrap;
+}
+
+.viewUserHitsLink:hover {
+  background-color: var(--btn-ghost-lt-primary-hover);
+}
+
+.viewUserHitsLink i {
+  font-size: 14px;
+}
+
+.settingsButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  appearance: none;
+  border: 1px solid var(--color-neutral-300);
+  border-radius: 4px;
+  background-color: var(--surface-lt-card);
+  color: var(--color-text-lt-grey);
+  cursor: pointer;
+}
+
+.settingsButton:hover {
+  color: var(--color-primary-500);
+  border-color: var(--color-primary-500);
+}
+
+.settingsButton i {
+  font-size: 16px;
+}
+
+/* ---------------- Shared page shell ---------------- */
+
+.main {
+  width: 100%;
+  max-width: 1920px;
+  margin: 0 auto;
+  padding: 24px 16px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+@media (min-width: 768px) {
+  .main {
+    padding: 28px 32px 64px;
+  }
+}
+
+/* Extra gap between the tabs row and Our Team's own roster toolbar —
+   placed after the min-width 768px block above so it wins the tie
+   (same specificity as that block's own .main padding-top). */
+.mainTeamSpacing {
+  padding-top: 9px;
+}
+
+.activitySection {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ---------------- Filter chips: All / Verifications / Audits ---------------- */
+
+/* The chip row's own normal-flow container (not nested
+   in .titleBar) so it scrolls away with the page instead of staying
+   pinned under the sticky title/tabs/date row above it. Mirrors
+   .titleBar's own width/horizontal padding so the two rows stay aligned. */
+.chipRowOuter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 1920px;
+  margin: 0 auto;
+  padding: 0 16px 16px;
+}
+
+@media (min-width: 768px) {
+  .chipRowOuter {
+    padding: 0 32px 16px;
+  }
+}
+
+/* ---------------- Recent Activity: featured carousel + 2x2 grid ----------------
+   One large featured card (its own real photo carousel) beside a 2x2 grid of
+   the next four items — both sides are flex siblings so the grid's own two
+   stacked rows set the shared height and the featured card (align-items:
+   stretch, the flex default) fills it via object-fit: cover. */
+.activityLayout {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.activitySecondaryGrid {
+  flex: 0 0 auto;
+  width: 811px;
+  height: 573px;
+  display: grid;
+  grid-template-columns: repeat(2, 397.5px);
+  grid-template-rows: repeat(2, 278.5px);
+  gap: 16px;
+}
+
+/* Shared by both the featured and secondary cards. */
+.activityTimeBadge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background-color: var(--color-datavis-yellow-100);
+  color: var(--color-text-lt-default);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+}
+
+.featuredActivityCard {
+  flex: 0 0 auto;
+  width: 811px;
+  height: 573px;
+}
+
+.featuredActivityPhoto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.featuredCarouselButton {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 100%;
+  appearance: none;
+  border: none;
+  background-color: rgba(24, 30, 36, 0.45);
+  color: var(--color-text-lt-default-inverted);
+  cursor: pointer;
+}
+
+.featuredCarouselButtonPrev {
+  left: 16px;
+}
+
+.featuredCarouselButtonNext {
+  right: 16px;
+}
+
+.featuredCarouselDots {
+  position: absolute;
+  bottom: 92px;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.featuredCarouselDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 100%;
+  appearance: none;
+  border: none;
+  padding: 0;
+  background-color: rgba(250, 251, 252, 0.5);
+  cursor: pointer;
+}
+
+.featuredCarouselDotActive {
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-text-lt-default-inverted);
+}
+
+/* Bottom scrim + avatar/name/score caption, shared shape by the featured
+   and secondary cards — the secondary variant is a shorter, simpler cut. */
+.featuredActivityCaption,
+.secondaryActivityCaption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 16px 16px;
+  background: linear-gradient(to top, rgba(11, 14, 17, 0.85), rgba(11, 14, 17, 0) 100%);
+}
+
+.featuredActivityAvatar,
+.secondaryActivityAvatar {
+  flex-shrink: 0;
+  border-radius: 100%;
+  object-fit: cover;
+  border: 2px solid var(--color-text-lt-default-inverted);
+}
+
+.featuredActivityAvatar {
+  width: 40px;
+  height: 40px;
+}
+
+.secondaryActivityAvatar {
+  width: 32px;
+  height: 32px;
+}
+
+.featuredActivityCaptionText,
+.secondaryActivityCaptionText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.featuredActivityCaptionTitle,
+.secondaryActivityCaptionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-lt-default-inverted);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+}
+
+.featuredActivityCaptionMeta,
+.secondaryActivityCaptionMeta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(250, 251, 252, 0.75);
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: var(--type-body-sm-weight);
+}
+
+.secondaryActivityCard {
+  position: relative;
+}
+
+.secondaryActivityPhoto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.secondaryActivityCaption {
+  padding: 32px 12px 12px;
+}
+
+/* Fixed to the viewport bottom (not in normal flow, so it stays put over
+   Recent Activity's own photos while the page scrolls underneath it) —
+   a page-background-color scrim that's solid at the very bottom of the
+   screen and fades to fully transparent toward its own top edge, so the
+   photos behind it read as fading into the page rather than being hard-
+   cropped. JS (see the component's own IntersectionObserver) toggles
+   .exploreAreaTypesBarHidden once Recent Activity scrolls out of view —
+   the cue has nothing left on screen to point at past that point. */
+.exploreAreaTypesBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  padding: 96px 16px 24px;
+  background: linear-gradient(to top, var(--surface-lt-page) 0%, var(--surface-lt-page) 40%, transparent 100%);
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 200ms ease;
+}
+
+.exploreAreaTypesBarHidden {
+  opacity: 0;
+}
+
+.exploreAreaTypesBarHidden .exploreAreaTypesLink {
+  pointer-events: none;
+}
+
+.exploreAreaTypesLink {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  color: var(--color-text-lt-grey);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  pointer-events: auto;
+}
+
+.exploreAreaTypesLink:hover {
+  color: var(--color-primary-500);
+}
+
+.exploreAreaTypesLink i:first-child {
+  font-size: 20px;
+  margin-bottom: 2px;
+}
+
+.exploreAreaTypesLink i:last-child {
+  font-size: 12px;
+}
+
+.scoreBadge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  min-width: 40px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
+  background-color: var(--color-success-100);
+  color: var(--color-text-lt-default);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+}
+
+.scoreBadgeNone {
+  background-color: var(--color-neutral-300);
+  color: var(--color-text-lt-grey);
+}
+
+/* Recent Activity's own score badge treatment — smaller and dark green,
+   applied to every card there (verification or audit) instead of the
+   pale green .scoreBadge used elsewhere on this page (AreaTypeCard, etc). */
+.scoreBadgeAudit {
+  min-width: 28px;
+  height: 20px;
+  padding: 0 6px;
+  background-color: var(--color-success-900);
+  color: var(--color-text-lt-default-inverted);
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: var(--type-body-sm-weight);
+}
+
+.activityPhotoPlaceholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-neutral-500);
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-neutral-300),
+    var(--color-neutral-300) 6px,
+    var(--color-neutral-200) 6px,
+    var(--color-neutral-200) 12px
+  );
+}
+
+/* ---------------- Performance Summary card ----------------
+   Four side-by-side plain-language reads (Staffing / Service
+   Compliance / Hours Captured vs Paid / Post-Departure Services),
+   each over its own two-value progress bar, plus the same coverage
+   sentence the old standalone .summarySentence used to show, now
+   tucked under a "Summary" tag along the card's bottom edge. */
+
+.sentenceBlue {
+  color: var(--color-primary-500);
+}
+
+.sentencePurple {
+  color: var(--color-datavis-purple-500);
+}
+
+.sentenceGreen {
+  color: var(--color-success-700);
+}
+
+.perfSummaryCard {
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px 24px 16px;
+  gap: 24px;
+}
+
+.perfSummaryColumns {
+  display: grid;
+  grid-template-columns: repeat(4, 428px);
+  gap: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.perfSummaryColumns::-webkit-scrollbar {
+  display: none;
+}
+
+.perfSummaryCol {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+  min-width: 0;
+  min-height: 166px;
+  padding: 0 16px;
+  border-right: 1px solid var(--color-neutral-400);
+}
+
+.perfSummaryCol:last-child {
+  border-right: none;
+}
+
+.perfSummaryColHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-lt-grey);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: 500;
+}
+
+.perfSummarySentence {
+  margin: 0;
+  font-family: var(--type-body-lg-family);
+  font-size: var(--type-body-lg-size);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-text-lt-default);
+}
+
+.perfSummaryAvatarRow {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.perfSummaryAvatarTile {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 100%;
+  overflow: hidden;
+  background-color: var(--color-neutral-200);
+}
+
+.perfSummaryAvatarTile:not(:first-child) {
+  margin-left: -16px;
+}
+
+.perfSummaryAvatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.perfSummaryAvatarOverflow {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-left: -16px;
+  border-radius: 100%;
+  background-color: var(--color-primary-500);
+  color: var(--color-text-lt-default-inverted);
+  font-family: var(--type-h4-family);
+  font-size: 14px;
+  font-weight: var(--type-h4-weight);
+}
+
+.perfSummaryMetricsRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.perfSummaryMetric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.perfSummaryMetricRight {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.perfSummaryMetricLabel {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-grey);
+}
+
+.perfSummaryMetricValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-default);
+}
+
+.perfSummaryMetricValue i {
+  color: var(--color-text-lt-grey);
+  font-size: 13px;
+}
+
+.perfSummaryProgressTrack {
+  display: block;
+  flex-shrink: 0;
+  height: 6px;
+  border-radius: 100px;
+  background-color: var(--color-neutral-200);
+  overflow: hidden;
+}
+
+.perfSummaryProgressFill {
+  display: block;
+  height: 100%;
+  border-radius: 100px;
+}
+
+.perfSummaryProgressFillPurple {
+  background-color: var(--color-datavis-purple-500);
+}
+
+.perfSummaryProgressFillBlue {
+  background-color: var(--color-primary-500);
+}
+
+.perfSummaryProgressFillGreen {
+  background-color: var(--color-success-700);
+}
+
+.perfSummaryFooter {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-neutral-400);
+}
+
+.summaryTag {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--color-neutral-300);
+  color: var(--color-text-lt-grey);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.perfSummaryFooterSentence {
+  flex: 1 1 480px;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--type-body-md-family);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--color-text-lt-default);
+}
+
+@media (max-width: 1279px) {
+  .perfSummaryColumns {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .perfSummaryCol:nth-child(2) {
+    padding-right: 0;
+    border-right: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .perfSummaryColumns {
+    grid-template-columns: 1fr;
+  }
+
+  .perfSummaryCol {
+    padding-right: 0;
+    padding-bottom: 20px;
+    border-right: none;
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+
+  .perfSummaryCol:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+}
+
+/* ---------------- Shift Compliance summary (List view) ----------------
+   Replaces PerformanceSummaryCard when viewMode is "list": a Totals
+   column plus one column per AREA_SHIFT_NAMES entry, each with a
+   Total Areas/Total Services stat pair and three compliance rates
+   (no services / met goal / overserviced), every rate over its own
+   pale, color-coded progress bar. */
+
+.shiftComplianceCard {
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+}
+
+.shiftComplianceColumns {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.shiftComplianceCol {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding-right: 24px;
+  border-right: 1px solid var(--color-neutral-400);
+}
+
+.shiftComplianceCol:last-child {
+  padding-right: 0;
+  border-right: none;
+}
+
+.shiftComplianceColTitle {
+  margin: 0;
+  font-family: var(--type-h3-family);
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 28px;
+  text-align: start;
+  color: var(--color-text-lt-default);
+}
+
+.shiftComplianceStatRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.shiftComplianceStatTile {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 60px;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background-color: var(--wash-neutral-15);
+  text-align: center;
+}
+
+.shiftComplianceStatLabel {
+  font-family: var(--type-body-md-family);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-align: center;
+  color: var(--color-text-lt-default);
+}
+
+.shiftComplianceStatValue {
+  font-family: var(--type-h3-family);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  text-align: center;
+  color: var(--color-primary-500);
+}
+
+.shiftComplianceMetric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shiftComplianceSentence {
+  margin: 0;
+  font-family: var(--type-body-md-family);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-align: start;
+  color: var(--color-text-lt-default);
+}
+
+.shiftComplianceRed {
+  color: var(--color-danger-500);
+}
+
+.shiftComplianceGreen {
+  color: var(--color-success-700);
+}
+
+.shiftComplianceAmber {
+  color: var(--color-warning-700);
+}
+
+.shiftComplianceBarTrack {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 28px;
+  border-radius: 4px;
+  background-color: var(--color-neutral-200);
+  overflow: hidden;
+}
+
+.shiftComplianceBarTrackRed,
+.shiftComplianceBarTrackGreen,
+.shiftComplianceBarTrackAmber {
+  background-color: var(--color-neutral-200);
+}
+
+.shiftComplianceBarFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+}
+
+.shiftComplianceBarFillRed {
+  background-color: var(--color-danger-100);
+}
+
+.shiftComplianceBarFillGreen {
+  background-color: var(--color-success-100);
+}
+
+.shiftComplianceBarFillAmber {
+  background-color: var(--color-warning-100);
+}
+
+.shiftComplianceBarLabel {
+  position: relative;
+  z-index: 1;
+  padding: 0 12px;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-default);
+}
+
+@media (max-width: 1279px) {
+  .shiftComplianceColumns {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .shiftComplianceCol:nth-child(2) {
+    padding-right: 0;
+    border-right: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .shiftComplianceColumns {
+    grid-template-columns: 1fr;
+  }
+
+  .shiftComplianceCol {
+    padding-right: 0;
+    padding-bottom: 20px;
+    border-right: none;
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+
+  .shiftComplianceCol:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+}
+
+/* Solid Primary/500 pill (not the neutral-card-with-blue-text style used
+   elsewhere in this project) — this page's own header treatment. Clicking
+   the label opens .dateMenu, the preset list. */
+.datePicker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 4px;
+  background-color: var(--color-primary-500);
+}
+
+.datePickerCaret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--color-text-lt-default-inverted);
+  cursor: pointer;
+}
+
+.datePickerCaret:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.datePickerLabel {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-lt-default-inverted);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  white-space: nowrap;
+}
+
+/* Matches the design system "Dropdown" drawer (components/ui/Select.module.css's
+   .dropdownDrawer/.dropdownItem) — edge-to-edge rows, selected row gets a
+   Primary/500 @15% tint plus a trailing checkmark. Duplicated here (rather
+   than built on DsSelect) since this menu pairs with prev/next day carets,
+   not a plain value list — same idiom as SowHierarchyPage's own date menu. */
+.dateMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--surface-lt-card);
+  border-radius: 4px;
+  box-shadow: var(--shadow-lt-popup-menu);
+  overflow: hidden;
+  z-index: 20;
+}
+
+.dateMenuItem {
+  appearance: none;
+  border: none;
+  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 40px;
+  padding: 0 16px;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-default);
+}
+
+.dateMenuItem:hover {
+  background-color: var(--color-neutral-200);
+}
+
+.dateMenuItemActive,
+.dateMenuItemActive:hover {
+  padding: 0 8px 0 12px;
+  background-color: var(--btn-ghost-lt-primary-static);
+}
+
+.dateMenuItemCheck {
+  flex-shrink: 0;
+  font-size: 20px;
+  color: var(--color-primary-500);
+}
+
+/* ---------------- Meta/filter bar ---------------- */
+
+.metaBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.metaLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.searchField {
+  width: 200px;
+}
+
+.viewToggleButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 8px;
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  background-color: var(--wash-neutral-15);
+  color: var(--color-text-lt-grey);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  white-space: nowrap;
+}
+
+.viewToggleButton i {
+  font-size: 14px;
+}
+
+.filterFieldGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* The drilled-into-one-Area-Type state's removable chip — clicking it (or
+   the ButtonGroup's own count chips above) clears selectedAreaType. */
+.selectedChipRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.selectedChipLabel {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-grey);
+}
+
+.selectedChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  background-color: var(--btn-ghost-lt-primary-static);
+  color: var(--color-primary-700);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+}
+
+.selectedChip i {
+  font-size: 12px;
+}
+
+.filterPlainLabel {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-grey);
+  white-space: nowrap;
+}
+
+.resultsEmpty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--color-text-lt-grey);
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+}
+
+.chartsPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 80px 24px;
+  text-align: center;
+  color: var(--color-text-lt-grey);
+}
+
+.chartsPlaceholder i {
+  font-size: 32px;
+  color: var(--color-neutral-400);
+  margin-bottom: 8px;
+}
+
+.chartsPlaceholder h2 {
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  color: var(--color-text-lt-default);
+}
+
+.chartsPlaceholder p {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+}
+
+/* ---------------- Area Type card grid ---------------- */
+
+.areaTypeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .areaTypeGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .areaTypeGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Caps at 5 columns regardless of viewport width — no wider tier. */
+@media (min-width: 1280px) {
+  .areaTypeGrid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+/* No padding on the card itself — the photo bleeds edge-to-edge (top,
+   left, right; Card's own overflow:hidden + border-radius clips its
+   top corners to match), same convention as SowHierarchyPage's
+   WorkCard. Only the copy below gets inset, via .areaTypeCardBody's
+   own padding. */
+.areaTypeCard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: 1px solid var(--color-neutral-300);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.areaTypeCard:hover {
+  transform: scale(1.02);
+  box-shadow: var(--shadow-lt-popup-menu);
+}
+
+.areaTypeCardClickable {
+  cursor: pointer;
+}
+
+.areaTypeCardClickable:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .areaTypeCard {
+    transition: none;
+  }
+}
+
+.areaTypeCardPhotoWrap {
+  position: relative;
+  height: 156px;
+  overflow: hidden;
+}
+
+.areaTypeCardPhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.areaTypeCardPhotoPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-neutral-500);
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-neutral-300),
+    var(--color-neutral-300) 8px,
+    var(--color-neutral-200) 8px,
+    var(--color-neutral-200) 16px
+  );
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+}
+
+.areaTypeCardTimeBadge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: var(--color-datavis-yellow-100);
+  color: var(--color-text-lt-default);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+}
+
+/* Buildings grouping only — real Departures/Arrivals aren't tracked at
+   the building level in this dataset, so the counts are illustrative
+   (deterministic per building/day), same convention as every other
+   generated figure on this page. */
+.buildingFlightBadges {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  gap: 6px;
+}
+
+.buildingFlightBadge {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: color-mix(in srgb, var(--color-accent-lt-warning) 15%, var(--surface-lt-card));
+  color: var(--color-accent-lt-warning);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  white-space: nowrap;
+}
+
+.buildingFlightBadge i {
+  font-size: 12px;
+}
+
+.areaTypeCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 0 16px 20px;
+}
+
+.areaTypeCardTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.areaTypeCardTitleBlock {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.areaTypeCardTitle {
+  display: flex;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  color: var(--color-text-lt-default);
+}
+
+.areaTypeCardServicedToday {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-grey);
+}
+
+/* Areas grouping only — a real area's own identity (no group count to show instead). */
+.areaCardMetaList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.areaCardMetaLine {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-lt-grey);
+}
+
+/* Gap between the two line+bar groups (expected services, Exp
+   Captured) — each group's own internal line-to-bar gap is tighter,
+   see .areaTypeCardProgressGroup. */
+.areaTypeCardProgressStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.areaTypeCardProgressGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.areaTypeCardProgressLine {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+}
+
+.areaTypeCardProgressLabel {
+  color: var(--color-text-lt-default);
+}
+
+.areaTypeCardProgressPercent {
+  flex-shrink: 0;
+  color: var(--color-text-lt-grey);
+}
+
+.areaTypeCardProgressTrack {
+  display: block;
+  width: 100%;
+  height: 4px;
+  border-radius: 100px;
+  background-color: var(--color-neutral-300);
+  overflow: hidden;
+}
+
+.areaTypeCardProgressFill {
+  display: block;
+  height: 100%;
+  border-radius: 100px;
+  background-color: var(--color-primary-500);
+}
+
+.areaTypeCardProgressFillCaptured {
+  background-color: var(--color-datavis-purple-500);
+}
+
+/* ---------------- Area Type list rows (view toggle) ---------------- */
+
+.areaTypeListWrap {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-neutral-300);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lt-card);
+}
+
+.areaTypeListHeaderRow,
+.areaTypeListRow {
+  display: grid;
+  grid-template-columns: 2fr 0.8fr 1.4fr 1.4fr;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+}
+
+.areaTypeListHeaderRow {
+  background-color: var(--color-neutral-200);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-grey);
+}
+
+.areaTypeListRow {
+  background-color: var(--surface-lt-card);
+  border-top: 1px solid var(--color-neutral-300);
+}
+
+.areaTypeListRow:hover {
+  background-color: var(--color-neutral-300);
+}
+
+.areaTypeListNameCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.areaTypeListThumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background-color: var(--color-neutral-300);
+}
+
+.areaTypeListName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  color: var(--color-text-lt-default);
+}
+
+.areaTypeListMiniProgress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.areaTypeListMiniProgressLine {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-lt-default);
+}
+
+.areaTypeListMiniTrack {
+  display: block;
+  width: 100%;
+  height: 4px;
+  border-radius: 100px;
+  background-color: var(--color-neutral-300);
+  overflow: hidden;
+}
+
+.areaTypeListMiniFill {
+  display: block;
+  height: 100%;
+  border-radius: 100px;
+  background-color: var(--color-primary-500);
+}
+
+.areaTypeListMiniFillCaptured {
+  background-color: var(--color-datavis-purple-500);
+}
+
+/* ---------------- Area Type / Elements list table (sortable, inline bars) ---------------- */
+
+.areaTypeTableWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.complianceSummaryToggle {
+  align-self: flex-start;
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-lt-blue);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+}
+
+.complianceSummaryLine {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-default);
+}
+
+.complianceSummaryLine strong {
+  color: var(--color-text-lt-success);
+}
+
+.areaTypeTableGrid {
+  grid-template-columns: 2.2fr 1.2fr 0.8fr 1.1fr 1.6fr 1.6fr;
+}
+
+/* Elements variant — no per-area service target, so just name/Last
+   Serviced/Avg Score/Total Services spread across the same row. */
+.areaTypeTableGridCompact {
+  grid-template-columns: 2.4fr 1fr 1fr 1fr;
+}
+
+/* Areas list variant — the base columns plus a thin divider and the
+   Day/Graveyard/Swing per-shift breakdown (see shiftBreakdownFor). */
+.areaListTableGrid {
+  grid-template-columns: 2fr 1fr 0.7fr 0.9fr 1.3fr auto 1.1fr 1.1fr 1.1fr;
+}
+
+.areaTypeTableDivider {
+  align-self: stretch;
+  width: 1px;
+  background-color: var(--color-neutral-300);
+}
+
+.areaTypeTableHeaderRow,
+.areaTypeTableRow {
+  display: grid;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+}
+
+.areaTypeTableHeaderRow {
+  background-color: var(--color-neutral-200);
+  border-radius: 8px;
+}
+
+.areaTypeTableHeaderCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-body-md-leading);
+  color: var(--color-text-lt-grey);
+  white-space: nowrap;
+}
+
+.areaTypeTableHeaderCellActive {
+  color: var(--color-text-lt-default);
+}
+
+.areaTypeTableHeaderCaret {
+  font-size: 12px;
+  color: var(--color-neutral-500);
+}
+
+.areaTypeTableHeaderCaretActive {
+  color: var(--color-primary-500);
+}
+
+.areaTypeTableRows {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-neutral-300);
+}
+
+.areaTypeTableRow {
+  height: 105px;
+  background-color: transparent;
+  border-bottom: 1px solid var(--color-neutral-300);
+}
+
+.areaTypeTableRow:hover {
+  background-color: var(--color-neutral-300);
+}
+
+
+.areaTypeTableCell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-default);
+}
+
+.areaTypeTableCell i {
+  color: var(--color-neutral-500);
+  font-size: 14px;
+}
+
+.areaTypeTableThumb {
+  width: 72px;
+  height: 72px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background-color: var(--color-neutral-300);
+}
+
+.areaTypeListThumbPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-neutral-500);
+}
+
+.areaTypeListNameStack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.areaTypeListNameSub {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-grey);
+}
+
+/* Inline "ratio baked into the bar" cells — the fill is the real
+   percent width, the label sits on top of it rather than above it.
+   Expected Services reads as compliance: red (Danger/700 @15%,
+   --wash-danger-15) while under target, green (Text/Success @15%,
+   --wash-success-15) with an outlined check-circle once serviced >=
+   expected. Areas
+   Serviced stays purple in both states (no danger color either —
+   target compliance is Expected Services' job) and just picks up
+   the same outlined check-circle once every area's been serviced
+   today, deepening to a stronger purple rather than switching
+   families. */
+.listBarCell {
+  position: relative;
+  height: 32px;
+  border-radius: 4px;
+  background-color: var(--color-neutral-300);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.listBarFill {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  background-color: var(--wash-danger-15);
+}
+
+.listBarFillHit {
+  background-color: var(--wash-success-15);
+}
+
+.listBarFillAreas {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  background-color: var(--wash-purple-15);
+}
+
+.listBarFillAreasHit {
+  background-color: color-mix(in srgb, var(--color-datavis-purple-500) 55%, transparent);
+}
+
+.listBarLabel {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  margin-top: 0;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: var(--type-body-md-weight);
+  color: var(--color-text-lt-default);
+  white-space: nowrap;
+}
+
+.listBarLabel i {
+  color: var(--color-text-lt-success);
+  font-size: 14px;
+}
+
+/* ---------------- Our Team / Service Times shared bits ---------------- */
+
+.statTileRow {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .statTileRow {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.statTile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+}
+
+.statTileLabel {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-grey);
+}
+
+.statTileValue {
+  font-family: var(--type-h1-family);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  color: var(--color-text-lt-default);
+}
+
+/* ---------------- Our Team table ---------------- */
+
+.teamToolbarRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.teamEmptyNote {
+  margin: 0;
+  padding: 40px 24px;
+  text-align: center;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-grey);
+  background-color: var(--surface-lt-card);
+  border: 1px solid var(--color-neutral-300);
+  border-radius: 8px;
+}
+
+.teamTableWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.teamTableRow {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 0.6fr;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+}
+
+.teamTableHeaderRow {
+  background-color: var(--color-neutral-200);
+  border-radius: 8px;
+}
+
+.teamTableRows {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-neutral-300);
+}
+
+.teamTableBodyRow {
+  background-color: transparent;
+  border-bottom: 1px solid var(--color-neutral-300);
+}
+
+.teamTableBodyRow:hover {
+  background-color: var(--color-neutral-300);
+}
+
+.teamHeaderCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-grey);
+}
+
+.teamHeaderCellCentered {
+  justify-content: center;
+  text-align: center;
+}
+
+.teamHeaderCellActive {
+  color: var(--color-text-lt-default);
+}
+
+.teamHeaderCaret {
+  font-size: 12px;
+  color: var(--color-neutral-500);
+}
+
+.teamHeaderCaretActive {
+  color: var(--color-primary-500);
+}
+
+.teamNameCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.teamRowAvatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 100%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid var(--color-primary-100);
+}
+
+.teamNameText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.teamRowName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--type-h4-family);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  text-align: left;
+  color: var(--color-text-lt-default);
+}
+
+.teamRowSubtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--type-body-sm-family);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  text-align: left;
+  color: rgb(91, 102, 113);
+}
+
+.teamCellCentered {
+  text-align: center;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-default);
+}
+
+.teamScoreBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 32px;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background-color: rgb(191, 255, 226);
+  color: rgb(24, 30, 36);
+  font-family: var(--type-body-md-family);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  text-align: center;
+}
+
+.teamRowArrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-neutral-500);
+}
+
+/* ---------------- Service Times table ---------------- */
+
+.timesTableWrap {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-neutral-300);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lt-card);
+}
+
+.timesTableHeaderRow,
+.timesTableRow {
+  display: grid;
+  grid-template-columns: 2fr 1.4fr 1fr 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+}
+
+.timesTableHeaderRow {
+  background-color: var(--color-neutral-200);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-grey);
+}
+
+.timesTableRow {
+  background-color: var(--surface-lt-card);
+  border-top: 1px solid var(--color-neutral-300);
+}
+
+.timesTableNameCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.timesTableAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 100%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.timesTableName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-default);
+}
+
+.timesTableCell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-default);
+}

@@ -65,7 +65,7 @@ export function HomeDashboard({ currentUser }: HomeDashboardProps) {
         siteIcon={<PinIcon />}
         links={[
           { label: "Home", href: "#", active: true },
-          { label: "Quality", href: "/quality/sow" },
+          { label: "Quality", href: "/quality/scope-of-work" },
           { label: "People", href: "/roster" },
           { label: "Safety", href: "#" },
           { label: "Financials", href: "#" },

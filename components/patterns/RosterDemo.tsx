@@ -55,7 +55,7 @@ export function RosterDemo({ associates, managers }: RosterDemoProps) {
         siteIcon={<PinIcon />}
         links={[
           { label: "Home", href: "#", active: true },
-          { label: "Quality", href: "/quality/sow" },
+          { label: "Quality", href: "/quality/scope-of-work" },
           { label: "People", href: "#" },
           { label: "Safety", href: "#" },
           { label: "Financials", href: "#" },

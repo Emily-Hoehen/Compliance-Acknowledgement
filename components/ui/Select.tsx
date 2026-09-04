@@ -15,6 +15,8 @@ export type DsSelectProps<T extends string> = {
   ariaLabel: string;
   /** Optional inline label rendered to the left, e.g. "Filter" / "Sort" — pairs the select with its own field wrapper instead of the caller hand-rolling one. */
   label?: string;
+  /** Stretches the trigger (and its drawer) to the width of the parent instead of the default content-hugging min-width — for a form field laid out label-above/field-below rather than inline next to other filter controls. */
+  fullWidth?: boolean;
 };
 
 /**
@@ -28,7 +30,7 @@ export type DsSelectProps<T extends string> = {
  * with a "Filter / Sort / View by"-style control row (SowHierarchyPage,
  * SowTimeFirstPage).
  */
-export function DsSelect<T extends string>({ value, onChange, options, ariaLabel, label }: DsSelectProps<T>) {
+export function DsSelect<T extends string>({ value, onChange, options, ariaLabel, label, fullWidth }: DsSelectProps<T>) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const selected = options.find((o) => o.value === value);
@@ -50,10 +52,10 @@ export function DsSelect<T extends string>({ value, onChange, options, ariaLabel
   }, [open]);
 
   const select = (
-    <div className={styles.selectWrap} ref={rootRef}>
+    <div className={[styles.selectWrap, fullWidth ? styles.selectWrapFull : ""].filter(Boolean).join(" ")} ref={rootRef}>
       <button
         type="button"
-        className={styles.dsSelect}
+        className={[styles.dsSelect, fullWidth ? styles.dsSelectFull : ""].filter(Boolean).join(" ")}
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
