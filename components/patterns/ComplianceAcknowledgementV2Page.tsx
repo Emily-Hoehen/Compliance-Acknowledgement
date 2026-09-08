@@ -21,6 +21,7 @@ import {
   hoursCapturedForNode,
   type ActivityItem,
   type ActivityKind,
+  type TimeTrendGranularity,
 } from "../../lib/sowData";
 import { areaTypePhotos, photoForAreaType } from "../../lib/sowImages";
 import { siteInfo } from "../../lib/homeDashboardData";
@@ -87,6 +88,17 @@ export function ComplianceAcknowledgementV2Page({ associates, managers, contract
   const [datePreset, setDatePreset] = useState<DatePreset>("today");
   const [activityFilter, setActivityFilter] = useState<ActivityKind | "all">("all");
   const [positionFilter, setPositionFilter] = useState("all");
+  // Non-empty exactly on a multi-day preset (week/month/etc.) — Our Team
+  // reads this to switch its Total Time column to an average-per-day
+  // figure instead of a single day's total.
+  const rangeDayOffsets = useMemo(() => missedRangeDayOffsets(datePreset), [datePreset]);
+  // Which Total Time Trend tab a row's modal should open on, so it feels
+  // like a continuation of whatever the page itself is showing rather
+  // than always resetting to Daily — "week" opens on Weekly, any month-
+  // or-longer preset opens on Monthly (there's no 4th granularity for
+  // 3/6/12 months, so Monthly is the closest, least-misleading fit).
+  const trendDefaultGranularity: TimeTrendGranularity =
+    datePreset === "week" ? "week" : datePreset === "today" || datePreset === "yesterday" ? "day" : "month";
 
   // "Today"/"Yesterday" drive the real single-day dayOffset every card on
   // this page reads from. The coarser presets have no real day-by-day
@@ -143,7 +155,15 @@ export function ComplianceAcknowledgementV2Page({ associates, managers, contract
             positionFilter={positionFilter}
           />
         )}
-        {activeTab === "team" && <OurTeamSection associates={associates} managers={managers} />}
+        {activeTab === "team" && (
+          <OurTeamSection
+            associates={associates}
+            managers={managers}
+            dayOffset={dayOffset}
+            rangeDayOffsets={rangeDayOffsets}
+            trendDefaultGranularity={trendDefaultGranularity}
+          />
+        )}
         {activeTab === "serviceTimes" && <ServiceTimesSection associates={associates} managers={managers} />}
         {activeTab === "charts" && <ChartsSection />}
       </main>
@@ -740,7 +760,10 @@ function missedRangeDayOffsets(preset: DatePreset): number[] {
   let end: Date = today;
   if (preset === "week") {
     start = new Date(today);
-    start.setDate(start.getDate() - 6);
+    // 7 complete days (offsets 1-7), not 6 — matches the Total Time Trend
+    // modal's own "This Week" window (TIME_TREND_DAYS_PER_PERIOD.week),
+    // so "this week" means the same span everywhere on the page.
+    start.setDate(start.getDate() - 7);
   } else if (preset === "month") {
     start = new Date(today.getFullYear(), today.getMonth(), 1);
   } else if (preset === "lastMonth") {
@@ -855,9 +878,14 @@ function formatShortDate(d: Date): string {
 function rangeLabelForPreset(preset: DatePreset): string | null {
   const today = new Date();
   if (preset === "week") {
+    // The most recent 7 complete days (today excluded — see
+    // missedRangeDayOffsets), not "today-6 through today": the pill's
+    // own range now matches the data it actually represents.
     const start = new Date(today);
-    start.setDate(start.getDate() - 6);
-    return `${formatShortDate(start)} - ${formatShortDate(today)}`;
+    start.setDate(start.getDate() - 7);
+    const end = new Date(today);
+    end.setDate(end.getDate() - 1);
+    return `${formatShortDate(start)} - ${formatShortDate(end)}`;
   }
   if (preset === "month") {
     const start = new Date(today.getFullYear(), today.getMonth(), 1);

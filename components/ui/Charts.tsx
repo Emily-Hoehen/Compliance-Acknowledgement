@@ -24,8 +24,9 @@ export function MonthAxis({ months, theme = "light" }: MonthAxisProps) {
     <div className={styles.axis} data-theme={theme}>
       <div className={styles.axisRule} />
       <div className={styles.axisLabels}>
-        {months.map((month) => (
-          <span key={month}>{month}</span>
+        {months.map((month, i) => (
+          // Positional key: a decimated axis can carry several blanked ("") labels, which would otherwise collide as duplicate keys.
+          <span key={i}>{month}</span>
         ))}
       </div>
     </div>
@@ -94,6 +95,7 @@ export function Sparkline({ values, color, height = 62, labels, valueFormatter, 
         ref={svgRef}
         className={[styles.sparkline, interactive ? styles.sparklineInteractive : ""].filter(Boolean).join(" ")}
         viewBox={`0 0 ${width} ${height}`}
+        style={{ height }}
         preserveAspectRatio="none"
         role="img"
         aria-hidden="true"
@@ -108,20 +110,27 @@ export function Sparkline({ values, color, height = 62, labels, valueFormatter, 
         </defs>
         <path d={area} fill={`url(#${gradientId})`} />
         <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        {hoverPoint && (
-          <>
-            <line
-              x1={hoverPoint.x}
-              y1={0}
-              x2={hoverPoint.x}
-              y2={height}
-              className={styles.sparklineGuide}
-              stroke={color}
-            />
-            <circle cx={hoverPoint.x} cy={hoverPoint.y} r={4} className={styles.sparklineDot} fill={color} />
-          </>
-        )}
       </svg>
+      {/* Rendered as HTML overlays, not SVG shapes: the chart's viewBox is
+          stretched non-uniformly (preserveAspectRatio="none") to fill
+          whatever width the container has, which would squash a circle
+          drawn in viewBox coordinates into an ellipse. */}
+      {hoverPoint && (
+        <div
+          className={styles.sparklineGuide}
+          style={{ left: `${(hoverPoint.x / width) * 100}%`, borderColor: color }}
+        />
+      )}
+      {hoverPoint && (
+        <div
+          className={styles.sparklineDot}
+          style={{
+            left: `${(hoverPoint.x / width) * 100}%`,
+            top: `${(hoverPoint.y / height) * 100}%`,
+            backgroundColor: color,
+          }}
+        />
+      )}
       {interactive && hoverPoint && hoverIndex !== null && (
         <div
           className={styles.sparklineTooltip}
@@ -133,6 +142,194 @@ export function Sparkline({ values, color, height = 62, labels, valueFormatter, 
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Rounds a rough axis step up to a "nice" graduation (1/2/2.5/5/10 × a power of ten) so gridlines land on readable numbers instead of the data's raw max/tickCount. */
+function niceAxisStep(roughStep: number): number {
+  if (roughStep <= 0) return 1;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+  const normalized = roughStep / magnitude;
+  const niceNormalized = [1, 2, 2.5, 5, 10].find((n) => n >= normalized) ?? 10;
+  return niceNormalized * magnitude;
+}
+
+/** Evenly-spaced gridline values from 0 up to a "nice" axis max, e.g. [0, 5, 10, 15, 20] for a max data value of 18. */
+function niceAxisTicks(maxValue: number, tickCount = 4): number[] {
+  const step = niceAxisStep((maxValue || 1) / tickCount);
+  return Array.from({ length: tickCount + 1 }, (_, i) => Math.round(step * i * 100) / 100);
+}
+
+type GridTrendChartProps = {
+  values: number[];
+  /** Per-point label (e.g. "Aug 27") — always shown in the hover tooltip, same length/order as `values`. */
+  labels: string[];
+  /** Labels shown under the x-axis; defaults to `labels`. Pass a decimated array (some entries blanked to "") to thin out a dense axis without touching what the tooltip shows on hover. */
+  axisLabels?: string[];
+  color: string;
+  height?: number;
+  /** Formats the hovered value for the tooltip; defaults to the raw number. */
+  valueFormatter?: (value: number) => string;
+  /** Opts into the pointer-follow tooltip + guideline. Default on, unlike Sparkline, since every call site so far wants it. */
+  interactive?: boolean;
+};
+
+/**
+ * Zero-baselined line chart with a labeled y-axis, horizontal gridlines,
+ * and a persistent dot at every point (not just on hover) — makes small
+ * point-to-point swings easy to read at a glance, unlike Sparkline's
+ * autoscaled min/max framing which is built to show shape, not amount.
+ */
+export function GridTrendChart({
+  values,
+  labels,
+  axisLabels,
+  color,
+  height = 160,
+  valueFormatter,
+  interactive = true,
+}: GridTrendChartProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const width = 290;
+  const ticks = niceAxisTicks(Math.max(...values, 0), 5);
+  const axisMax = ticks[ticks.length - 1] || 1;
+  // The y-axis numbers float over the plot instead of reserving their own
+  // column — that's what lets the chart's left edge line up with the rest
+  // of the modal's content instead of sitting inset by a label column's
+  // width. leftInset just keeps the line/dots from starting directly
+  // under the numbers.
+  const leftInset = 10;
+  const plotWidth = width - leftInset;
+  const step = values.length > 1 ? plotWidth / (values.length - 1) : 0;
+
+  const points = values.map((v, i) => ({
+    x: leftInset + i * step,
+    y: height - (v / axisMax) * height,
+  }));
+
+  const line = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+
+  function updateHoverFromClientX(clientX: number) {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const xInViewBox = ((clientX - rect.left) / rect.width) * width;
+    let nearest = 0;
+    let nearestDist = Infinity;
+    points.forEach((p, i) => {
+      const dist = Math.abs(p.x - xInViewBox);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearest = i;
+      }
+    });
+    setHoverIndex(nearest);
+  }
+
+  const hoverPoint = hoverIndex !== null ? points[hoverIndex] : null;
+
+  return (
+    <div className={styles.gridChart}>
+      <div className={styles.gridChartBody}>
+        <div className={styles.gridChartPlot}>
+          {ticks
+            .filter((tick) => tick > 0)
+            .map((tick) => (
+              <div key={tick} className={styles.gridChartGridline} style={{ top: `${100 - (tick / axisMax) * 100}%` }} />
+            ))}
+          {/* The 0 baseline, unlike the value gridlines above, starts at the
+              same left inset as the line/dots and the date labels below —
+              it's part of the axis, not a value gridline running the full
+              width behind the y-axis numbers. */}
+          <div
+            className={styles.gridChartBaseline}
+            style={{ left: `${(leftInset / width) * 100}%` }}
+          />
+          {/* The 0 baseline gets a gridline like every other tick, but no
+              number — it reads as the axis line itself, not a data value.
+              Positioned to match its gridline exactly (rather than flex
+              space-between guessing at even spacing) so the numbers sit
+              dead-center on their lines. */}
+          {ticks
+            .filter((tick) => tick > 0)
+            .map((tick) => (
+              <span
+                key={tick}
+                className={styles.gridChartTickLabel}
+                style={{ top: `${100 - (tick / axisMax) * 100}%` }}
+              >
+                {tick.toLocaleString()}
+              </span>
+            ))}
+          <svg
+            ref={svgRef}
+            className={[styles.gridChartSvg, interactive ? styles.sparklineInteractive : ""].filter(Boolean).join(" ")}
+            viewBox={`0 0 ${width} ${height}`}
+            style={{ height }}
+            preserveAspectRatio="none"
+            role="img"
+            aria-hidden="true"
+            onPointerMove={interactive ? (e) => updateHoverFromClientX(e.clientX) : undefined}
+            onPointerLeave={interactive ? () => setHoverIndex(null) : undefined}
+          >
+            <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {/* Dots and the hover guide render as HTML overlays, not SVG shapes — see Sparkline's own note on why. */}
+          {hoverPoint && (
+            <div
+              className={styles.sparklineGuide}
+              style={{ left: `${(hoverPoint.x / width) * 100}%`, borderColor: color }}
+            />
+          )}
+          {points.map((p, i) => (
+            <div
+              key={i}
+              className={[styles.gridChartDot, hoverIndex === i ? styles.gridChartDotActive : ""].filter(Boolean).join(" ")}
+              style={{ left: `${(p.x / width) * 100}%`, top: `${(p.y / height) * 100}%`, backgroundColor: color }}
+            />
+          ))}
+          {interactive && hoverPoint && hoverIndex !== null && (
+            <div
+              className={styles.sparklineTooltip}
+              style={{ left: `${Math.min(94, Math.max(6, (hoverPoint.x / width) * 100))}%` }}
+            >
+              {labels[hoverIndex] && <span className={styles.sparklineTooltipLabel}>{labels[hoverIndex]}</span>}
+              <span className={styles.sparklineTooltipValue}>
+                {valueFormatter ? valueFormatter(values[hoverIndex]) : values[hoverIndex]}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className={styles.gridChartXAxis}>
+        <div className={styles.gridChartXAxisLabels}>
+          {/* Positioned to match each point's actual x (including its
+              leftInset), not spread flex space-between across the full
+              width — otherwise a label drifts away from the dot it's
+              supposed to sit under, worst at the (inset) left edge. */}
+          {(axisLabels ?? labels).map((label, i) => {
+            const pct = (points[i].x / width) * 100;
+            const isFirst = i === 0;
+            const isLast = i === points.length - 1;
+            return (
+              // Positional key: a decimated axis can carry several blanked ("") labels, which would otherwise collide as duplicate keys.
+              <span
+                key={i}
+                className={styles.gridChartXAxisLabel}
+                style={{
+                  left: `${pct}%`,
+                  transform: isFirst ? "translateX(0)" : isLast ? "translateX(-100%)" : "translateX(-50%)",
+                }}
+              >
+                {label}
+              </span>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

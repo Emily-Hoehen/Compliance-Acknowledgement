@@ -354,6 +354,22 @@ function formatHoursMinutes(totalMinutes: number): string {
   return `${Math.floor(totalMinutes / 60)}h ${String(totalMinutes % 60).padStart(2, "0")}m`;
 }
 
+/** Decimal hours (e.g. 6.2) → "6hr 15min" prose, for readouts where "6.2 hrs" would force the reader to do the minutes math themselves. Drops whichever unit is zero. */
+export function formatHoursMinutesLong(hours: number): string {
+  const totalMinutes = Math.round(hours * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h === 0) return `${m}min`;
+  if (m === 0) return `${h}hr`;
+  return `${h}hr ${m}min`;
+}
+
+/** Decimal hours split into whole hour/minute counts, for UI that renders "8" + "hr" and "36" + "min" as two separate numeral-plus-unit pairs rather than one combined string. */
+export function hoursMinutesParts(hours: number): { h: number; m: number } {
+  const totalMinutes = Math.round(hours * 60);
+  return { h: Math.floor(totalMinutes / 60), m: totalMinutes % 60 };
+}
+
 /**
  * A deterministic, day-varying "hours captured vs. paid" read for a
  * hierarchy node — same generator spirit as scoreForDay/scaleForDay,
@@ -696,15 +712,113 @@ export type TeamMember = {
   avgScore: number;
   timeWorked: string;
   mostRecent: string;
+  /** This person's own seed root (`${seedKey}-${person.name}`) — lets a caller (the Our Team time-trend modal) sum this same per-day generator over many days without re-deriving the seed from the row. */
+  personSeed: string;
 };
+
+/** Raw worked minutes (4h00m–8h45m) behind durationForSeed's formatted label — split out so a trend can sum many days instead of formatting just one. */
+function timeWorkedMinutesForSeed(seed: string): number {
+  const hash = hashSeed(seed);
+  return 4 * 60 + (hash % (4 * 60 + 45));
+}
 
 /** A plausible worked-time duration (4h00m–8h45m), deterministic per seed. */
 function durationForSeed(seed: string): string {
-  const hash = hashSeed(seed);
-  const totalMinutes = 4 * 60 + (hash % (4 * 60 + 45));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return `${hours}h ${String(minutes).padStart(2, "0")}m`;
+  return formatHoursMinutes(timeWorkedMinutesForSeed(seed));
+}
+
+/**
+ * Average per-day worked time across a set of day-offsets — for the Our
+ * Team table's Total Time column when the page's date selector is on a
+ * multi-day range (week/month/etc.) rather than a single day, where a
+ * single day's total wouldn't mean anything. Uses the same per-day seed
+ * convention (`${personSeed}-${offset}-time`) as both durationForSeed
+ * and timeWorkedTrend, so the average is consistent with the single-day
+ * figure and the Total Time Trend modal, not a separately-fabricated number.
+ */
+export function averageTimeWorkedLabel(personSeed: string, dayOffsets: number[]): string {
+  const totalMinutes = dayOffsets.reduce((sum, offset) => sum + timeWorkedMinutesForSeed(`${personSeed}-${offset}-time`), 0);
+  return formatHoursMinutes(Math.round(totalMinutes / dayOffsets.length));
+}
+
+export type TimeTrendGranularity = "day" | "week" | "month";
+
+export type TimeTrendPoint = {
+  /** Short period-start label — "Aug 4" for a day or week, "Aug '26" for a month. */
+  label: string;
+  hours: number;
+};
+
+/** Days summed into one trend point per granularity — also how a caller converts a period's total into a daily average. */
+export const TIME_TREND_DAYS_PER_PERIOD: Record<TimeTrendGranularity, number> = { day: 1, week: 7, month: 30 };
+
+function timeTrendPeriodLabel(granularity: TimeTrendGranularity, periodStartDaysAgo: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - periodStartDaysAgo);
+  if (granularity !== "month") return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  // "Apr '26", not "Apr 26" — a bare two-digit year reads as a day-of-month at a glance.
+  return `${d.toLocaleDateString("en-US", { month: "short" })} '${d.toLocaleDateString("en-US", { year: "2-digit" })}`;
+}
+
+/** "Sep 2, 2026" — a full, unambiguous date for a range picker label (unlike timeTrendPeriodLabel's bare "Sep 2", which is fine repeated down a chart axis but not as a standalone date). */
+export function timeTrendFullDateLabel(daysAgo: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+/** The viewed day's total hours minus the day before's, for the Our Team row's own up/down trend indicator — a quick glance before opening the full trend modal. Callers skip this for dayOffset 0 (today), since today's hours are still accumulating and a delta against a still-counting day isn't a real comparison. */
+export function dayOverDayTimeDelta(personSeed: string, dayOffset: number): number {
+  const [previousDay, viewedDay] = timeWorkedTrend(personSeed, "day", 2, dayOffset);
+  return Math.round((viewedDay.hours - previousDay.hours) * 10) / 10;
+}
+
+/**
+ * The viewed range's average-per-day hours minus the immediately
+ * preceding range of the same length — e.g. this week's avg/day vs last
+ * week's, or this month's vs last month's — for the Our Team row's own
+ * up/down trend indicator while a multi-day preset (not a single day)
+ * is selected. Shifts `dayOffsets` back by its own length to get the
+ * prior range, so it works for any range size without a separate
+ * "week" vs "month" case.
+ */
+export function rangeOverRangeAvgDelta(personSeed: string, dayOffsets: number[]): number {
+  if (dayOffsets.length === 0) return 0;
+  const avgMinutes = (offsets: number[]) =>
+    offsets.reduce((sum, offset) => sum + timeWorkedMinutesForSeed(`${personSeed}-${offset}-time`), 0) / offsets.length;
+  const previousOffsets = dayOffsets.map((offset) => offset + dayOffsets.length);
+  return Math.round(((avgMinutes(dayOffsets) - avgMinutes(previousOffsets)) / 60) * 10) / 10;
+}
+
+/**
+ * Week-over-week or month-over-month "Total Time" trend for one team
+ * member — buckets the same per-day worked-minutes generator behind
+ * their row's own Total Time column (durationForSeed) into 7- or
+ * 30-day sums, oldest first, ending at `endDayOffset` (0 = the
+ * period containing today). A longer bucket is a real sum of more
+ * days' worth of the same numbers shown elsewhere on the page, not a
+ * separately-fabricated series.
+ */
+export function timeWorkedTrend(
+  personSeed: string,
+  granularity: TimeTrendGranularity,
+  periods: number,
+  endDayOffset = 0
+): TimeTrendPoint[] {
+  const daysPerPeriod = TIME_TREND_DAYS_PER_PERIOD[granularity];
+  const points: TimeTrendPoint[] = [];
+  for (let p = periods - 1; p >= 0; p--) {
+    const periodStartOffset = endDayOffset + p * daysPerPeriod;
+    let totalMinutes = 0;
+    for (let d = 0; d < daysPerPeriod; d++) {
+      totalMinutes += timeWorkedMinutesForSeed(`${personSeed}-${periodStartOffset + d}-time`);
+    }
+    points.push({
+      label: timeTrendPeriodLabel(granularity, periodStartOffset),
+      hours: Math.round((totalMinutes / 60) * 10) / 10,
+    });
+  }
+  return points;
 }
 
 /**
@@ -738,6 +852,7 @@ export function teamForNode(
       servicesCompleted: Math.max(1, Math.round(baseServices * scaleForDay(personSeed, dayOffset))),
       avgScore: scoreForDay(personSeed, dayOffset),
       timeWorked: durationForSeed(`${personSeed}-${dayOffset}-time`),
+      personSeed,
       mostRecent:
         dayOffset === 0
           ? `${5 + (hashSeed(`${personSeed}-recent`) % 55)} minutes ago`

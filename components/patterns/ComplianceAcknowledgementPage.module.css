@@ -2484,6 +2484,191 @@
   color: var(--color-neutral-500);
 }
 
+/* ---------------- Our Team: per-employee time trend ---------------- */
+
+.teamTimeSnapshotButton {
+  appearance: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 auto;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 6px;
+  background-color: transparent;
+  transition: background-color 120ms ease;
+}
+
+.teamTimeSnapshotButton:hover,
+.teamTimeSnapshotButton:focus-visible {
+  background-color: var(--color-neutral-200);
+}
+
+.teamTimeValue {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-lt-default);
+}
+
+.teamTimeTrendUp {
+  font-size: 16px;
+  color: var(--color-success-700);
+}
+
+.teamTimeTrendDown {
+  font-size: 16px;
+  color: var(--color-danger-700);
+}
+
+.timeTrendBody {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.timeTrendHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+.timeTrendProfile {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.timeTrendMemberText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timeTrendMemberName {
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-leading);
+  color: var(--color-text-lt-default);
+}
+
+.timeTrendMemberSubtitle {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: var(--type-body-md-weight);
+  line-height: var(--type-body-md-leading);
+  color: var(--color-text-lt-grey);
+}
+
+.timeTrendGranularity {
+  flex-shrink: 0;
+}
+
+.statBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cardLabel {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-grey);
+  margin: 0;
+}
+
+.statRow {
+  display: flex;
+  /* Baseline, not flex-end: flex-end lines up each item's line-height
+     box, which differs between the 32px numerals and the 14px unit/
+     delta text, so their visual bottoms never actually matched.
+     align-items:baseline is standard flexbox and aligns by the real
+     text baseline instead, in every browser. */
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.statValueGroup {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.statPair {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.statValue {
+  font-family: var(--type-h1-family);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  color: var(--color-text-lt-default);
+}
+
+.statUnit {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: var(--type-body-md-weight);
+  line-height: var(--type-body-md-leading);
+  color: var(--color-text-lt-grey);
+}
+
+.timeTrendDelta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-leading);
+}
+
+.timeTrendDeltaUp {
+  color: var(--color-text-lt-success);
+}
+
+.timeTrendDeltaDown {
+  color: var(--color-text-lt-danger);
+}
+
+.timeTrendChartHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+.timeTrendAverageCaption {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-lt-default);
+  text-align: right;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.chartStack {
+  display: flex;
+  flex-direction: column;
+  /* The gap below the header row, not chartStack's own top margin, is
+     what needs to clear the sparkline's hover tooltip — it floats
+     above the chart via negative positioning and would otherwise
+     overlap the "Trend" caption/date-range row sitting right above it. */
+  gap: 28px;
+  /* Extra breathing room from the stat block above, on top of
+     timeTrendBody's own gap between every section. */
+  margin-top: 12px;
+}
+
 /* ---------------- Service Times table ---------------- */
 
 .timesTableWrap {

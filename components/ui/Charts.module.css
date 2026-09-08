@@ -58,16 +58,24 @@
 }
 
 .sparklineGuide {
-  stroke-width: 1;
-  stroke-dasharray: 3 3;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px dashed;
   opacity: 0.5;
   pointer-events: none;
+  transform: translateX(-50%);
 }
 
 .sparklineDot {
-  stroke: var(--surface-lt-card);
-  stroke-width: 2;
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--surface-lt-card);
   pointer-events: none;
+  transform: translate(-50%, -50%);
 }
 
 .sparklineTooltip {
@@ -100,6 +108,105 @@
   font-size: var(--type-h4-size);
   font-weight: var(--type-h4-weight);
   line-height: 1.2;
+}
+
+/* ---------------- Grid trend chart ---------------- */
+
+.gridChart {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.gridChartBody {
+  display: flex;
+  width: 100%;
+}
+
+.gridChartPlot {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Floats over the plot's own left edge rather than reserving a column
+   for itself — that's what lets the chart's bounding box (and so its
+   left edge) match the rest of the modal's content width instead of
+   sitting inset by a label column. Positioned per-tick (not flex
+   space-between) so each number sits dead-center on its gridline. */
+.gridChartTickLabel {
+  position: absolute;
+  left: 0;
+  transform: translateY(-50%);
+  padding-right: 4px;
+  background-color: var(--surface-lt-card);
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  line-height: var(--type-body-sm-leading);
+  color: var(--color-text-lt-grey);
+}
+
+.gridChartSvg {
+  display: block;
+  width: 100%;
+}
+
+.gridChartGridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: var(--surface-lt-hairline);
+}
+
+.gridChartBaseline {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  height: 1px;
+  background-color: var(--surface-lt-hairline);
+}
+
+.gridChartDot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--surface-lt-card);
+  box-shadow: var(--shadow-lt-card);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.gridChartDotActive {
+  width: 15px;
+  height: 15px;
+}
+
+.gridChartXAxis {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  padding-top: 8px;
+}
+
+.gridChartXAxisLabels {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 18px;
+  /* No border here — the chart's own baseline rule already draws the
+     line right above this row, so a second rule would double it up. */
+}
+
+.gridChartXAxisLabel {
+  position: absolute;
+  top: 0;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  line-height: var(--type-body-sm-leading);
+  color: var(--color-text-lt-grey);
+  white-space: nowrap;
 }
 
 /* ---------------- Donut ring ---------------- */
