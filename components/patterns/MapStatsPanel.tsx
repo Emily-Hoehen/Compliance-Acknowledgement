@@ -2,10 +2,19 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DonutRing } from "../ui/Charts";
-import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ExpandIcon, LocationDotIcon, SearchIcon, XmarkIcon } from "./icons";
+import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, CircleCheckIcon, ExpandIcon, LocationDotIcon, SearchIcon, XmarkIcon } from "./icons";
 import { MapShiftOverviewSections } from "./MapShiftOverviewSections";
 import { MapShiftReportSections, type ZoomTarget } from "./MapShiftReportSections";
-import { mapPageData, shiftStatNotes, siteOverviewAttendance, type DailyReportShift, type MapAreaTypeRow, type ShiftStatNote } from "../../lib/mapPageData";
+import { MapShiftSummaryCard } from "./MapShiftSummaryCard";
+import {
+  mapPageData,
+  shiftStatNotes,
+  siteOverviewAttendance,
+  type DailyReportPerson,
+  type DailyReportShift,
+  type MapAreaTypeRow,
+  type ShiftStatNote,
+} from "../../lib/mapPageData";
 import type { ShiftAreaTypeDetail, ShiftReport } from "../../lib/mapShiftReportData";
 import { photoForAreaType } from "../../lib/sowImages";
 import { scoreForDay } from "../../lib/sowData";
@@ -48,6 +57,13 @@ export type MapStatsPanelProps = {
   areaTypeDetail?: ShiftAreaTypeDetail | null;
   onSelectAreaType?: (name: string) => void;
   onClearAreaType?: () => void;
+  /** The site's manager-of-record, shown in a Shift-Notes-style card at the top of the unfiltered (full day) view only — their daily sign-off note and when they signed off. */
+  siteManager?: DailyReportPerson | null;
+  siteManagerSignOff?: string;
+  siteManagerNote?: string;
+  /** All three shifts, for "View Full Day Report" — each rendered via MapShiftSummaryCard; picking one calls onSelectShift, same as picking a band on MapShiftTimeline. */
+  dailyShifts?: DailyReportShift[];
+  onSelectShift?: (key: DailyReportShift["key"]) => void;
 };
 
 /**
@@ -89,6 +105,11 @@ export function MapStatsPanel({
   areaTypeDetail,
   onSelectAreaType,
   onClearAreaType,
+  siteManager,
+  siteManagerSignOff,
+  siteManagerNote,
+  dailyShifts,
+  onSelectShift,
 }: MapStatsPanelProps) {
   const { servicesCompleted, hoursCaptured, qualityScores } = mapPageData;
 
@@ -97,6 +118,7 @@ export function MapStatsPanel({
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [areaTypesExpanded, setAreaTypesExpanded] = useState(true);
   const [showFullReport, setShowFullReport] = useState(false);
+  const [showFullDayReport, setShowFullDayReport] = useState(false);
   const [areaSearch, setAreaSearch] = useState("");
   const [areaSortBy, setAreaSortBy] = useState<SortKey>("name");
   const [areaSortMenuOpen, setAreaSortMenuOpen] = useState(false);
@@ -110,10 +132,11 @@ export function MapStatsPanel({
 
   useEffect(() => {
     if (scrollBodyRef.current) scrollBodyRef.current.scrollTop = 0;
-  }, [isAreaTypeDetailView, showFullReport, selectedShift?.key]);
+  }, [isAreaTypeDetailView, showFullReport, showFullDayReport, selectedShift?.key]);
 
   useEffect(() => {
     setShowFullReport(false);
+    setShowFullDayReport(false);
     onClearAreaType?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedShift?.key]);
@@ -372,21 +395,15 @@ export function MapStatsPanel({
                           </div>
                           <div className={styles.rowText}>
                             <span className={styles.rowName}>{area.displayName}</span>
-                            {met ? (
-                              <span className={styles.rowMeta}>
-                                {area.servicesCompleted} of {area.servicesExpected} Expected Service
-                              </span>
-                            ) : (
-                              <span className={styles.rowShortfall}>
-                                {area.servicesCompleted} of {area.servicesExpected} expected
-                              </span>
-                            )}
+                            <span className={met ? styles.rowMeta : styles.rowShortfall}>
+                              {area.servicesCompleted} of {area.servicesExpected} Expected Service{area.servicesExpected === 1 ? "" : "s"}
+                            </span>
                           </div>
                           <span className={styles.rowScoreChip} data-tone={area.servicesCompleted > 0 ? "success" : "neutral"}>
                             {score}
                           </span>
                         </div>
-                        {area.managerNote && <StatNoteCard note={area.managerNote} />}
+                        {area.managerNote && <StatNoteCard note={area.managerNote} shiftLabel={selectedShift!.label} />}
                       </div>
                     );
                   })}
@@ -395,11 +412,68 @@ export function MapStatsPanel({
               )}
             </div>
           </>
+        ) : !isShiftView && showFullDayReport ? (
+          <>
+            <button type="button" className={styles.backToOverviewLink} onClick={() => setShowFullDayReport(false)}>
+              <ChevronLeftIcon className={styles.backToOverviewIcon} />
+              Site Overview
+            </button>
+            <div className={styles.fullDayReportList}>
+              {(dailyShifts ?? []).map((shift) => (
+                <div
+                  key={shift.key}
+                  className={styles.fullDayReportCard}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onSelectShift?.(shift.key)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelectShift?.(shift.key);
+                    }
+                  }}
+                  aria-label={`View ${shift.label} shift report`}
+                >
+                  <MapShiftSummaryCard shift={shift} />
+                </div>
+              ))}
+            </div>
+          </>
         ) : (
           <>
             {isShiftView && (
               <>
                 <MapShiftOverviewSections report={shiftReport!} onViewFullReport={() => setShowFullReport(true)} />
+                <div className={styles.hairline} />
+              </>
+            )}
+
+            {!isShiftView && siteManager && siteManagerNote && (
+              <>
+                <div className={styles.siteManagerSection}>
+                  <span className={styles.siteManagerHeading}>Site Manager</span>
+                  <div className={styles.statNoteCard}>
+                    <p className={styles.statNoteText}>{siteManagerNote}</p>
+                    <div className={styles.statNoteAuthorRow}>
+                      {siteManager.avatar ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={siteManager.avatar} alt="" className={styles.statNoteAvatar} />
+                      ) : (
+                        <span className={styles.statNoteAvatarFallback} aria-hidden="true" />
+                      )}
+                      <div className={styles.statNoteAuthorInfo}>
+                        <span className={styles.statNoteAuthorName}>{siteManager.name}</span>
+                        <div className={styles.siteManagerSignOffRow}>
+                          <CircleCheckIcon className={styles.siteManagerSignOffIcon} />
+                          <span className={styles.siteManagerSignOffText}>{siteManagerSignOff}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <button type="button" className={styles.viewFullReportLink} onClick={() => setShowFullDayReport(true)}>
+                    View Full Day Report
+                  </button>
+                </div>
                 <div className={styles.hairline} />
               </>
             )}
@@ -417,7 +491,7 @@ export function MapStatsPanel({
                 </div>
               </div>
 
-              {isShiftView && <StatNoteCard note={shiftStatNotes.servicesCompleted} />}
+              {isShiftView && <StatNoteCard note={shiftStatNotes.servicesCompleted} shiftLabel={selectedShift!.label} />}
 
               <div className={styles.hairline} />
 
@@ -456,7 +530,7 @@ export function MapStatsPanel({
                 </div>
               </div>
 
-              {isShiftView && <StatNoteCard note={shiftStatNotes.hoursCaptured} />}
+              {isShiftView && <StatNoteCard note={shiftStatNotes.hoursCaptured} shiftLabel={selectedShift!.label} />}
 
               <div className={styles.hairline} />
 
@@ -474,7 +548,7 @@ export function MapStatsPanel({
                 </div>
               ))}
 
-              {isShiftView && <StatNoteCard note={shiftStatNotes.qualityScores} />}
+              {isShiftView && <StatNoteCard note={shiftStatNotes.qualityScores} shiftLabel={selectedShift!.label} />}
             </div>
 
             <div className={styles.hairline} />
@@ -585,7 +659,7 @@ export function MapStatsPanel({
 }
 
 /** A handoff note below one of the shift-filtered stats widgets (Services Completed/Hours Captured/Quality Scores) — same bespoke card language as MapShiftOverviewSections' Shift Notes card (no tag chip, 14px/22px body copy), just without the "View Full Shift Report" link since there's no further drill-down to point to from here. Also reused for the area-type detail view's per-area shortfall notes. */
-function StatNoteCard({ note }: { note: ShiftStatNote & { tag?: string } }) {
+function StatNoteCard({ note, shiftLabel }: { note: ShiftStatNote & { tag?: string }; shiftLabel?: string }) {
   return (
     <div className={styles.statNoteCard}>
       {note.tag && (
@@ -601,7 +675,10 @@ function StatNoteCard({ note }: { note: ShiftStatNote & { tag?: string } }) {
         ) : (
           <span className={styles.statNoteAvatarFallback} aria-hidden="true" />
         )}
-        <span className={styles.statNoteAuthorName}>{note.author.name}</span>
+        <div className={styles.statNoteAuthorInfo}>
+          <span className={styles.statNoteAuthorName}>{note.author.name}</span>
+          <span className={styles.statNoteAuthorShift}>{shiftLabel ? `${note.author.position} | ${shiftLabel}` : note.author.position}</span>
+        </div>
         <span className={styles.statNoteTime}>{note.timestamp}</span>
       </div>
     </div>

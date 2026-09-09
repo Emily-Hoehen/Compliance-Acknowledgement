@@ -85,8 +85,8 @@ export type ShiftReport = {
   label: string;
   timeRange: string;
   managers: DailyReportPerson[];
-  /** "8h 12min"-style total time worked this shift, keyed by manager name — shown in the shift overview's Managers section. */
-  managerTotalTime: Record<string, string>;
+  /** Total time worked plus clock-in/out timestamps this shift, keyed by manager name — the total shows in the Managers section, and the clock times show in a hover tooltip over it. */
+  managerClockTimes: Record<string, ManagerClockTimes>;
   totalAreas: number;
   areasMissedCount: number;
   totalAreaTypesCount: number;
@@ -178,12 +178,48 @@ function buildNote(shift: DailyReportShift, seed: string, template: NoteTemplate
   return { author: pickManager(shift, seed), timestamp: pickClockTime(`${seed}-time`), text: template.text, tag: template.tag };
 }
 
-/** "8h 12min"-style total time worked, per co-manager, for the overview's Managers section — deterministic per shift/day/manager, centered on a full ~8h shift with a little natural variance. */
-function buildManagerTotalTime(shift: DailyReportShift, dayOffset: number): Record<string, string> {
-  const result: Record<string, string> = {};
+export type ManagerClockTimes = {
+  /** "8h 12min"-style total time worked this shift. */
+  totalTimeLabel: string;
+  /** "6:04 AM EDT"-style clock-in, shown in a hover tooltip over the total time. */
+  clockIn: string;
+  /** "2:11 PM EDT"-style clock-out, shown in the same tooltip. */
+  clockOut: string;
+};
+
+/** "6:00 AM" (from a "6:00 AM – 2:00 PM"-style timeRange) → minutes since midnight. */
+function parseClockTimeToMinutes(time: string): number {
+  const match = time.trim().match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!match) return 0;
+  const hour12 = parseInt(match[1], 10) % 12;
+  const minute = parseInt(match[2], 10);
+  const isPm = match[3].toUpperCase() === "PM";
+  return (isPm ? hour12 + 12 : hour12) * 60 + minute;
+}
+
+/** Minutes since midnight (may run past 1440 for an overnight shift like Graveyard) → "6:04 AM EDT"-style clock time. */
+function formatClockTime(totalMinutesOfDay: number): string {
+  const normalized = ((totalMinutesOfDay % 1440) + 1440) % 1440;
+  const hour24 = Math.floor(normalized / 60);
+  const minute = normalized % 60;
+  const period = hour24 < 12 ? "AM" : "PM";
+  const hour12 = hour24 % 12 || 12;
+  return `${hour12}:${String(minute).padStart(2, "0")} ${period} EDT`;
+}
+
+/** Total time worked plus clock-in/out timestamps, per co-manager, for the overview's Managers section — deterministic per shift/day/manager, centered on the shift's own start time with a little natural variance (a few minutes early or late clocking in) and a full ~8h shift length. */
+function buildManagerClockTimes(shift: DailyReportShift, dayOffset: number): Record<string, ManagerClockTimes> {
+  const shiftStartMinutes = parseClockTimeToMinutes(shift.timeRange.split(/[–-]/)[0]);
+  const result: Record<string, ManagerClockTimes> = {};
   shift.managers.forEach((manager) => {
     const totalMinutes = 450 + (Math.abs(hashSeed(`${shift.key}-${manager.name}-total-time-${dayOffset}`)) % 60); // 7h30m–8h29m
-    result[manager.name] = `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}min`;
+    const clockInOffset = (Math.abs(hashSeed(`${shift.key}-${manager.name}-clockin-${dayOffset}`)) % 31) - 10; // 10 min early to 20 min late
+    const clockInMinutes = shiftStartMinutes + clockInOffset;
+    result[manager.name] = {
+      totalTimeLabel: `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}min`,
+      clockIn: formatClockTime(clockInMinutes),
+      clockOut: formatClockTime(clockInMinutes + totalMinutes),
+    };
   });
   return result;
 }
@@ -367,7 +403,7 @@ export function buildShiftReport(shift: DailyReportShift, dayOffset: number, bui
     label: shift.label,
     timeRange: shift.timeRange,
     managers: shift.managers,
-    managerTotalTime: buildManagerTotalTime(shift, dayOffset),
+    managerClockTimes: buildManagerClockTimes(shift, dayOffset),
     totalAreas,
     areasMissedCount,
     totalAreaTypesCount: byAreaType.size,

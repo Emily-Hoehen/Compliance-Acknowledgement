@@ -40,7 +40,12 @@ export function MapShiftOverviewSections({ report, onViewFullReport }: MapShiftO
               </div>
               <div className={styles.shiftNoteAuthorRow}>
                 <img src={shiftNote.author.avatar} alt="" className={styles.shiftNoteAvatar} />
-                <span className={styles.shiftNoteAuthorName}>{shiftNote.author.name}</span>
+                <div className={styles.shiftNoteAuthorInfo}>
+                  <span className={styles.shiftNoteAuthorName}>{shiftNote.author.name}</span>
+                  <span className={styles.shiftNoteAuthorPosition}>
+                    {shiftNote.author.position} | {report.label}
+                  </span>
+                </div>
                 <span className={styles.shiftNoteTime}>{shiftNote.timestamp}</span>
               </div>
             </div>
@@ -56,21 +61,38 @@ export function MapShiftOverviewSections({ report, onViewFullReport }: MapShiftO
       <div className={styles.section}>
         <span className={styles.sectionHeading}>Managers</span>
         <div className={styles.managerStack}>
-          {report.managers.map((manager) => (
-            <div key={manager.name} className={styles.managerRow}>
-              <img src={manager.avatar} alt="" className={styles.managerAvatar} />
-              <div className={styles.managerInfo}>
-                <span className={styles.managerName}>{manager.name}</span>
-                <span className={styles.managerPosition}>
-                  {manager.position} | {report.label}
-                </span>
+          {report.managers.map((manager) => {
+            const clockTimes = report.managerClockTimes[manager.name];
+            return (
+              <div key={manager.name} className={styles.managerRow}>
+                <img src={manager.avatar} alt="" className={styles.managerAvatar} />
+                <div className={styles.managerInfo}>
+                  <span className={styles.managerName}>{manager.name}</span>
+                  <span className={styles.managerPosition}>
+                    {manager.position} | {report.label}
+                  </span>
+                </div>
+                <div className={styles.managerTimeWrap} tabIndex={0}>
+                  <div className={styles.managerTime}>
+                    <span className={styles.managerTimeValue}>{clockTimes?.totalTimeLabel}</span>
+                    <span className={styles.managerTimeCaption}>Total Time</span>
+                  </div>
+                  {clockTimes && (
+                    <div className={styles.managerClockTooltip} role="tooltip">
+                      <div className={styles.managerClockTooltipRow}>
+                        <span className={styles.managerClockTooltipLabel}>Clocked In</span>
+                        <span className={styles.managerClockTooltipValue}>{clockTimes.clockIn}</span>
+                      </div>
+                      <div className={styles.managerClockTooltipRow}>
+                        <span className={styles.managerClockTooltipLabel}>Clocked Out</span>
+                        <span className={styles.managerClockTooltipValue}>{clockTimes.clockOut}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className={styles.managerTime}>
-                <span className={styles.managerTimeValue}>{report.managerTotalTime[manager.name]}</span>
-                <span className={styles.managerTimeCaption}>Total Time</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </>

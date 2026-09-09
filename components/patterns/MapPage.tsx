@@ -204,6 +204,11 @@ export function MapPage({ contractBuildings }: MapPageProps) {
           areaTypeDetail={areaTypeDetail}
           onSelectAreaType={setSelectedAreaTypeName}
           onClearAreaType={() => setSelectedAreaTypeName(null)}
+          siteManager={dailyReport.siteManager}
+          siteManagerSignOff={dailyReport.siteManagerSignOff}
+          siteManagerNote={dailyReport.aiOverview}
+          dailyShifts={dailyReport.shifts}
+          onSelectShift={handleSelectShift}
         />
       </div>
 

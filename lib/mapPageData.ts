@@ -160,11 +160,11 @@ export type DailyReportShift = {
   missedServicesLabel: string;
 };
 
-/** The site's overall manager-of-record — same person as lib/homeDashboardData.ts's `dwayne`, reused for continuity across prototypes. */
+/** The site's overall manager-of-record. */
 const siteManager: DailyReportPerson = {
-  name: "Dwayne Wells",
+  name: "Juan Hernandez",
   position: "Site Mgr",
-  avatar: "https://cdn.4insite.com/assets/95213175388a42e2853c7f8b7c179da6_20230417_074714_t.jpg",
+  avatar: "/Juan.png",
 };
 
 /** Each shift is co-managed by two real people whose own `Shift` column in data/managers.csv matches. */

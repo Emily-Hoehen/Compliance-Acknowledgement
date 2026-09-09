@@ -73,11 +73,25 @@
   object-fit: cover;
 }
 
+.shiftNoteAuthorInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
 .shiftNoteAuthorName {
   font-family: var(--type-h4-family);
   font-size: 12px;
   font-weight: var(--type-h4-weight);
   color: var(--color-text-dt-default);
+}
+
+.shiftNoteAuthorPosition {
+  font-family: var(--type-body-sm-family);
+  font-size: 11px;
+  color: var(--color-text-dt-grey);
 }
 
 .shiftNoteTime {
@@ -153,13 +167,23 @@
   color: var(--color-text-dt-grey);
 }
 
+.managerTimeWrap {
+  position: relative;
+  flex: 1;
+}
+
+.managerTimeWrap:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
 .managerTime {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  flex: 1;
   align-items: flex-end;
   text-align: right;
+  cursor: default;
 }
 
 .managerTimeValue {
@@ -172,4 +196,48 @@
   font-family: var(--type-body-sm-family);
   font-size: var(--type-body-sm-size);
   color: var(--color-text-dt-grey);
+}
+
+/* Hover/focus the Total Time value to see this shift's clock-in/clock-out times. */
+.managerClockTooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background-color: var(--color-neutral-700);
+  box-shadow: var(--shadow-dt-modal);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.managerTimeWrap:hover .managerClockTooltip,
+.managerTimeWrap:focus-visible .managerClockTooltip {
+  opacity: 1;
+}
+
+.managerClockTooltipRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.managerClockTooltipLabel {
+  font-family: var(--type-body-sm-family);
+  font-size: 11px;
+  color: var(--color-text-dt-grey);
+}
+
+.managerClockTooltipValue {
+  font-family: var(--type-h4-family);
+  font-size: 11px;
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-dt-default);
 }
