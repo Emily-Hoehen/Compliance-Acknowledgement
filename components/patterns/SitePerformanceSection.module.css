@@ -522,7 +522,10 @@
 
 .mapCard {
   position: relative;
+  display: block;
   height: 220px;
+  color: inherit;
+  text-decoration: none;
 }
 
 @media (min-width: 1024px) {

@@ -203,7 +203,7 @@ export function SitePerformanceSection({ theme = "light", data }: SitePerformanc
 
         {/* Site Performance Map */}
         <Card theme={theme} className={styles.cellMap}>
-          <div className={styles.mapCard}>
+          <a href="/map" className={styles.mapCard}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={data.performanceMap.image} alt="" className={styles.mapImage} />
             <span className={styles.mapPin} aria-hidden="true">
@@ -216,7 +216,7 @@ export function SitePerformanceSection({ theme = "light", data }: SitePerformanc
               <p className={styles.mapTitle}>{data.performanceMap.title}</p>
               <p className={styles.mapDescription}>{data.performanceMap.description}</p>
             </div>
-          </div>
+          </a>
         </Card>
 
         {/* Audit Performance */}

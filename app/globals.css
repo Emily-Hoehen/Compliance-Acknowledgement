@@ -277,6 +277,14 @@
   --wash-pinkle-light-15: rgba(217, 128, 255, 0.15); /* Datavis Pinkle/100 @15% */
   --wash-bubblegum-15: rgba(255, 128, 233, 0.15); /* Datavis Bubblegum/100 @15% */
   --wash-neutral-15: rgba(167, 177, 185, 0.15); /* Core/Neutral/500 @15% */
+
+  /* -- Added for Manager App mobile dashboard (fileKey
+     gtME8Hrbr497WEZi1U2HeZ, node 4:1289) — same hue-@15% formula
+     as the washes above, for icon-bubble hues that page introduces. -- */
+  --wash-orange-15: rgba(255, 175, 128, 0.15); /* Datavis Orange/100 @15% */
+  --wash-red-orange-15: rgba(255, 138, 128, 0.15); /* Datavis Red Orange/100 @15% */
+  --wash-teal-15: rgba(1, 255, 207, 0.15); /* Datavis Teal/500 @15% */
+  --wash-danger-light-15: rgba(255, 125, 177, 0.15); /* Core/Danger/300 @15% */
 }
 
 /* ============================================================

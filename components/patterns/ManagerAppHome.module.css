@@ -1,0 +1,668 @@
+/**
+ * ManagerAppHome — Manager App mobile dashboard
+ * Source: Figma fileKey gtME8Hrbr497WEZi1U2HeZ, node 4:1289.
+ * Dark theme only — the source design doesn't show a light variant
+ * for this screen.
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background-color: var(--color-neutral-900);
+  color: var(--color-text-dt-default);
+  font-family: var(--font-family-ui);
+}
+
+/* ---------------- Status bar ---------------- */
+
+.statusBar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  flex-shrink: 0;
+  background-color: var(--color-neutral-900);
+}
+
+/* Empty middle slot — AndroidPhoneFrame masks a hole through the
+   whole .screen layer at this exact spot, revealing the device
+   image's own camera cutout underneath regardless of what's here. */
+.statusBarCameraGap {
+  width: 24px;
+  justify-self: center;
+}
+
+.statusBarIcons {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  gap: 6px;
+}
+
+.statusBarIcon {
+  width: 16px;
+  height: 16px;
+}
+
+/* AOSP "Body/Medium" spec (Figma fileKey SWFMjlBJ4u9vSrVaomRe12,
+   node 169:43521): Roboto Regular 14px/20px, +0.25px tracking —
+   distinct from this project's own DS2 type scale since it's
+   reproducing Android's own system status bar typography, not a
+   DS2 style. Color reuses --color-text-dt-default, which is close
+   enough to the spec's own schemes/surface (#f4fbf8) to avoid a
+   one-off hardcoded value. */
+.statusBarTime {
+  justify-self: start;
+  font-family: var(--font-family-ui);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: 0.25px;
+  color: var(--color-text-dt-default);
+}
+
+/* ---------------- Top row: wordmark + notifications ---------------- */
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 4px 20px;
+  flex-shrink: 0;
+}
+
+.wordmark {
+  height: 20px;
+  width: auto;
+}
+
+.bellButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-dt-default);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.bellButton:hover {
+  background-color: rgba(250, 251, 252, 0.06);
+}
+
+/* ---------------- User row ---------------- */
+
+.userRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  flex-shrink: 0;
+}
+
+.userAvatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 100px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.greeting {
+  font-family: var(--type-h3-family);
+  font-weight: 500;
+  font-size: 16px;
+  letter-spacing: -0.02em;
+  line-height: normal;
+}
+
+/* ---------------- Calendar strip ---------------- */
+
+.calendar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 24px 20px 16px;
+  flex-shrink: 0;
+}
+
+.calendarDay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 24px;
+}
+
+.calendarLabel {
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-grey);
+  line-height: 18px;
+}
+
+.calendarDate {
+  font-family: var(--type-body-md-family);
+  font-size: 14px;
+  letter-spacing: -0.02em;
+  line-height: 22px;
+  text-align: center;
+}
+
+.calendarToday {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  background-color: var(--color-neutral-600);
+}
+
+/* ---------------- Main stack ---------------- */
+
+.main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  border-radius: 4px;
+  background-color: var(--surface-dt-card);
+  box-shadow: var(--shadow-dt-card);
+}
+
+.iconBubble {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  font-size: 16px;
+}
+
+.cardDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.cardTitle {
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+.cardSubtitle {
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-grey);
+}
+
+.cardSubtitle strong {
+  font-weight: 700;
+  color: var(--color-text-dt-default);
+}
+
+/* ---------------- Shift clock (check in / check out) ---------------- */
+
+.shiftCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--surface-dt-card);
+  box-shadow: var(--shadow-dt-card);
+  color: var(--color-text-dt-default);
+  font-family: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.shiftCard:hover {
+  background-color: var(--color-neutral-700);
+}
+
+.shiftCard:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+.shiftTitle {
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+.shiftRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 20px;
+}
+
+.shiftUnit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 4px;
+}
+
+.shiftNumber {
+  font-family: var(--type-data-point-family);
+  font-weight: 900;
+  font-size: 32px;
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-grey);
+  line-height: normal;
+}
+
+.shiftNumber.shiftNumberActive {
+  color: var(--color-text-dt-warning);
+}
+
+.shiftUnitLabel {
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  letter-spacing: -0.02em;
+  line-height: 18px;
+}
+
+.shiftColon {
+  font-family: var(--type-data-point-family);
+  font-weight: 900;
+  font-size: 32px;
+  color: var(--color-text-dt-grey);
+}
+
+.shiftColon.shiftNumberActive {
+  color: var(--color-text-dt-warning);
+}
+
+/* ---------------- Associates clocked in ---------------- */
+
+.clockCard {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  height: 88px;
+  border-radius: 4px;
+  background-color: var(--surface-dt-card);
+  box-shadow: var(--shadow-dt-card);
+  overflow: hidden;
+}
+
+.clockBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 76px;
+  flex-shrink: 0;
+  background-color: var(--color-success-300);
+  color: var(--color-text-dt-default-inverted);
+}
+
+.clockIcon {
+  font-size: 32px;
+}
+
+.clockTotal {
+  font-family: var(--type-h2-family);
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  line-height: normal;
+}
+
+.clockLabel {
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  letter-spacing: -0.02em;
+  line-height: 18px;
+}
+
+.associates {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 0 12px;
+}
+
+.associatesTitle {
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+.avatarStack {
+  display: flex;
+  align-items: center;
+}
+
+.avatarStackItem {
+  width: 42px;
+  height: 42px;
+  border-radius: 100px;
+  object-fit: cover;
+  margin-right: -4px;
+  box-shadow: 0 0 0 2px var(--surface-dt-card);
+}
+
+.avatarStackMore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 100px;
+  background-color: var(--color-text-dt-blue);
+  color: var(--color-text-dt-default-inverted);
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+  box-shadow: 0 0 0 2px var(--surface-dt-card);
+}
+
+/* ---------------- KPI row ---------------- */
+
+.kpiRow {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.kpiTile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  padding: 25px 4px 4px;
+  border-radius: 8px;
+  background-color: var(--surface-dt-card);
+  box-shadow: var(--shadow-dt-card);
+  text-align: center;
+}
+
+.kpiIconBubble {
+  position: absolute;
+  top: -21px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 21px;
+  background-color: var(--surface-dt-card);
+  box-shadow: var(--shadow-dt-card);
+  font-size: 14px;
+}
+
+.kpiLabel {
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+.kpiValue {
+  font-family: var(--type-h2-family);
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-blue);
+}
+
+.kpiSublabel {
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Service Validation ---------------- */
+
+.serviceCard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  padding: 16px;
+  border-radius: 4px;
+  background-color: var(--surface-dt-card);
+  box-shadow: var(--shadow-dt-card);
+}
+
+.serviceHeader {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.serviceStats {
+  display: flex;
+  align-items: flex-start;
+}
+
+.serviceStat {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 0;
+}
+
+.serviceStat.right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.serviceStatValue {
+  font-family: var(--type-h2-family);
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-blue);
+}
+
+.serviceStatValue.danger {
+  color: var(--color-text-dt-danger);
+}
+
+.serviceStatLabel {
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-grey);
+}
+
+.progressTrack {
+  height: 8px;
+  border-radius: 8px;
+  background-color: var(--surface-dt-track);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 8px;
+  background-color: var(--color-text-dt-blue);
+}
+
+/* ---------------- Hours approval countdown ---------------- */
+
+.hoursCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background-color: var(--surface-dt-card);
+  box-shadow: var(--shadow-dt-card);
+  text-align: center;
+}
+
+.hoursTitle {
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+.hoursRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 20px;
+}
+
+.hoursUnit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 4px;
+}
+
+.hoursNumber {
+  font-family: var(--type-data-point-family);
+  font-weight: 900;
+  font-size: 32px;
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-warning);
+  line-height: normal;
+}
+
+.hoursUnitLabel {
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  letter-spacing: -0.02em;
+  line-height: 18px;
+}
+
+.hoursColon {
+  font-family: var(--type-data-point-family);
+  font-weight: 900;
+  font-size: 32px;
+  color: var(--color-text-dt-warning);
+}
+
+/* ---------------- Bottom toolbar ---------------- */
+
+.toolbarSpacer {
+  height: 74px;
+  flex-shrink: 0;
+}
+
+.toolbar {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 74px;
+  flex-shrink: 0;
+  z-index: 4;
+}
+
+.toolbarBackground {
+  position: absolute;
+  inset: 18px 0 0 0;
+  background-color: var(--surface-dt-card);
+}
+
+.toolbarInner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 96px;
+  padding-bottom: 8px;
+}
+
+.toolbarButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-dt-default);
+  cursor: pointer;
+  padding: 0;
+}
+
+.toolbarIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 20px;
+}
+
+.toolbarLabel {
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  letter-spacing: -0.02em;
+  line-height: 18px;
+}
+
+.fabButton {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 74px;
+  height: 74px;
+  border-radius: 37px;
+  border: 2px solid var(--surface-dt-card);
+  background-color: var(--color-text-dt-default);
+  color: var(--color-text-dt-default-inverted);
+  font-size: 32px;
+  cursor: pointer;
+  box-shadow: 0 -2px 2px rgba(0, 0, 0, 0.15);
+}

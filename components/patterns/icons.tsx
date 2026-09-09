@@ -126,3 +126,92 @@ export function MoonIcon({ className }: IconProps) {
 export function PlusCircleIcon({ className }: IconProps) {
   return fa("solid", "circle-plus", className);
 }
+
+/**
+ * Icons below are new for the Manager App mobile dashboard (fileKey
+ * gtME8Hrbr497WEZi1U2HeZ, node 4:1289).
+ */
+export function QrCodeIcon({ className }: IconProps) {
+  return fa("solid", "qrcode", className);
+}
+
+export function CommentsIcon({ className }: IconProps) {
+  return fa("solid", "comments", className);
+}
+
+export function MessageExclamationIcon({ className }: IconProps) {
+  return fa("solid", "message-exclamation", className);
+}
+
+export function ListCheckIcon({ className }: IconProps) {
+  return fa("solid", "list-check", className);
+}
+
+export function TriangleExclamationIcon({ className }: IconProps) {
+  return fa("solid", "triangle-exclamation", className);
+}
+
+export function TrafficLightStopIcon({ className }: IconProps) {
+  return fa("solid", "traffic-light-stop", className);
+}
+
+export function UsersIcon({ className }: IconProps) {
+  return fa("solid", "users", className);
+}
+
+export function BadgeCheckIcon({ className }: IconProps) {
+  return fa("solid", "badge-check", className);
+}
+
+export function BarsIcon({ className }: IconProps) {
+  return fa("solid", "bars", className);
+}
+
+export function HomeIcon({ className }: IconProps) {
+  return fa("solid", "home", className);
+}
+
+export function CircleCheckIcon({ className }: IconProps) {
+  return fa("solid", "circle-check", className);
+}
+
+/**
+ * Icons below are new for the "Map" feature (fileKey n/a — no Figma
+ * source; built from a reference screenshot of an internal Mapbox
+ * dashboard, see MapPage.tsx).
+ */
+export function LayerGroupIcon({ className }: IconProps) {
+  return fa("solid", "layer-group", className);
+}
+
+export function ChevronDownIcon({ className }: IconProps) {
+  return fa("solid", "chevron-down", className);
+}
+
+export function ChevronLeftIcon({ className }: IconProps) {
+  return fa("solid", "chevron-left", className);
+}
+
+export function ChevronRightIcon({ className }: IconProps) {
+  return fa("solid", "chevron-right", className);
+}
+
+export function ExpandIcon({ className }: IconProps) {
+  return fa("solid", "expand", className);
+}
+
+export function SparklesIcon({ className }: IconProps) {
+  return fa("solid", "sparkles", className);
+}
+
+export function CircleXmarkIcon({ className }: IconProps) {
+  return fa("solid", "circle-xmark", className);
+}
+
+export function MagnifyingGlassLocationIcon({ className }: IconProps) {
+  return fa("solid", "magnifying-glass-location", className);
+}
+
+export function XmarkIcon({ className }: IconProps) {
+  return fa("solid", "xmark", className);
+}

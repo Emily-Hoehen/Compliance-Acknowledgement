@@ -69,6 +69,8 @@ export function HomeDashboard({ currentUser }: HomeDashboardProps) {
           { label: "People", href: "/roster" },
           { label: "Safety", href: "#" },
           { label: "Financials", href: "#" },
+          { label: "Map", href: "/map" },
+          { label: "Manager App", href: "/manager-app" },
         ]}
         showOlivia={false}
         utilityItems={[

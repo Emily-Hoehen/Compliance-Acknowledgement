@@ -1,0 +1,98 @@
+/**
+ * AndroidPhoneFrame — device chrome sourced from the user-supplied
+ * mockup at public/Phone portrait.png (856x1816), itself a raster
+ * export of Google's own "Phone portrait" Android system-chrome
+ * component (Figma fileKey SWFMjlBJ4u9vSrVaomRe12, node 169:43521).
+ * Unlike the prior two mockups, this one has NO transparent screen
+ * cutout — its light placeholder background is fully opaque — so
+ * the layering is inverted from before: the image sits UNDERNEATH
+ * as the bezel layer, and .screen (the real app content, opaque,
+ * dark-themed) is stacked ON TOP, sized to exactly cover that
+ * placeholder area (measured from the source PNG's own
+ * light-vs-bezel pixel boundary at 1.8692%/0.8811% inset,
+ * 96.2617%/98.2379% size, expressed as percentages of the frame so
+ * it scales with the image) and hide it entirely, leaving only the
+ * image's outer black bezel visible around it. .screenClip's actual
+ * inset is pulled in ~3px tighter than that measurement (1.1%/
+ * 0.516%, 97.8001%/98.9681%) — the <img> is downscaled from the
+ * source's native 856x1816 to this frame's 390px width, and that
+ * downscaling blurs the source's sharp mint/bezel boundary over a
+ * pixel or two; sizing .screenClip to the exact measured edge left
+ * that blurred (grayish) pixel row exposed as a hairline seam, so it
+ * now overlaps slightly into the bezel to cover it instead.
+ *
+ * The camera cutout from that source component stays visible
+ * through .screen regardless of app content or scroll position:
+ * `mask-image` punches a permanent circular hole through .screen's
+ * entire composited output at the dot's measured position (856x1816
+ * raw bbox 404-451 x 32-79, i.e. center ~50%/3.06% of the frame,
+ * radius ~11px, rounded up to a hard-edged 12px cutout at this
+ * frame's 390px display width) so the image's own camera dot shows
+ * through no matter what ManagerAppHome draws there — masking the
+ * whole layer, not just one child, is what makes this scroll-proof
+ * (see ManagerAppHome's `.statusBarCameraGap`, which just leaves
+ * that spot empty rather than trying to reproduce it). The mask has
+ * no feathered transition (transparent and black both stop at
+ * exactly 12px) — a soft edge there blends this element's own dark
+ * background with the image's light background right at the dot's
+ * boundary, showing up as a pale ring around the camera.
+ *
+ * .screenClip exists only to hold the rounded-corner clip
+ * (overflow:hidden + border-radius) — .screen carries the
+ * mask-image instead of also carrying the border-radius/overflow
+ * itself, because combining a CSS mask with border-radius+
+ * overflow:hidden on one element renders a visible white
+ * anti-aliasing fringe around both the rounded corners and the
+ * mask's edge in Chromium/WebKit.
+ */
+
+.frame {
+  position: relative;
+  width: 390px;
+  aspect-ratio: 856 / 1816;
+  flex-shrink: 0;
+}
+
+.deviceImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.screenClip {
+  position: absolute;
+  left: 1.1%;
+  top: 0.516%;
+  width: 97.8001%;
+  height: 98.9681%;
+  border-radius: 14px;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-neutral-900);
+  /* Establishes a containing block for position:fixed descendants (e.g.
+     ManagerAppClockSheet's overlay) so they're pinned to this phone
+     screen instead of escaping to the real browser viewport. */
+  transform: translateZ(0);
+  mask-image: radial-gradient(circle at 50% 21px, transparent 9px, black 9px);
+  -webkit-mask-image: radial-gradient(circle at 50% 21px, transparent 9px, black 9px);
+}
+
+.scrollArea {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+
+.scrollArea::-webkit-scrollbar {
+  display: none;
+}

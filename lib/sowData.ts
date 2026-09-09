@@ -327,6 +327,15 @@ export function hashSeed(seed: string): number {
   return hash;
 }
 
+/** Deterministic "9:04 PM EDT"-style clock time for a seed — absolute timestamps for note/sign-off copy that need to read like a real point in time rather than a relative "3h ago". */
+export function pickClockTime(seed: string): string {
+  const hour24 = Math.abs(hashSeed(seed)) % 24;
+  const minute = Math.abs(hashSeed(`${seed}-minute`)) % 60;
+  const period = hour24 < 12 ? "AM" : "PM";
+  const hour12 = hour24 % 12 || 12;
+  return `${hour12}:${String(minute).padStart(2, "0")} ${period} EDT`;
+}
+
 /** A single day's avg-score-shaped value (4.2–5.0) for one seed. dayOffset: 0 = today, 1 = yesterday, etc. */
 export function scoreForDay(seed: string, dayOffset: number): number {
   const hash = hashSeed(seed);

@@ -1,0 +1,20 @@
+/**
+ * ManagerAppShowcase — page shell that presents ManagerAppHome
+ * inside AndroidPhoneFrame. Not sourced from Figma; a prototype
+ * viewer wrapper, not a design-system surface.
+ */
+
+.page {
+  min-height: 100vh;
+  background-color: var(--color-neutral-200);
+  color: var(--color-text-lt-default);
+  font-family: var(--font-family-ui);
+}
+
+.stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 48px 24px;
+}

@@ -1,0 +1,130 @@
+/* ============================================================
+   MapShiftTimeline — Day/Swing/Graveyard band labels, hour ticks,
+   and half-hour activity bars. Design tokens only.
+   ============================================================ */
+
+.timeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.bandDivider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: var(--surface-dt-hairline);
+}
+
+/* Highlights the selected shift's band across the full timeline height (labels + ticks + bars). */
+.bandHighlight {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background-color: var(--wash-primary-15);
+  pointer-events: none;
+}
+
+/* ---------------- Shift band row ---------------- */
+
+.bands {
+  position: relative;
+  height: 24px;
+  border-bottom: 1px solid var(--surface-dt-hairline);
+}
+
+.bandLabel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding-left: 4px;
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--color-text-dt-grey);
+  white-space: nowrap;
+}
+
+.bandLabelSelected {
+  color: var(--color-text-dt-blue);
+}
+
+/* ---------------- Hour ticks + bars ---------------- */
+
+.plot {
+  position: relative;
+  padding-top: 8px;
+}
+
+.tickLabel {
+  position: absolute;
+  top: 8px;
+  transform: translateX(-2px);
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-dt-grey);
+  white-space: nowrap;
+}
+
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  width: 100%;
+  height: 64px;
+  margin-top: 22px;
+}
+
+.bar {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(180deg, var(--color-primary-100) 0%, var(--color-primary-500) 100%);
+  padding: 0;
+  cursor: pointer;
+  transition: filter 120ms ease;
+}
+
+.bar:hover,
+.bar:focus-visible {
+  filter: brightness(1.15);
+  outline: none;
+}
+
+.barDimmed {
+  opacity: 0.35;
+}
+
+.tooltip {
+  position: absolute;
+  bottom: 100%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background-color: var(--color-neutral-700);
+  box-shadow: var(--shadow-dt-modal);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.tooltipTime {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-dt-grey);
+}
+
+.tooltipValue {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: 600;
+  color: var(--color-text-dt-default);
+}

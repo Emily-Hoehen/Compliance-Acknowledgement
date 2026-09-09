@@ -1,0 +1,512 @@
+/* ============================================================
+   MapStatsPanel — matches Figma fileKey SWFMjlBJ4u9vSrVaomRe12,
+   node 180:10834: solid Neutral/850 card with a Neutral/700 border
+   (not a translucent/blurred one), Neutral/500-at-15% hairlines
+   (`--wash-neutral-15`), and exact padding/gap/type per that frame.
+   Only `.header` stays fixed — `.scrollBody` carries everything
+   else (stats, Quality Scores, Area Types, Areas) as one scrolling
+   region, per an explicit change from the source frame's own split.
+   ============================================================ */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  height: 100%;
+  border: 1px solid var(--color-neutral-700);
+  border-radius: 12px;
+  background-color: var(--color-neutral-850);
+  color: var(--color-text-dt-default);
+  overflow: hidden;
+}
+
+/* ---------------- Header (sticky: date navigator + site name) ---------------- */
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px 16px;
+  border-bottom: 1px solid var(--wash-neutral-15);
+  flex-shrink: 0;
+}
+
+.datePicker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  padding: 12px;
+  border-radius: 4px;
+  background-color: var(--color-neutral-800);
+}
+
+.dateArrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border: none;
+  background-color: transparent;
+  color: var(--color-text-dt-blue);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.dateArrow:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+.dateLabel {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-blue);
+}
+
+.siteName {
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  letter-spacing: -0.02em;
+}
+
+/* ---------------- Shift filter chip (shown once a shift is selected) ---------------- */
+
+.shiftFilterBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--wash-neutral-15);
+  background-color: var(--wash-primary-15);
+  flex-shrink: 0;
+}
+
+.shiftFilterLabel {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-dt-blue);
+}
+
+.shiftFilterLabel strong {
+  font-weight: 700;
+}
+
+.shiftFilterClear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 100px;
+  background: transparent;
+  color: var(--color-text-dt-blue);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.shiftFilterClear:hover {
+  background-color: var(--wash-primary-15);
+}
+
+.shiftFilterClear:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* ---------------- Scroll body (everything below the header) ---------------- */
+
+.scrollBody {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollBody::-webkit-scrollbar {
+  display: none;
+}
+
+.hairline {
+  height: 1px;
+  width: 100%;
+  flex-shrink: 0;
+  background-color: var(--wash-neutral-15);
+}
+
+/* ---------------- Stats + Quality Scores ---------------- */
+
+.statsBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 20px 16px;
+  flex-shrink: 0;
+}
+
+.statRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.statText {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.statLabel {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-dt-default);
+}
+
+.statValue {
+  font-family: var(--type-h1-family);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  letter-spacing: -0.02em;
+  line-height: var(--type-h1-leading);
+}
+
+.statCaption {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-dt-grey);
+}
+
+.ring {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ringLabel {
+  position: absolute;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  letter-spacing: -0.02em;
+}
+
+.qualityHeading {
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  letter-spacing: -0.02em;
+}
+
+.qualityRow {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.qualityText {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+}
+
+.qualityLabel {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  letter-spacing: -0.02em;
+}
+
+.qualityCount {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-dt-grey);
+}
+
+.qualityChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+}
+
+.qualityChip[data-tone="success"] {
+  background-color: var(--color-text-dt-success);
+  color: var(--color-text-dt-default-inverted);
+}
+
+.qualityChip[data-tone="neutral"] {
+  background-color: var(--color-neutral-700);
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Area Types / Areas ---------------- */
+
+.areaListBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 20px 16px;
+  flex-shrink: 0;
+}
+
+.listSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.listHeading {
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  letter-spacing: -0.02em;
+}
+
+.expandToggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--color-text-dt-blue);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  cursor: pointer;
+}
+
+.expandToggle:hover {
+  text-decoration: underline;
+}
+
+.expandToggleIcon {
+  font-size: 12px;
+}
+
+.searchSortRow {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.searchPill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 2px 8px 2px 9px;
+  border: 1px solid var(--color-neutral-600);
+  border-radius: 36px;
+  background-color: var(--color-neutral-850);
+}
+
+.searchPillIcon {
+  flex-shrink: 0;
+  font-size: 16px;
+  color: var(--color-text-dt-grey);
+}
+
+.searchPillInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-dt-default);
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+}
+
+.searchPillInput::placeholder {
+  color: var(--color-text-dt-grey);
+}
+
+.searchPillInput:focus {
+  outline: none;
+}
+
+.sortWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.sortButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 2px 3px 2px 12px;
+  border: 1px solid var(--color-neutral-600);
+  border-radius: 36px;
+  background-color: var(--color-neutral-850);
+  color: var(--color-text-dt-grey);
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sortCaretSlot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sortCaret {
+  font-size: 12px;
+  color: var(--color-text-dt-grey);
+}
+
+.sortMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  padding: 6px;
+  border-radius: 8px;
+  background-color: var(--color-neutral-800);
+  box-shadow: var(--shadow-dt-modal);
+}
+
+.sortMenuItem {
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background-color: transparent;
+  color: var(--color-text-dt-default);
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sortMenuItem:hover {
+  background-color: var(--color-neutral-700);
+}
+
+.sortMenuItemActive {
+  color: var(--color-text-dt-blue);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.listRow {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.rowThumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background-color: var(--color-neutral-500);
+  overflow: hidden;
+}
+
+.rowThumbImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rowThumbFallbackIcon {
+  font-size: 16px;
+  color: var(--color-neutral-800);
+}
+
+.rowText {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+}
+
+.rowName {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-dt-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowMeta {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-dt-grey);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowScoreChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  background-color: var(--color-text-dt-success);
+  color: var(--color-text-dt-default-inverted);
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+}
+
+.emptyState {
+  padding: 12px 0;
+  color: var(--color-text-dt-grey);
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  text-align: center;
+}

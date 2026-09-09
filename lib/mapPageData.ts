@@ -1,0 +1,222 @@
+/**
+ * Static content for the Map feature — a site-wide performance view
+ * over a map backdrop (public/map.png). Built from a reference
+ * screenshot of an internal Mapbox-based dashboard; no Figma source.
+ * Figures are illustrative sample data in the same spirit as
+ * lib/homeDashboardData.ts, scoped to the LGA-LaGuardia site already
+ * used across this project's other prototypes.
+ *
+ * The sidebar's Area Types / Areas lists (added from Figma fileKey
+ * SWFMjlBJ4u9vSrVaomRe12, node 180:10834) are the exception — those
+ * are real, aggregated from the actual SOW export via
+ * lib/sowContract.ts's ContractBuilding[] (data/SOW_DeltaLGA.csv:
+ * 7 buildings, 40 area types, 714 areas site-wide), the same source
+ * ScopeOfWorkPage.tsx reads. Scores reuse lib/sowData.ts's
+ * `scoreForDay` and photos reuse lib/sowImages.ts's
+ * `photoForAreaType`, matching how ScopeOfWorkPage derives its own
+ * area-type cards, so the Map's numbers move with the same date nav
+ * convention (dayOffset: 0 = today, 1 = yesterday, ...).
+ */
+
+import type { ContractBuilding } from "./sowContract";
+import { photoForAreaType } from "./sowImages";
+import { pickClockTime, scaleForDay, scoreForDay } from "./sowData";
+import { computeShiftAreaServices } from "./mapAreaServiceData";
+
+export type QualityScore = {
+  label: string;
+  count: string;
+  value: string;
+  tone: "success" | "neutral";
+};
+
+export const mapPageData = {
+  siteName: "LGA-LaGuardia, NY",
+  areaTypeOptions: ["Departures", "Arrivals", "Baggage Claim", "Concourses"],
+  servicesCompleted: {
+    value: 3118,
+    expectedLabel: "of 2,882 expected",
+    percent: 108,
+  },
+  hoursCaptured: {
+    value: "1,138h 5m",
+    expectedLabel: "of 1,233h 42m shift time",
+    percent: 92,
+  },
+  qualityScores: [
+    { label: "AI Verification", count: "2,971 services", value: "4.87", tone: "success" },
+    { label: "Internal Audit", count: "13 audits", value: "4.4", tone: "success" },
+    { label: "Joint Audit", count: "0 audits", value: "N/A", tone: "neutral" },
+    { label: "Customer Audit", count: "0 audits", value: "N/A", tone: "neutral" },
+  ] satisfies QualityScore[],
+};
+
+/**
+ * Half-hour service-activity bars from 6 AM to 5:30 AM the next day
+ * (48 slots = a full 24-hour shift cycle), split into three equal
+ * 8-hour bands — Day/Swing/Graveyard — matching the reference
+ * screenshot's silhouette: a morning departures rush, a moderate
+ * midday lull, an evening swing-shift peak, and a quiet overnight
+ * graveyard with a small pre-dawn bump.
+ */
+export const shiftTimelineValues: number[] = [
+  // Day 6:00–13:30
+  85, 80, 72, 65, 58, 50, 44, 40, 34, 30, 26, 24, 22, 20, 18, 17,
+  // Swing 14:00–21:30
+  46, 50, 55, 58, 54, 50, 48, 52, 56, 60, 58, 54, 48, 42, 36, 30,
+  // Graveyard 22:00–5:30
+  22, 18, 14, 12, 10, 9, 8, 10, 13, 11, 9, 8, 7, 9, 12, 16,
+];
+
+export const shiftBands = [
+  { label: "Day", startIndex: 0 },
+  { label: "Swing", startIndex: 16 },
+  { label: "Graveyard", startIndex: 32 },
+];
+
+/** One label every 6 slots (3 hours) — hour-of-day per slot, 6 = 6 AM ... 29 = 5 AM next day. */
+export const shiftTimelineHours: number[] = Array.from({ length: 48 }, (_, i) => 6 + i * 0.5);
+
+/* ---------------- Real Area Types / Areas (data/SOW_DeltaLGA.csv) ---------------- */
+
+export type MapAreaTypeRow = {
+  name: string;
+  areaCount: number;
+  score: number;
+  photo?: string;
+};
+
+export type MapAreaRow = {
+  areaId: string;
+  displayName: string;
+  areaTypeName: string;
+  building: string;
+  floor: number;
+  photo?: string;
+};
+
+/** Every unique area type across all 7 buildings, area counts summed site-wide — mirrors ScopeOfWorkPage's own areaTypeGroups aggregation. */
+export function buildMapAreaTypes(buildings: ContractBuilding[], dayOffset: number): MapAreaTypeRow[] {
+  const totals = new Map<string, number>();
+  buildings.forEach((building) => {
+    building.areaTypes.forEach((areaType) => {
+      totals.set(areaType.name, (totals.get(areaType.name) ?? 0) + areaType.areas.length);
+    });
+  });
+  return Array.from(totals.entries()).map(([name, areaCount]) => ({
+    name,
+    areaCount,
+    score: scoreForDay(name, dayOffset),
+    photo: photoForAreaType(name, name),
+  }));
+}
+
+/* ---------------- Daily report (right sidebar) ---------------- */
+
+export type DailyReportPerson = {
+  name: string;
+  position: string;
+  avatar: string;
+};
+
+export type DailyReportShift = {
+  key: "day" | "swing" | "graveyard";
+  label: string;
+  timeRange: string;
+  managers: DailyReportPerson[];
+  hoursPercent: number;
+  servicePercent: number;
+  /** Real count of site-wide areas with at least one task scheduled for this shift (data/SOW_DeltaLGA.csv's own `shift` column) — the denominator missedServicesCount/Label are scaled against. */
+  totalAreas: number;
+  missedServicesCount: number;
+  missedServicesLabel: string;
+};
+
+/** The site's overall manager-of-record — same person as lib/homeDashboardData.ts's `dwayne`, reused for continuity across prototypes. */
+const siteManager: DailyReportPerson = {
+  name: "Dwayne Wells",
+  position: "Site Mgr",
+  avatar: "https://cdn.4insite.com/assets/95213175388a42e2853c7f8b7c179da6_20230417_074714_t.jpg",
+};
+
+/** Each shift is co-managed by two real people whose own `Shift` column in data/managers.csv matches. */
+const shiftManagers: Record<DailyReportShift["key"], DailyReportPerson[]> = {
+  day: [
+    { name: "Cortez Cook", position: "Assoc Site Mgr", avatar: "https://cdn.4insite.com/assets/4a3cd2e66af74e67a86f8141db8a8c50_20240429_174001_t.jpg" },
+    { name: "Adolfo Choi", position: "Sr Site Mgr", avatar: "https://cdn.4insite.com/assets/rb5e8bb61592040a2ae8e8b99ec402783_Kimball_t.jpg" },
+  ],
+  swing: [
+    { name: "Kasey Dunn", position: "Sr Site Mgr", avatar: "https://cdn.4insite.com/assets/3e80ff336dac4d83aa4060231556d5e9_cropped7432398783125274680.jpg" },
+    { name: "Kasey Douglas", position: "Assoc Site Mgr", avatar: "https://cdn.4insite.com/assets/rc7c1a163596546e097a3312917128ab4_be_t.jpg" },
+  ],
+  graveyard: [
+    { name: "Brendon Lee", position: "Assoc Site Mgr", avatar: "https://cdn.4insite.com/assets/r0a1cee2e179841c9b22f813f635edc13_portrait_t.jpg" },
+    { name: "Crystal Oneal", position: "Sr Site Mgr", avatar: "https://cdn.4insite.com/assets/e5b8147192464b1d978e40c4a3ea44ac_Profilepic_t.jpg" },
+  ],
+};
+
+function missedServicesLabel(count: number, total: number): string {
+  if (count === 0) return `All ${total.toLocaleString()} areas serviced — none missed`;
+  return `${count.toLocaleString()} of ${total.toLocaleString()} areas had missed services`;
+}
+
+/** One AI-overview sentence for the whole day, aggregated from the three shifts just built — names whichever shift missed the most areas and reads the team's average hours-captured rate. */
+function buildAiOverview(shifts: DailyReportShift[]): string {
+  const totalMissed = shifts.reduce((sum, s) => sum + s.missedServicesCount, 0);
+  const worstShift = shifts.reduce((worst, s) => (s.missedServicesCount > worst.missedServicesCount ? s : worst));
+  const avgHoursPercent = Math.round(shifts.reduce((sum, s) => sum + s.hoursPercent, 0) / shifts.length);
+  return `Across all three shifts today, ${totalMissed.toLocaleString()} areas missed at least one service — ${worstShift.label} shift saw the most, with ${worstShift.missedServicesCount.toLocaleString()}. Hours captured averaged ${avgHoursPercent}% of paid time across the team.`;
+}
+
+/** "Signed off at 9:04 PM EDT" for the site manager row — deterministic per day, so it doesn't change on every render. */
+function buildSignOffLabel(dayOffset: number): string {
+  return `Signed off at ${pickClockTime(`site-manager-signoff-${dayOffset}`)}`;
+}
+
+/** Per-shift Hours/Service % for the Daily Report panel — real shift managers from data/managers.csv (their own `Shift` column matches) and a real total-areas-for-shift/missed-areas count from lib/mapAreaServiceData.ts's computeShiftAreaServices (the same per-area model the Shift Report drill-down reads, so the two surfaces always agree). */
+export function buildDailyReport(
+  dayOffset: number,
+  buildings: ContractBuilding[]
+): { siteManager: DailyReportPerson; siteManagerSignOff: string; aiOverview: string; shifts: DailyReportShift[] } {
+  const shiftDefs: { key: DailyReportShift["key"]; label: string; timeRange: string }[] = [
+    { key: "day", label: "Day", timeRange: "6:00 AM – 2:00 PM" },
+    { key: "swing", label: "Swing", timeRange: "2:00 PM – 10:00 PM" },
+    { key: "graveyard", label: "Graveyard", timeRange: "10:00 PM – 6:00 AM" },
+  ];
+  const shifts = shiftDefs.map((def) => {
+    const managers = shiftManagers[def.key];
+    const areaServices = computeShiftAreaServices(buildings, def.label, dayOffset);
+    const totalAreas = areaServices.length;
+    const missedCount = areaServices.filter((a) => a.servicesCompleted < a.servicesExpected).length;
+    return {
+      ...def,
+      managers,
+      hoursPercent: Math.round(scaleForDay(`${def.key}-hours`, dayOffset, 84, 101)),
+      servicePercent: Math.round(scaleForDay(`${def.key}-service`, dayOffset, 90, 112)),
+      totalAreas,
+      missedServicesCount: missedCount,
+      missedServicesLabel: missedServicesLabel(missedCount, totalAreas),
+    };
+  });
+  return { siteManager, siteManagerSignOff: buildSignOffLabel(dayOffset), aiOverview: buildAiOverview(shifts), shifts };
+}
+
+/** Every real area (714 site-wide), flattened out of the per-building/per-area-type tree for the sidebar's "Areas" list. */
+export function buildMapAreas(buildings: ContractBuilding[]): MapAreaRow[] {
+  const rows: MapAreaRow[] = [];
+  buildings.forEach((building) => {
+    building.areaTypes.forEach((areaType) => {
+      areaType.areas.forEach((area) => {
+        rows.push({
+          areaId: area.areaId,
+          displayName: area.displayName,
+          areaTypeName: areaType.name,
+          building: building.name,
+          floor: area.floor,
+          photo: photoForAreaType(areaType.name, area.areaId),
+        });
+      });
+    });
+  });
+  return rows.sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
