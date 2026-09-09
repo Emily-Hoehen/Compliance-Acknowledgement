@@ -15,7 +15,7 @@
   max-width: calc(100vw - 32px);
   height: 100%;
   border: 1px solid var(--color-neutral-700);
-  border-radius: 12px;
+  border-radius: 8px;
   background-color: var(--color-neutral-850);
   color: var(--color-text-dt-default);
   overflow: hidden;
@@ -26,7 +26,6 @@
 .header {
   display: flex;
   flex-direction: column;
-  gap: 20px;
   padding: 20px 16px;
   border-bottom: 1px solid var(--wash-neutral-15);
   flex-shrink: 0;
@@ -65,62 +64,139 @@
   font-family: var(--type-h4-family);
   font-size: var(--type-h4-size);
   font-weight: var(--type-h4-weight);
-  letter-spacing: -0.02em;
+  line-height: 1.15;
   color: var(--color-text-dt-blue);
 }
 
 .siteName {
+  margin-top: 20px;
   font-family: var(--type-h2-family);
   font-size: var(--type-h2-size);
   font-weight: var(--type-h2-weight);
   letter-spacing: -0.02em;
 }
 
-/* ---------------- Shift filter chip (shown once a shift is selected) ---------------- */
+/* ---------------- Area type detail header (name + close, in place of site name) ---------------- */
 
-.shiftFilterBar {
+.areaTypeDetailHeaderRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--wash-neutral-15);
-  background-color: var(--wash-primary-15);
-  flex-shrink: 0;
+  gap: 20px;
+  width: 100%;
+  margin-top: 20px;
 }
 
-.shiftFilterLabel {
-  font-family: var(--type-body-sm-family);
-  font-size: var(--type-body-sm-size);
-  color: var(--color-text-dt-blue);
+.areaTypeDetailName {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.shiftFilterLabel strong {
-  font-weight: 700;
-}
-
-.shiftFilterClear {
+.areaTypeDetailClose {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
   border: none;
-  border-radius: 100px;
-  background: transparent;
-  color: var(--color-text-dt-blue);
-  font-size: 12px;
+  border-radius: 20px;
+  background-color: var(--wash-neutral-15);
+  color: var(--color-text-dt-grey);
+  font-size: 20px;
   cursor: pointer;
 }
 
-.shiftFilterClear:hover {
+.areaTypeDetailClose:hover {
+  background-color: var(--color-neutral-700);
+}
+
+.areaTypeDetailClose:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* ---------------- Shift filter chip (shown once a shift is selected) ---------------- */
+
+.shiftFilterRow {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.shiftFilterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 4px;
   background-color: var(--wash-primary-15);
 }
 
-.shiftFilterClear:focus-visible {
+.shiftFilterChipLabel {
+  font-family: var(--type-h4-family);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.15;
+  color: var(--color-text-dt-blue);
+}
+
+.shiftFilterChipClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-dt-blue);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.shiftFilterChipClose:focus-visible {
   outline: 2px solid var(--color-primary-500);
   outline-offset: 2px;
+}
+
+/* ---------------- "View Full Shift Report" ↔ back link ---------------- */
+
+.backToOverviewLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  margin: 20px 16px 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--color-text-dt-blue);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  cursor: pointer;
+}
+
+.backToOverviewLink:hover {
+  text-decoration: underline;
+}
+
+.backToOverviewLink:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+.backToOverviewIcon {
+  font-size: 12px;
 }
 
 /* ---------------- Scroll body (everything below the header) ---------------- */
@@ -166,7 +242,7 @@
 .statText {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 4px;
   flex: 1;
   min-width: 0;
 }
@@ -175,6 +251,7 @@
   font-family: var(--type-h4-family);
   font-size: var(--type-h4-size);
   font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
   color: var(--color-text-dt-default);
 }
 
@@ -182,13 +259,15 @@
   font-family: var(--type-h1-family);
   font-size: var(--type-h1-size);
   font-weight: var(--type-h1-weight);
-  letter-spacing: -0.02em;
-  line-height: var(--type-h1-leading);
+  line-height: 1.17;
+  color: var(--color-text-dt-default);
 }
 
 .statCaption {
-  font-family: var(--type-body-sm-family);
-  font-size: var(--type-body-sm-size);
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: var(--type-body-md-weight);
+  line-height: var(--type-body-md-leading);
   color: var(--color-text-dt-grey);
 }
 
@@ -208,11 +287,61 @@
   letter-spacing: -0.02em;
 }
 
+/* ---------------- Attendance rows (shift-filtered view only) ---------------- */
+
+.attendanceBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.attendanceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.attendanceLabel {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-dt-default);
+}
+
+.attendanceValue {
+  font-family: var(--type-h4-family);
+  font-size: 16px;
+  font-weight: var(--type-h4-weight);
+}
+
+.attendanceSubRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-left: 16px;
+}
+
+.attendanceSubLabel {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-dt-grey);
+}
+
+.attendanceSubValue {
+  font-family: var(--type-h4-family);
+  font-size: 16px;
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-dt-grey);
+}
+
 .qualityHeading {
   font-family: var(--type-h3-family);
   font-size: var(--type-h3-size);
   font-weight: var(--type-h3-weight);
-  letter-spacing: -0.02em;
+  line-height: 1.5;
+  color: var(--color-text-dt-default);
 }
 
 .qualityRow {
@@ -224,7 +353,7 @@
 .qualityText {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 2px;
   flex: 1;
   min-width: 0;
 }
@@ -233,12 +362,15 @@
   font-family: var(--type-h4-family);
   font-size: var(--type-h4-size);
   font-weight: var(--type-h4-weight);
-  letter-spacing: -0.02em;
+  line-height: var(--type-h4-leading);
+  color: var(--color-text-dt-default);
 }
 
 .qualityCount {
   font-family: var(--type-body-sm-family);
   font-size: var(--type-body-sm-size);
+  font-weight: var(--type-body-sm-weight);
+  line-height: var(--type-body-sm-leading);
   color: var(--color-text-dt-grey);
 }
 
@@ -246,18 +378,20 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
+  width: 54px;
+  height: 32px;
   flex-shrink: 0;
-  padding: 8px 12px;
-  border-radius: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
   font-family: var(--type-h4-family);
-  font-size: var(--type-h4-size);
-  font-weight: var(--type-h4-weight);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.15;
 }
 
 .qualityChip[data-tone="success"] {
-  background-color: var(--color-text-dt-success);
-  color: var(--color-text-dt-default-inverted);
+  background-color: var(--color-success-900);
+  color: var(--color-text-dt-default);
 }
 
 .qualityChip[data-tone="neutral"] {
@@ -270,7 +404,7 @@
 .areaListBlock {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 12px;
   padding: 20px 16px;
   flex-shrink: 0;
 }
@@ -284,33 +418,34 @@
 }
 
 .listHeading {
-  font-family: var(--type-h3-family);
-  font-size: var(--type-h3-size);
-  font-weight: var(--type-h3-weight);
-  letter-spacing: -0.02em;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+  color: var(--color-text-dt-default);
 }
 
 .expandToggle {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
   border: none;
   background: transparent;
   padding: 0;
-  color: var(--color-text-dt-blue);
-  font-family: var(--type-h4-family);
-  font-size: var(--type-h4-size);
-  font-weight: var(--type-h4-weight);
+  color: var(--color-neutral-300);
   cursor: pointer;
 }
 
-.expandToggle:hover {
-  text-decoration: underline;
+.expandToggle:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
 }
 
 .expandToggleIcon {
-  font-size: 12px;
+  font-size: 16px;
 }
 
 .searchSortRow {
@@ -328,7 +463,7 @@
   height: 32px;
   padding: 2px 8px 2px 9px;
   border: 1px solid var(--color-neutral-600);
-  border-radius: 36px;
+  border-radius: 4px;
   background-color: var(--color-neutral-850);
 }
 
@@ -368,7 +503,7 @@
   height: 32px;
   padding: 2px 3px 2px 12px;
   border: 1px solid var(--color-neutral-600);
-  border-radius: 36px;
+  border-radius: 4px;
   background-color: var(--color-neutral-850);
   color: var(--color-text-dt-grey);
   font-family: var(--type-body-md-family);
@@ -429,14 +564,38 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
   flex-shrink: 0;
+}
+
+.detailAreaRow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .listRow {
   display: flex;
   align-items: center;
   gap: 15px;
+  padding: 8px;
+  margin: -8px;
+  border-radius: 8px;
+  transition: background-color 120ms ease;
+}
+
+.listRowClickable {
+  cursor: pointer;
+}
+
+.listRowClickable:hover,
+.listRowClickable:focus-visible {
+  background-color: var(--color-neutral-800);
+}
+
+.listRowClickable:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
 }
 
 .rowThumb {
@@ -466,7 +625,7 @@
 .rowText {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 2px;
   flex: 1;
   min-width: 0;
 }
@@ -474,6 +633,7 @@
 .rowName {
   font-family: var(--type-body-md-family);
   font-size: var(--type-body-md-size);
+  font-weight: 500;
   color: var(--color-text-dt-default);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -483,24 +643,131 @@
 .rowMeta {
   font-family: var(--type-body-sm-family);
   font-size: var(--type-body-sm-size);
+  font-weight: 400;
   color: var(--color-text-dt-grey);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.rowScoreChip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 22px;
-  flex-shrink: 0;
-  border-radius: 4px;
-  background-color: var(--color-text-dt-success);
-  color: var(--color-text-dt-default-inverted);
+.rowShortfall {
   font-family: var(--type-body-sm-family);
   font-size: var(--type-body-sm-size);
+  font-weight: 400;
+  color: var(--color-text-dt-danger);
+}
+
+.rowScoreChip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 24px;
+  padding: 0 4px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background-color: var(--color-success-900);
+  color: var(--color-text-dt-default);
+  font-family: var(--type-h4-family);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.rowScoreChip[data-tone="neutral"] {
+  background-color: var(--color-neutral-100);
+  color: var(--color-text-dt-default-inverted);
+}
+
+/* ---------------- Handoff-style note card (site-wide stats notes + area-type detail's per-area notes) ---------------- */
+
+.statNoteCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 4px;
+  background-color: var(--color-neutral-800);
+}
+
+/* Category chip on a manager's explanation for a missed area — colored per reason (see MISSED_REASONS in lib/mapShiftReportData.ts) so a manager can scan what kind of issue each note explains without reading the full text. */
+.statNoteTag {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: var(--type-body-sm-family);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background-color: var(--wash-neutral-15);
+  color: var(--color-text-dt-grey);
+}
+
+.statNoteTag[data-tag="Access"] {
+  background-color: var(--wash-sky-blue-15);
+  color: var(--color-datavis-sky-blue-100);
+}
+
+.statNoteTag[data-tag="Staffing"] {
+  background-color: var(--wash-purple-15);
+  color: var(--color-datavis-purple-100);
+}
+
+.statNoteTag[data-tag="Equipment"] {
+  background-color: var(--wash-orange-15);
+  color: var(--color-datavis-orange-100);
+}
+
+.statNoteTag[data-tag="Schedule"] {
+  background-color: var(--wash-pinkle-15);
+  color: var(--color-datavis-pinkle-100);
+}
+
+.statNoteText {
+  margin: 0;
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-leading);
+  color: var(--color-text-dt-default);
+}
+
+.statNoteAuthorRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statNoteAvatar {
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 100px;
+  object-fit: cover;
+}
+
+.statNoteAvatarFallback {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 100px;
+  background-color: var(--color-neutral-600);
+}
+
+.statNoteAuthorName {
+  font-family: var(--type-h4-family);
+  font-size: 12px;
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-dt-default);
+}
+
+.statNoteTime {
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  color: var(--color-text-dt-grey);
 }
 
 .emptyState {

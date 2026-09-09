@@ -1,0 +1,151 @@
+/* ============================================================
+   MapShiftSummaryCard — shift name/time + manager avatar stack +
+   Services%/Hours% read. Same visual language as
+   MapDailyReportPanel's shift cards (this is that card's content,
+   extracted so MapShiftTimeline's hover popover can show it too).
+   ============================================================ */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 280px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.shiftName {
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-default);
+}
+
+.shiftTime {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-dt-grey);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Avatar stack, header's right side. Hover/focus any avatar for its full name + title tooltip. */
+.managerStack {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.managerAvatarWrap {
+  position: relative;
+  margin-right: -13px;
+  border-radius: 100px;
+}
+
+.managerAvatarWrap:last-child {
+  margin-right: 0;
+}
+
+.managerAvatarWrap:hover,
+.managerAvatarWrap:focus-visible {
+  z-index: 1;
+}
+
+.managerAvatarWrap:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+.managerAvatar {
+  display: block;
+  width: 32px;
+  height: 32px;
+  border-radius: 100px;
+  object-fit: cover;
+  box-shadow: 0 0 0 2px var(--color-neutral-800);
+}
+
+.managerTooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background-color: var(--color-neutral-700);
+  box-shadow: var(--shadow-dt-modal);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.managerAvatarWrap:hover .managerTooltip,
+.managerAvatarWrap:focus-visible .managerTooltip {
+  opacity: 1;
+}
+
+.managerTooltipName {
+  font-family: var(--type-h4-family);
+  font-size: 12px;
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-dt-default);
+}
+
+.managerTooltipRole {
+  font-family: var(--type-body-sm-family);
+  font-size: 11px;
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Hours / Services metric rows ---------------- */
+
+.metricRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.metricText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.metricHeadline {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-default);
+}
+
+.metricCaption {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-dt-grey);
+}

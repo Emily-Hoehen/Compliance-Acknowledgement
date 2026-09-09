@@ -2,12 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BriefcaseIcon, ChevronDownIcon, LayerGroupIcon, LocationDotIcon, PinIcon, SearchIcon, XmarkIcon } from "./icons";
-import { MapDailyReportPanel } from "./MapDailyReportPanel";
-import { MapShiftReportPanel, type ZoomTarget } from "./MapShiftReportPanel";
+import type { ZoomTarget } from "./MapShiftReportSections";
 import { MapShiftTimeline } from "./MapShiftTimeline";
 import { MapStatsPanel } from "./MapStatsPanel";
-import { buildDailyReport, buildMapAreaTypes, buildMapAreas, mapPageData, type DailyReportShift } from "../../lib/mapPageData";
-import { buildShiftReport } from "../../lib/mapShiftReportData";
+import { buildDailyReport, buildMapAreaTypes, mapPageData, type DailyReportShift } from "../../lib/mapPageData";
+import { buildShiftAreaTypeDetail, buildShiftReport } from "../../lib/mapShiftReportData";
 import type { ContractBuilding } from "../../lib/sowContract";
 import styles from "./MapPage.module.css";
 
@@ -47,18 +46,22 @@ export function MapPage({ contractBuildings }: MapPageProps) {
   const [areaType, setAreaType] = useState(mapPageData.areaTypeOptions[0]);
   const [areaMenuOpen, setAreaMenuOpen] = useState(false);
   const [selectedShiftKey, setSelectedShiftKey] = useState<DailyReportShift["key"] | null>(null);
+  const [selectedAreaTypeName, setSelectedAreaTypeName] = useState<string | null>(null);
   const [zoomTarget, setZoomTarget] = useState<ZoomTarget | null>(null);
   const areaMenuRef = useRef<HTMLDivElement>(null);
 
   const dayOffset = Math.round((ANCHOR_DATE.getTime() - date.getTime()) / MS_PER_DAY);
   const mapAreaTypes = useMemo(() => buildMapAreaTypes(contractBuildings, dayOffset), [contractBuildings, dayOffset]);
-  const mapAreas = useMemo(() => buildMapAreas(contractBuildings), [contractBuildings]);
   const dailyReport = useMemo(() => buildDailyReport(dayOffset, contractBuildings), [dayOffset, contractBuildings]);
 
   const selectedShift = selectedShiftKey ? (dailyReport.shifts.find((s) => s.key === selectedShiftKey) ?? null) : null;
   const shiftReport = useMemo(
     () => (selectedShift ? buildShiftReport(selectedShift, dayOffset, contractBuildings) : null),
     [selectedShift, dayOffset, contractBuildings]
+  );
+  const areaTypeDetail = useMemo(
+    () => (selectedShift && selectedAreaTypeName ? buildShiftAreaTypeDetail(selectedShift, dayOffset, contractBuildings, selectedAreaTypeName) : null),
+    [selectedShift, dayOffset, contractBuildings, selectedAreaTypeName]
   );
   const zoomPosition = zoomTarget ? pseudoPositionForArea(zoomTarget.areaId) : null;
 
@@ -90,11 +93,13 @@ export function MapPage({ contractBuildings }: MapPageProps) {
 
   function handleSelectShift(key: DailyReportShift["key"]) {
     setSelectedShiftKey(key);
+    setSelectedAreaTypeName(null);
     setZoomTarget(null);
   }
 
   function handleBackToDaily() {
     setSelectedShiftKey(null);
+    setSelectedAreaTypeName(null);
     setZoomTarget(null);
   }
 
@@ -192,28 +197,18 @@ export function MapPage({ contractBuildings }: MapPageProps) {
           onPrevDay={() => shiftDay(-1)}
           onNextDay={() => shiftDay(1)}
           areaTypes={mapAreaTypes}
-          areas={mapAreas}
           selectedShift={selectedShift}
           onClearShiftFilter={handleBackToDaily}
+          shiftReport={shiftReport}
+          onZoomToArea={setZoomTarget}
+          areaTypeDetail={areaTypeDetail}
+          onSelectAreaType={setSelectedAreaTypeName}
+          onClearAreaType={() => setSelectedAreaTypeName(null)}
         />
       </div>
 
-      <div className={styles.dailyReportWrap}>
-        {shiftReport ? (
-          <MapShiftReportPanel report={shiftReport} onBack={handleBackToDaily} onZoomToArea={setZoomTarget} />
-        ) : (
-          <MapDailyReportPanel
-            siteManager={dailyReport.siteManager}
-            siteManagerSignOff={dailyReport.siteManagerSignOff}
-            aiOverview={dailyReport.aiOverview}
-            shifts={dailyReport.shifts}
-            onSelectShift={handleSelectShift}
-          />
-        )}
-      </div>
-
       <footer className={styles.footer}>
-        <MapShiftTimeline selectedShiftKey={selectedShiftKey} />
+        <MapShiftTimeline selectedShiftKey={selectedShiftKey} shifts={dailyReport.shifts} onSelectShift={handleSelectShift} />
       </footer>
     </div>
   );

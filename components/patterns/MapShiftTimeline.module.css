@@ -35,21 +35,66 @@
   border-bottom: 1px solid var(--surface-dt-hairline);
 }
 
-.bandLabel {
+.bandLabelWrap {
   position: absolute;
   top: 0;
-  left: 0;
-  padding-left: 4px;
+}
+
+.bandLabel {
+  padding: 0 0 0 4px;
+  border: none;
+  background: none;
   font-family: var(--type-body-sm-family);
   font-size: var(--type-body-sm-size);
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--color-text-dt-grey);
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.bandLabel:disabled {
+  cursor: default;
+}
+
+.bandLabel:hover:not(:disabled),
+.bandLabel:focus-visible {
+  color: var(--color-text-dt-default);
+}
+
+.bandLabel:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
 }
 
 .bandLabelSelected {
   color: var(--color-text-dt-blue);
+}
+
+/* ---------------- Shift summary popover (hover/focus a band label) ---------------- */
+
+.bandPopover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  z-index: 10;
+  padding: 16px;
+  border: 1px solid var(--color-neutral-700);
+  border-radius: 12px;
+  background-color: var(--color-neutral-850);
+  box-shadow: var(--shadow-dt-modal);
+}
+
+.bandPopoverAlignStart {
+  left: 0;
+}
+
+.bandPopoverAlignCenter {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.bandPopoverAlignEnd {
+  right: 0;
 }
 
 /* ---------------- Hour ticks + bars ---------------- */

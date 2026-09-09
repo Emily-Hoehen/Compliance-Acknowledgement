@@ -51,6 +51,43 @@ export const mapPageData = {
   ] satisfies QualityScore[],
 };
 
+/** Site-wide Scheduled Headcount/Actual Arrival/Total Absences for the unfiltered stats block — the shift-filtered view reads the equivalent numbers off its own ShiftReport instead. */
+export const siteOverviewAttendance = {
+  scheduledHeadcount: 155,
+  actualArrival: 142,
+  totalAbsences: 14,
+  noCallNoShowCount: 0,
+  callOutsCount: 13,
+};
+
+export type ShiftStatNote = {
+  author: { name: string; position: string; avatar: string };
+  timestamp: string;
+  text: string;
+};
+
+/** Carmen Ramos (one of the Day shift's own co-managers, see shiftManagers below) — attributed on the handoff notes below Services Completed/Hours Captured/Quality Scores in the shift-filtered stats block. */
+const shiftStatNoteAuthor = { name: "Carmen Ramos", position: "Site Supervisor", avatar: "/Carmen.png" };
+
+/** Handoff notes shown below each of the shift-filtered stats widgets — illustrative, static (not day-varying) since they read like a single manager's end-of-shift summary rather than a generated metric. */
+export const shiftStatNotes = {
+  servicesCompleted: {
+    author: shiftStatNoteAuthor,
+    timestamp: "6:55 AM EDT",
+    text: "We exceeded expected services but coverage was uneven. Some areas were serviced more frequently than required. Adjusting frequencies and assignments for next shift.",
+  } satisfies ShiftStatNote,
+  hoursCaptured: {
+    author: shiftStatNoteAuthor,
+    timestamp: "6:55 AM EDT",
+    text: "Coverage was adjusted across Concourses D and E, all critical areas remained covered.",
+  } satisfies ShiftStatNote,
+  qualityScores: {
+    author: shiftStatNoteAuthor,
+    timestamp: "6:55 AM EDT",
+    text: "Performed 13 associate audits today no major issues. Coached associates below a 5 score.",
+  } satisfies ShiftStatNote,
+};
+
 /**
  * Half-hour service-activity bars from 6 AM to 5:30 AM the next day
  * (48 slots = a full 24-hour shift cycle), split into three equal
@@ -83,15 +120,6 @@ export type MapAreaTypeRow = {
   name: string;
   areaCount: number;
   score: number;
-  photo?: string;
-};
-
-export type MapAreaRow = {
-  areaId: string;
-  displayName: string;
-  areaTypeName: string;
-  building: string;
-  floor: number;
   photo?: string;
 };
 
@@ -142,8 +170,8 @@ const siteManager: DailyReportPerson = {
 /** Each shift is co-managed by two real people whose own `Shift` column in data/managers.csv matches. */
 const shiftManagers: Record<DailyReportShift["key"], DailyReportPerson[]> = {
   day: [
-    { name: "Cortez Cook", position: "Assoc Site Mgr", avatar: "https://cdn.4insite.com/assets/4a3cd2e66af74e67a86f8141db8a8c50_20240429_174001_t.jpg" },
-    { name: "Adolfo Choi", position: "Sr Site Mgr", avatar: "https://cdn.4insite.com/assets/rb5e8bb61592040a2ae8e8b99ec402783_Kimball_t.jpg" },
+    { name: "Edga Tacuri", position: "Site Supervisor", avatar: "/Edga.png" },
+    { name: "Carmen Ramos", position: "Site Supervisor", avatar: "/Carmen.png" },
   ],
   swing: [
     { name: "Kasey Dunn", position: "Sr Site Mgr", avatar: "https://cdn.4insite.com/assets/3e80ff336dac4d83aa4060231556d5e9_cropped7432398783125274680.jpg" },
@@ -201,22 +229,3 @@ export function buildDailyReport(
   return { siteManager, siteManagerSignOff: buildSignOffLabel(dayOffset), aiOverview: buildAiOverview(shifts), shifts };
 }
 
-/** Every real area (714 site-wide), flattened out of the per-building/per-area-type tree for the sidebar's "Areas" list. */
-export function buildMapAreas(buildings: ContractBuilding[]): MapAreaRow[] {
-  const rows: MapAreaRow[] = [];
-  buildings.forEach((building) => {
-    building.areaTypes.forEach((areaType) => {
-      areaType.areas.forEach((area) => {
-        rows.push({
-          areaId: area.areaId,
-          displayName: area.displayName,
-          areaTypeName: areaType.name,
-          building: building.name,
-          floor: area.floor,
-          photo: photoForAreaType(areaType.name, area.areaId),
-        });
-      });
-    });
-  });
-  return rows.sort((a, b) => a.displayName.localeCompare(b.displayName));
-}

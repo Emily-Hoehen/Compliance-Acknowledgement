@@ -281,22 +281,6 @@
   display: flex;
 }
 
-/* ---------------- Daily report panel placement ---------------- */
-
-.dailyReportWrap {
-  position: absolute;
-  top: 72px;
-  right: 20px;
-  bottom: 190px;
-  z-index: 2;
-  display: flex;
-}
-
-@media (max-width: 1440px) {
-  .dailyReportWrap {
-    display: none;
-  }
-}
 
 /* ---------------- Bottom timeline ---------------- */
 
