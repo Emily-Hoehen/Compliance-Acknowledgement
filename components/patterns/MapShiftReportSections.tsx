@@ -213,24 +213,42 @@ function IssueList({ issues, emptyLabel }: { issues: { title: string; detail: st
 }
 
 /** A manager note attributed to its author (small avatar + name) with an absolute clock timestamp — shared by every note surface here (missed areas, hours, scores, report-its, and the general Notes list). Text may contain embedded "\n" line breaks (e.g. a multi-line handoff note) — each line renders as its own paragraph rather than collapsing into one run-on sentence. */
+/** "QR Unreadable" -> "qr-unreadable", for the tag pill's data-tag selector. */
+function tagSlug(tag: string): string {
+  return tag
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 export function NoteCallout({ note, compact = false }: { note: ManagerNote; compact?: boolean }) {
   return (
     <div className={[styles.noteCallout, compact ? styles.noteCalloutCompact : ""].filter(Boolean).join(" ")}>
-      <div className={styles.noteCalloutHeader}>
+      <div className={styles.noteCalloutText}>
+        {note.text.split("\n").map((line, i) => (
+          <p key={i}>{line}</p>
+        ))}
+      </div>
+      {!compact && note.tags.length > 0 && (
+        <div className={styles.noteCalloutTagRow}>
+          {note.tags.map((tag) => (
+            <span key={tag} className={styles.noteCalloutTag} data-tag={tagSlug(tag)}>
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className={styles.noteCalloutFooter}>
         {note.author.avatar ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={note.author.avatar} alt="" className={styles.noteCalloutAvatar} />
         ) : (
           <span className={styles.noteCalloutAvatarFallback} aria-hidden="true" />
         )}
-        <span className={styles.noteCalloutAuthor}>{note.author.name}</span>
-        <span className={styles.noteCalloutTime}>{note.timestamp}</span>
-      </div>
-      <span className={styles.noteCalloutTag}>{note.tag}</span>
-      <div className={styles.noteCalloutText}>
-        {note.text.split("\n").map((line, i) => (
-          <p key={i}>{line}</p>
-        ))}
+        <div className={styles.noteCalloutAuthorInfo}>
+          <span className={styles.noteCalloutAuthor}>{note.author.name}</span>
+          <span className={styles.noteCalloutTime}>{note.timestamp}</span>
+        </div>
       </div>
     </div>
   );

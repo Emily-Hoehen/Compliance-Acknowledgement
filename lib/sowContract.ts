@@ -14,9 +14,23 @@
  * client" component. Actually reading the CSV file needs `fs`, which
  * only runs server-side; that loader lives in sowContractLoader.ts
  * so client components never pull `fs` into their bundle.
+ *
+ * Each ContractArea also carries a real per-shift expected-service
+ * count (see ContractArea.expectedByShift and
+ * lib/expectedServices.ts) — data/Service Count/lga_expected_services.csv,
+ * attached during buildContractBuildings so every consumer (Map
+ * feature, Daily/Shift Report modals, SOW pages) reads the same real
+ * number instead of estimating its own.
  */
 
 import { parseCsv } from "./csv";
+import {
+  EMPTY_EXPECTED_SERVICES_INDEX,
+  lookupExpectedServices,
+  SHIFT_LABELS,
+  type ExpectedServicesIndex,
+  type ShiftLabel,
+} from "./expectedServices";
 
 /**
  * The export spells this building "Pavillion" (confirmed cosmetic in
@@ -76,6 +90,8 @@ export type ContractArea = {
   displayName: string;
   floor: number;
   floorDescription: string;
+  /** Real expected-service count per shift, from data/Service Count/lga_expected_services.csv (see lib/expectedServices.ts) — falls back to this area type's own real task-frequency total (sum of freqCount for tasks scheduled that shift) for the handful of area types the reference data doesn't cover at all (e.g. Curbsides, Exterior Stairwells), so every area always has a real number, never an invented one. */
+  expectedByShift: Record<ShiftLabel, number>;
 };
 
 export type ContractTaskDef = {
@@ -143,8 +159,13 @@ function areaDisplayName(row: SowContractRow): string {
   return row.areaId;
 }
 
-export function buildContractBuildings(rows: SowContractRow[]): ContractBuilding[] {
-  type AreaTypeAcc = { areas: Map<string, ContractArea>; tasks: Map<string, ContractTaskDef> };
+type RawArea = Omit<ContractArea, "expectedByShift">;
+
+export function buildContractBuildings(
+  rows: SowContractRow[],
+  expectedIndex: ExpectedServicesIndex = EMPTY_EXPECTED_SERVICES_INDEX
+): ContractBuilding[] {
+  type AreaTypeAcc = { areas: Map<string, RawArea>; tasks: Map<string, ContractTaskDef> };
   const byBuilding = new Map<string, Map<string, AreaTypeAcc>>();
 
   rows.forEach((row) => {
@@ -177,12 +198,32 @@ export function buildContractBuildings(rows: SowContractRow[]): ContractBuilding
     const areaTypes: ContractAreaType[] = [];
     let areaCount = 0;
     areaTypeMap.forEach((acc, areaTypeName) => {
-      const areas = Array.from(acc.areas.values()).sort((a, b) => a.areaNumber.localeCompare(b.areaNumber));
-      areaCount += areas.length;
+      const rawAreas = Array.from(acc.areas.values()).sort((a, b) => a.areaNumber.localeCompare(b.areaNumber));
       const tasks = Array.from(acc.tasks.values()).map((t) => ({
         ...t,
         shifts: [...t.shifts].sort((a, b) => SHIFT_ORDER.indexOf(a) - SHIFT_ORDER.indexOf(b)),
       }));
+
+      // Real per-shift task-frequency total for this area type — the fallback used only when
+      // the expected-services reference data has no rule anywhere for this area type at all.
+      const freqFallbackByShift = Object.fromEntries(
+        SHIFT_LABELS.map((shift) => [
+          shift,
+          tasks.filter((t) => t.shifts.includes(shift)).reduce((sum, t) => sum + (t.freqCount ?? 1), 0),
+        ])
+      ) as Record<ShiftLabel, number>;
+
+      const areas: ContractArea[] = rawAreas.map((area) => ({
+        ...area,
+        expectedByShift: Object.fromEntries(
+          SHIFT_LABELS.map((shift) => {
+            const real = lookupExpectedServices(expectedIndex, { areaType: areaTypeName, building: buildingName, area: area.displayName, shift });
+            return [shift, real ?? freqFallbackByShift[shift]];
+          })
+        ) as Record<ShiftLabel, number>,
+      }));
+
+      areaCount += areas.length;
       areaTypes.push({ name: areaTypeName, building: buildingName, areas, tasks });
     });
     areaTypes.sort((a, b) => a.name.localeCompare(b.name));

@@ -24,37 +24,13 @@ export type MapShiftOverviewSectionsProps = {
  * differ from that shared component.
  */
 export function MapShiftOverviewSections({ report, onViewFullReport }: MapShiftOverviewSectionsProps) {
-  const shiftNote = report.notes[0];
-
   return (
     <>
-      {shiftNote && (
-        <div className={styles.section}>
-          <span className={styles.sectionHeading}>Shift Notes</span>
-          <div className={styles.noteStack}>
-            <div className={styles.shiftNoteCard}>
-              <div className={styles.shiftNoteText}>
-                {shiftNote.text.split("\n").map((line, i) => (
-                  <p key={i}>{line}</p>
-                ))}
-              </div>
-              <div className={styles.shiftNoteAuthorRow}>
-                <img src={shiftNote.author.avatar} alt="" className={styles.shiftNoteAvatar} />
-                <div className={styles.shiftNoteAuthorInfo}>
-                  <span className={styles.shiftNoteAuthorName}>{shiftNote.author.name}</span>
-                  <span className={styles.shiftNoteAuthorPosition}>
-                    {shiftNote.author.position} | {report.label}
-                  </span>
-                </div>
-                <span className={styles.shiftNoteTime}>{shiftNote.timestamp}</span>
-              </div>
-            </div>
-            <button type="button" className={styles.viewFullReportLink} onClick={onViewFullReport}>
-              View Full Shift Report
-            </button>
-          </div>
-        </div>
-      )}
+      <div className={styles.section}>
+        <button type="button" className={styles.viewFullReportLink} onClick={onViewFullReport}>
+          View Full Shift Report
+        </button>
+      </div>
 
       <div className={styles.hairline} />
 

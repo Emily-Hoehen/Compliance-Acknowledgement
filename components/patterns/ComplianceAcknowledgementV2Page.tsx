@@ -26,6 +26,7 @@ import {
 import { areaTypePhotos, photoForAreaType } from "../../lib/sowImages";
 import { siteInfo } from "../../lib/homeDashboardData";
 import type { ContractBuilding, ContractArea, ContractTaskDef } from "../../lib/sowContract";
+import { totalExpectedServices } from "../../lib/expectedServices";
 import type { RosterPerson } from "../../lib/csv";
 import styles from "./ComplianceAcknowledgementV2Page.module.css";
 
@@ -665,18 +666,10 @@ function splitByWeights(total: number, weights: number[]): number[] {
   return result;
 }
 
-/** Deterministic Day/Graveyard/Swing split of one area's real expected/servicedToday totals — a prototype stand-in (no real per-shift schedule data), but internally consistent: each column's own numbers always add back up to the area's actual Expected Services and Total Services. Expected and serviced are weighted independently so a shift can plausibly run over its own target even though the area's overall numbers don't. */
-function shiftBreakdownFor(seed: string, expected: number, servicedToday: number): ShiftBreakdown[] {
-  const expectedWeights = AREA_SHIFT_NAMES.map((shift) => 1 + (hashSeed(`${seed}-${shift}-exp`) % 4));
-  const servicedWeights = AREA_SHIFT_NAMES.map((shift) => 1 + (hashSeed(`${seed}-${shift}-svc`) % 4));
-  const expectedParts = splitByWeights(expected, expectedWeights);
-  const servicedParts = splitByWeights(servicedToday, servicedWeights);
-  return AREA_SHIFT_NAMES.map((shift, i) => ({ shift, expected: expectedParts[i], servicedToday: servicedParts[i] }));
-}
-
-/** Which one of AREA_SHIFT_NAMES an area is primarily staffed on, for the List view's shift compliance columns — a real, disjoint partition of every area (unlike shiftBreakdownFor's own per-area 3-way split, which gives every area some expected load on all three shifts). */
-function primaryAreaShiftFor(key: string): AreaShiftName {
-  return AREA_SHIFT_NAMES[hashSeed(`${key}-primary-shift`) % AREA_SHIFT_NAMES.length];
+/** Real Day/Graveyard/Swing split of one area's expected services (straight from ContractArea.expectedByShift — data/Service Count/lga_expected_services.csv), plus its servicedToday split proportionally across those same real weights (there's no real per-shift "completed" data, so a shift that expects more of an area's work is modeled as having completed proportionally more of it). Each column's own numbers always add back up to the area's actual Expected Services and Total Services. */
+function shiftBreakdownFor(area: ContractArea, servicedToday: number): ShiftBreakdown[] {
+  const servicedParts = splitByWeights(servicedToday, AREA_SHIFT_NAMES.map((shift) => area.expectedByShift[shift]));
+  return AREA_SHIFT_NAMES.map((shift, i) => ({ shift, expected: area.expectedByShift[shift], servicedToday: servicedParts[i] }));
 }
 
 /**
@@ -700,35 +693,37 @@ function aggregateServicedRange(dayOffset: number): [number, number] {
 
 /**
  * Every real (area type, shift) combination with at least one area
- * under its own Expected Services target on its own primary shift for
- * one given day — the same expected/servicedToday/shiftBreakdownFor
- * math individualAreaCards uses (same seeds, so results always
- * agree), factored out standalone so it can be run for a day other
- * than whichever one the grid itself is currently showing (see
- * recentMissedAlert's own past-week lookback on the Today view).
+ * under its own Expected Services target for one given day — the same
+ * expected/servicedToday/shiftBreakdownFor math individualAreaCards
+ * uses (same seeds, so results always agree), factored out standalone
+ * so it can be run for a day other than whichever one the grid itself
+ * is currently showing (see recentMissedAlert's own past-week lookback
+ * on the Today view). An area contributes to every shift it has real
+ * expected work on (ContractArea.expectedByShift), not just one — real
+ * areas often expect service on more than one shift.
  */
 function computeMissedServiceGroups(contractBuildings: ContractBuilding[], dayOffset: number): MissedServiceGroup[] {
   const map = new Map<string, MissedServiceGroup>();
   const [servicedMin, servicedMax] = individualServicedRange(dayOffset);
   contractBuildings.forEach((building) => {
     building.areaTypes.forEach((at) => {
-      const dailyTaskInstances = at.tasks.reduce((sum, t) => sum + (t.freqCount ?? 1), 0);
-      if (dailyTaskInstances <= 0) return; // no contracted tasks — nothing to miss
+      if (at.tasks.length === 0) return; // no contracted tasks — nothing to miss
       at.areas.forEach((area) => {
-        const expected = Math.max(1, dailyTaskInstances);
+        const expected = Math.max(1, totalExpectedServices(area));
         const servicedToday = Math.max(0, Math.round(expected * scaleForDay(`${area.areaId}-serviced`, dayOffset, servicedMin, servicedMax)));
-        const shift = primaryAreaShiftFor(area.areaId);
-        const shiftEntry = shiftBreakdownFor(`${area.areaId}-${dayOffset}`, expected, servicedToday).find((s) => s.shift === shift);
-        if (!shiftEntry) return;
-        const key = `${at.name}::${shift}`;
-        const group =
-          map.get(key) ?? ({ key, areaTypeName: at.name, shift, missedAreaCount: 0, totalAreaCount: 0, missedExpectedTotal: 0 } as MissedServiceGroup);
-        group.totalAreaCount += 1;
-        if (shiftEntry.expected > 0 && shiftEntry.servicedToday < shiftEntry.expected) {
-          group.missedAreaCount += 1;
-          group.missedExpectedTotal += shiftEntry.expected;
-        }
-        map.set(key, group);
+        shiftBreakdownFor(area, servicedToday).forEach((shiftEntry) => {
+          if (shiftEntry.expected <= 0) return; // no real expected work at this area on this shift — nothing to miss
+          const key = `${at.name}::${shiftEntry.shift}`;
+          const group =
+            map.get(key) ??
+            ({ key, areaTypeName: at.name, shift: shiftEntry.shift, missedAreaCount: 0, totalAreaCount: 0, missedExpectedTotal: 0 } as MissedServiceGroup);
+          group.totalAreaCount += 1;
+          if (shiftEntry.servicedToday < shiftEntry.expected) {
+            group.missedAreaCount += 1;
+            group.missedExpectedTotal += shiftEntry.expected;
+          }
+          map.set(key, group);
+        });
       });
     });
   });
@@ -1219,12 +1214,11 @@ function computeMissAtomsForDay(contractBuildings: ContractBuilding[], dayOffset
   const [servicedMin, servicedMax] = individualServicedRange(dayOffset);
   contractBuildings.forEach((building) => {
     building.areaTypes.forEach((at) => {
-      const dailyTaskInstances = at.tasks.reduce((sum, t) => sum + (t.freqCount ?? 1), 0);
-      if (dailyTaskInstances <= 0) return;
+      if (at.tasks.length === 0) return;
       at.areas.forEach((area) => {
-        const expected = Math.max(1, dailyTaskInstances);
+        const expected = Math.max(1, totalExpectedServices(area));
         const servicedToday = Math.max(0, Math.round(expected * scaleForDay(`${area.areaId}-serviced`, dayOffset, servicedMin, servicedMax)));
-        shiftBreakdownFor(`${area.areaId}-${dayOffset}`, expected, servicedToday).forEach((shift) => {
+        shiftBreakdownFor(area, servicedToday).forEach((shift) => {
           if (shift.expected > 0 && shift.servicedToday < shift.expected) {
             atoms.push({
               key: areaShiftAckKey(dayOffset, area.areaId, shift.shift),
@@ -1761,9 +1755,9 @@ function ViewAcknowledgmentModal({
  * ShiftComplianceSummary — the List view's own replacement for
  * PerformanceSummaryCard: a Totals column plus one column per
  * AREA_SHIFT_NAMES entry (Day/Graveyard/Swing), each reading three
- * compliance rates off that shift's own real area population (see
- * primaryAreaShiftFor/shiftBreakdownFor) — areas with no services
- * today, areas that met their Expected Services goal, and areas that
+ * compliance rates off that shift's own real expected-service data
+ * (see shiftBreakdownFor) — areas with no services today, areas that
+ * met their Expected Services goal, and areas that
  * ran over it. A zero count reads as a plain "No areas..." sentence
  * (matching Swing's own all-zero column in the design reference)
  * rather than a "0 of N" that would otherwise dominate every row.
@@ -2010,9 +2004,8 @@ function YourSpacesSection({
     const [servicedMin, servicedMax] = aggregateServicedRange(dayOffset);
     return areaTypeGroups.map((group) => {
         const areaCount = group.areas.length;
-        const dailyTaskInstances = group.tasks.reduce((sum, t) => sum + (t.freqCount ?? 1), 0);
-        const hasTasks = dailyTaskInstances > 0 && areaCount > 0;
-        const expected = hasTasks ? Math.max(1, areaCount * dailyTaskInstances) : 0;
+        const hasTasks = group.tasks.length > 0 && areaCount > 0;
+        const expected = hasTasks ? Math.max(1, group.areas.reduce((sum, a) => sum + totalExpectedServices(a), 0)) : 0;
         const servicedToday = hasTasks
           ? Math.max(0, Math.round(expected * scaleForDay(`${group.name}-serviced`, dayOffset, servicedMin, servicedMax)))
           : 0;
@@ -2050,12 +2043,13 @@ function YourSpacesSection({
     const [servicedMin, servicedMax] = aggregateServicedRange(dayOffset);
     return contractBuildings.map((building) => {
         const areaCount = building.areaCount;
-        const dailyTaskInstances = building.areaTypes.reduce(
-          (sum, at) => sum + at.areas.length * at.tasks.reduce((s, t) => s + (t.freqCount ?? 1), 0),
-          0
-        );
-        const hasTasks = dailyTaskInstances > 0 && areaCount > 0;
-        const expected = hasTasks ? Math.max(1, dailyTaskInstances) : 0;
+        const hasTasks = building.areaTypes.some((at) => at.tasks.length > 0) && areaCount > 0;
+        const expected = hasTasks
+          ? Math.max(
+              1,
+              building.areaTypes.reduce((sum, at) => sum + at.areas.reduce((s, a) => s + totalExpectedServices(a), 0), 0)
+            )
+          : 0;
         const servicedToday = hasTasks
           ? Math.max(0, Math.round(expected * scaleForDay(`${building.name}-serviced`, dayOffset, servicedMin, servicedMax)))
           : 0;
@@ -2087,16 +2081,15 @@ function YourSpacesSection({
   // Areas grouping — one card per real individual area (all ~714 of
   // them), carrying its own real area type / building / floor identity
   // rather than a group count, same math as an area type's card but
-  // scoped to just that one area's own daily task instances.
+  // scoped to just that one area's own real expected-service count.
   const individualAreaCards: AreaCardData[] = useMemo(() => {
     const cards: AreaCardData[] = [];
     const [servicedMin, servicedMax] = individualServicedRange(dayOffset);
     contractBuildings.forEach((building) => {
       building.areaTypes.forEach((at) => {
-        const dailyTaskInstances = at.tasks.reduce((sum, t) => sum + (t.freqCount ?? 1), 0);
-        const hasTasks = dailyTaskInstances > 0;
+        const hasTasks = at.tasks.length > 0;
         at.areas.forEach((area) => {
-          const expected = hasTasks ? Math.max(1, dailyTaskInstances) : 0;
+          const expected = hasTasks ? Math.max(1, totalExpectedServices(area)) : 0;
           const servicedToday = hasTasks
             ? Math.max(0, Math.round(expected * scaleForDay(`${area.areaId}-serviced`, dayOffset, servicedMin, servicedMax)))
             : 0;
@@ -2116,7 +2109,7 @@ function YourSpacesSection({
             score: hasTasks ? scoreForDay(`${area.areaId}-score`, dayOffset) : null,
             expected,
             servicedToday,
-            shifts: shiftBreakdownFor(`${area.areaId}-${dayOffset}`, expected, servicedToday),
+            shifts: shiftBreakdownFor(area, servicedToday),
             percent,
             capturedLabel: hasTasks ? hours.capturedLabel : "0m",
             capturedPercent: hasTasks ? hours.percent : 0,
@@ -2190,11 +2183,13 @@ function YourSpacesSection({
   // List view's own Totals/Day/Graveyard/Swing compliance read —
   // site-wide (every real area, not scoped to whatever groupBy/search/
   // filter the grid itself is currently showing), same convention as
-  // PerformanceSummaryCard's own always-site-wide numbers above.
-  // primaryAreaShiftFor gives each area a single, disjoint shift so the
-  // three shift columns partition the full area population instead of
-  // all reading the same total (shiftBreakdownFor's own 3-way split, by
-  // contrast, gives every area *some* load on all three shifts).
+  // PerformanceSummaryCard's own always-site-wide numbers above. Each
+  // shift column reads every area's own real Day/Graveyard/Swing
+  // expected count (ContractArea.expectedByShift, via
+  // shiftBreakdownFor) directly — not a single "primary shift" per
+  // area — since a real area can genuinely expect service on more
+  // than one shift at once; totalAreas per shift column counts only
+  // the areas that actually expect any service that shift.
   const shiftComplianceColumns: ShiftComplianceColumn[] = useMemo(() => {
     const totalsColumn: ShiftComplianceColumn = {
       key: "totals",
@@ -2208,18 +2203,16 @@ function YourSpacesSection({
     };
 
     const shiftColumns: ShiftComplianceColumn[] = AREA_SHIFT_NAMES.map((shiftName) => {
-      const shiftAreas = individualAreaCards
-        .filter((c) => primaryAreaShiftFor(c.key) === shiftName)
-        .map((c) => c.shifts.find((s) => s.shift === shiftName)!);
+      const shiftStats = individualAreaCards.map((c) => c.shifts.find((s) => s.shift === shiftName)!);
       return {
         key: shiftName,
         label: shiftName,
-        totalAreas: shiftAreas.length,
-        servicedTotal: shiftAreas.reduce((sum, s) => sum + s.servicedToday, 0),
-        expectedTotal: shiftAreas.reduce((sum, s) => sum + s.expected, 0),
-        noServiceCount: shiftAreas.filter((s) => s.servicedToday === 0).length,
-        metGoalCount: shiftAreas.filter((s) => s.expected > 0 && s.servicedToday >= s.expected).length,
-        overservicedCount: shiftAreas.filter((s) => s.expected > 0 && s.servicedToday > s.expected).length,
+        totalAreas: shiftStats.filter((s) => s.expected > 0).length,
+        servicedTotal: shiftStats.reduce((sum, s) => sum + s.servicedToday, 0),
+        expectedTotal: shiftStats.reduce((sum, s) => sum + s.expected, 0),
+        noServiceCount: shiftStats.filter((s) => s.expected > 0 && s.servicedToday === 0).length,
+        metGoalCount: shiftStats.filter((s) => s.expected > 0 && s.servicedToday >= s.expected).length,
+        overservicedCount: shiftStats.filter((s) => s.expected > 0 && s.servicedToday > s.expected).length,
       };
     });
 

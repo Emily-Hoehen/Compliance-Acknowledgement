@@ -33,11 +33,6 @@ export type QualityScore = {
 export const mapPageData = {
   siteName: "LGA-LaGuardia, NY",
   areaTypeOptions: ["Departures", "Arrivals", "Baggage Claim", "Concourses"],
-  servicesCompleted: {
-    value: 3118,
-    expectedLabel: "of 2,882 expected",
-    percent: 108,
-  },
   hoursCaptured: {
     value: "1,138h 5m",
     expectedLabel: "of 1,233h 42m shift time",
@@ -51,42 +46,7 @@ export const mapPageData = {
   ] satisfies QualityScore[],
 };
 
-/** Site-wide Scheduled Headcount/Actual Arrival/Total Absences for the unfiltered stats block — the shift-filtered view reads the equivalent numbers off its own ShiftReport instead. */
-export const siteOverviewAttendance = {
-  scheduledHeadcount: 155,
-  actualArrival: 142,
-  totalAbsences: 14,
-  noCallNoShowCount: 0,
-  callOutsCount: 13,
-};
 
-export type ShiftStatNote = {
-  author: { name: string; position: string; avatar: string };
-  timestamp: string;
-  text: string;
-};
-
-/** Carmen Ramos (one of the Day shift's own co-managers, see shiftManagers below) — attributed on the handoff notes below Services Completed/Hours Captured/Quality Scores in the shift-filtered stats block. */
-const shiftStatNoteAuthor = { name: "Carmen Ramos", position: "Site Supervisor", avatar: "/Carmen.png" };
-
-/** Handoff notes shown below each of the shift-filtered stats widgets — illustrative, static (not day-varying) since they read like a single manager's end-of-shift summary rather than a generated metric. */
-export const shiftStatNotes = {
-  servicesCompleted: {
-    author: shiftStatNoteAuthor,
-    timestamp: "6:55 AM EDT",
-    text: "We exceeded expected services but coverage was uneven. Some areas were serviced more frequently than required. Adjusting frequencies and assignments for next shift.",
-  } satisfies ShiftStatNote,
-  hoursCaptured: {
-    author: shiftStatNoteAuthor,
-    timestamp: "6:55 AM EDT",
-    text: "Coverage was adjusted across Concourses D and E, all critical areas remained covered.",
-  } satisfies ShiftStatNote,
-  qualityScores: {
-    author: shiftStatNoteAuthor,
-    timestamp: "6:55 AM EDT",
-    text: "Performed 13 associate audits today no major issues. Coached associates below a 5 score.",
-  } satisfies ShiftStatNote,
-};
 
 /**
  * Half-hour service-activity bars from 6 AM to 5:30 AM the next day
@@ -163,37 +123,34 @@ export type DailyReportShift = {
 /** The site's overall manager-of-record. */
 const siteManager: DailyReportPerson = {
   name: "Juan Hernandez",
-  position: "Site Mgr",
+  position: "Site Director",
   avatar: "/Juan.png",
 };
 
-/** Each shift is co-managed by two real people whose own `Shift` column in data/managers.csv matches. */
+/** Each shift is managed by one person. */
 const shiftManagers: Record<DailyReportShift["key"], DailyReportPerson[]> = {
-  day: [
-    { name: "Edga Tacuri", position: "Site Supervisor", avatar: "/Edga.png" },
-    { name: "Carmen Ramos", position: "Site Supervisor", avatar: "/Carmen.png" },
-  ],
-  swing: [
-    { name: "Kasey Dunn", position: "Sr Site Mgr", avatar: "https://cdn.4insite.com/assets/3e80ff336dac4d83aa4060231556d5e9_cropped7432398783125274680.jpg" },
-    { name: "Kasey Douglas", position: "Assoc Site Mgr", avatar: "https://cdn.4insite.com/assets/rc7c1a163596546e097a3312917128ab4_be_t.jpg" },
-  ],
-  graveyard: [
-    { name: "Brendon Lee", position: "Assoc Site Mgr", avatar: "https://cdn.4insite.com/assets/r0a1cee2e179841c9b22f813f635edc13_portrait_t.jpg" },
-    { name: "Crystal Oneal", position: "Sr Site Mgr", avatar: "https://cdn.4insite.com/assets/e5b8147192464b1d978e40c4a3ea44ac_Profilepic_t.jpg" },
-  ],
+  day: [{ name: "William Guy", position: "Senior Site Manager", avatar: "/william.png" }],
+  swing: [{ name: "Braulio Abreu", position: "Shift Manager", avatar: "/Braulio.png" }],
+  graveyard: [{ name: "Carlos Muruzumbay", position: "Shift Manager", avatar: "/Carlos.png" }],
 };
 
 function missedServicesLabel(count: number, total: number): string {
-  if (count === 0) return `All ${total.toLocaleString()} areas serviced — none missed`;
+  if (count === 0) return `All ${total.toLocaleString()} areas serviced, none missed`;
   return `${count.toLocaleString()} of ${total.toLocaleString()} areas had missed services`;
 }
 
-/** One AI-overview sentence for the whole day, aggregated from the three shifts just built — names whichever shift missed the most areas and reads the team's average hours-captured rate. */
+/** Two-paragraph AI overview for the whole day, aggregated from the three shifts just built. The first paragraph is the data recap (missed areas, hours captured); the second is written as the Site Director's own sign-off remark — he reviewed all three shifts before signing off, so it reads as a personal note on staffing/coverage rather than another generated stat line. Joined with "\n" so callers that render one paragraph per line (FullDayReportModal, MapStatsPanel) split on it. */
 function buildAiOverview(shifts: DailyReportShift[]): string {
   const totalMissed = shifts.reduce((sum, s) => sum + s.missedServicesCount, 0);
   const worstShift = shifts.reduce((worst, s) => (s.missedServicesCount > worst.missedServicesCount ? s : worst));
   const avgHoursPercent = Math.round(shifts.reduce((sum, s) => sum + s.hoursPercent, 0) / shifts.length);
-  return `Across all three shifts today, ${totalMissed.toLocaleString()} areas missed at least one service — ${worstShift.label} shift saw the most, with ${worstShift.missedServicesCount.toLocaleString()}. Hours captured averaged ${avgHoursPercent}% of paid time across the team.`;
+  const avgServicePercent = Math.round(shifts.reduce((sum, s) => sum + s.servicePercent, 0) / shifts.length);
+  const bestShift = shifts.reduce((best, s) => (s.servicePercent > best.servicePercent ? s : best));
+
+  const recap = `Across all three shifts today, ${totalMissed.toLocaleString()} areas missed at least one service. ${worstShift.label} shift saw the most, with ${worstShift.missedServicesCount.toLocaleString()}. Hours captured averaged ${avgHoursPercent}% of paid time across the team.`;
+  const signOffNote = `I reviewed each shift's handoff notes, staffing levels, and coverage gaps before signing off on the day. Service completion averaged ${avgServicePercent}% of expected volume, led by ${bestShift.label} shift, and every open item from earlier in the day was closed out by the time the next shift picked up. Overall a solid, well-covered day across the site.`;
+
+  return `${recap}\n${signOffNote}`;
 }
 
 /** "Signed off at 9:04 PM EDT" for the site manager row — deterministic per day, so it doesn't change on every render. */

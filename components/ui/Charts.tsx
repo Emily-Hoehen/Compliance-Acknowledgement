@@ -376,6 +376,49 @@ export function DonutRing({ percent, color, trackColor = "var(--color-neutral-30
   );
 }
 
+type SegmentedDonutRingProps = {
+  segments: { value: number; color: string }[];
+  trackColor?: string;
+  size?: number;
+  strokeWidth?: number;
+};
+
+/** A multi-color donut ring — each segment's arc length is its own share of the segments' combined total (not a single percent-complete value like DonutRing). Used wherever a stat breaks down into several statuses (e.g. Not/Under/Fully/Over-Serviced areas) sharing one ring. */
+export function SegmentedDonutRing({ segments, trackColor = "var(--color-neutral-700)", size = 54, strokeWidth = 5 }: SegmentedDonutRingProps) {
+  const total = segments.reduce((sum, s) => sum + s.value, 0);
+  const r = (size - strokeWidth) / 2;
+  const c = size / 2;
+  const circumference = 2 * Math.PI * r;
+  let cumulativeLength = 0;
+  return (
+    <svg className={styles.donut} width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+      <circle cx={c} cy={c} r={r} fill="none" stroke={trackColor} strokeWidth={strokeWidth} />
+      {total > 0 &&
+        segments
+          .filter((s) => s.value > 0)
+          .map((s, i) => {
+            const length = circumference * (s.value / total);
+            const el = (
+              <circle
+                key={i}
+                cx={c}
+                cy={c}
+                r={r}
+                fill="none"
+                stroke={s.color}
+                strokeWidth={strokeWidth}
+                strokeDasharray={`${length} ${circumference - length}`}
+                strokeDashoffset={-cumulativeLength}
+                transform={`rotate(-90 ${c} ${c})`}
+              />
+            );
+            cumulativeLength += length;
+            return el;
+          })}
+    </svg>
+  );
+}
+
 type BarSeries = {
   values: number[];
   color: string;

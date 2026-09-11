@@ -6,11 +6,12 @@
  * two surfaces never disagree on which areas were missed.
  *
  * Every real area with at least one task scheduled for a shift
- * (data/SOW_DeltaLGA.csv's own `shift` column) gets a set number of
- * expected services that shift — fixed per area TYPE (e.g. every
- * Restroom area always expects the same count, matching how a real
- * SOW specifies a service frequency per area type, not per
- * individual area).
+ * (data/SOW_DeltaLGA.csv's own `shift` column) gets its own real
+ * expected-service count for that shift (ContractArea.expectedByShift
+ * — see lib/expectedServices.ts), not an invented one — the same
+ * number every other surface reads, so a building/area override in
+ * the source data (e.g. Concourse D's Escalators expecting more day
+ * passes than the airport-wide default) shows up everywhere at once.
  *
  * Whether an area type falls short at all is decided once per type
  * (~75% of area types fully hit their expected count this shift, 25%
@@ -21,11 +22,14 @@
  * fine, some aren't" split this is meant to represent. Types that
  * miss still distribute that shortfall realistically across their
  * own areas — most complete everything, a minority fall short by
- * one, a few by more, a rare handful get none at all.
+ * one, a few by more, a rare handful get none at all. This "who
+ * completed how much" simulation is the only part still synthetic —
+ * only the expected-count side is real.
  */
 
 import type { ContractBuilding } from "./sowContract";
-import { hashSeed, scaleForDay } from "./sowData";
+import type { ShiftLabel } from "./expectedServices";
+import { scaleForDay } from "./sowData";
 
 export type AreaServiceStatus = {
   areaId: string;
@@ -35,9 +39,14 @@ export type AreaServiceStatus = {
   servicesCompleted: number;
 };
 
-/** Fixed 1–3 expected-services count for an area type — every area of that type shares the same number, and it never varies by day. */
-function servicesExpectedForType(areaTypeName: string): number {
-  return 1 + (hashSeed(`${areaTypeName}-expected`) % 3); // 1–3
+/** Service-completion tier for one area (or any completed/expected total rolled up from several) — missed: nothing completed, incomplete: partially completed, completed: exactly met, over-serviced: exceeded. Shared by the map's status pins, its area-type/area status dots, and the status filter, so all three always agree. */
+export type AreaStatus = "missed" | "incomplete" | "completed" | "over-serviced";
+
+export function statusForCounts(completed: number, expected: number): AreaStatus {
+  if (completed <= 0) return "missed";
+  if (completed < expected) return "incomplete";
+  if (completed > expected) return "over-serviced";
+  return "completed";
 }
 
 /** Decided once per area type per shift/day — ~75% of area types fully hit their expected services this shift; the rest fall short in at least one area. */
@@ -54,25 +63,167 @@ function servicesMissedForArea(areaId: string, shiftLabel: string, dayOffset: nu
   return expected; // fully missed — rare
 }
 
+/** Decided once per area type per DAY (not per shift — an over-serviced type tends to run that way all day, not shift-by-shift, so this doesn't use `scaleForDay`'s shift-varying seed) — a little over half of the area types that fully hit their expected count also pick up extra passes somewhere; the rest land exactly on target with no over-servicing at all. Keeping this a per-type, per-day decision (rather than an independent roll per area) is what keeps "completed" and "over-serviced" as genuinely distinct, common outcomes at the area-type level instead of every type's roster averaging out to "some areas over, some not, sums to over" once you have a dozen-plus areas in it. */
+function areaTypeRunsOverServiced(areaTypeName: string, dayOffset: number): boolean {
+  const roll = scaleForDay(`${areaTypeName}-overtype`, dayOffset, 0, 1);
+  return roll < 0.55;
+}
+
+/** For an area within a type that's running over-serviced this day — how many services *beyond* the expected count it individually picked up, e.g. an extra pass because a neighboring area's associate had time left. Areas within a type that isn't running over-serviced always land exactly on target (no roll at all). */
+function servicesOverForArea(areaId: string, dayOffset: number): number {
+  const roll = scaleForDay(`${areaId}-overamount`, dayOffset, 0, 1);
+  if (roll < 0.35) return 0; // even in an over-serviced type, some areas still land exactly on target
+  if (roll < 0.75) return 1;
+  return 2;
+}
+
 /** Every area with a task scheduled for `shiftLabel`, each with a deterministic services-expected/completed breakdown for the given day. */
 export function computeShiftAreaServices(buildings: ContractBuilding[], shiftLabel: string, dayOffset: number): AreaServiceStatus[] {
   const result: AreaServiceStatus[] = [];
   buildings.forEach((building) => {
     building.areaTypes.forEach((areaType) => {
       if (!areaType.tasks.some((task) => task.shifts.includes(shiftLabel))) return;
-      const expected = servicesExpectedForType(areaType.name);
       const typeHitsExpected = areaTypeHitsExpectedServices(areaType.name, shiftLabel, dayOffset);
+      const typeRunsOverServiced = typeHitsExpected && areaTypeRunsOverServiced(areaType.name, dayOffset);
       areaType.areas.forEach((area) => {
+        const expected = area.expectedByShift[shiftLabel as ShiftLabel] ?? 0;
         const missed = typeHitsExpected ? 0 : servicesMissedForArea(area.areaId, shiftLabel, dayOffset, expected);
+        const over = missed === 0 && typeRunsOverServiced ? servicesOverForArea(area.areaId, dayOffset) : 0;
         result.push({
           areaId: area.areaId,
           displayName: area.displayName,
           areaTypeName: areaType.name,
           servicesExpected: expected,
-          servicesCompleted: expected - missed,
+          servicesCompleted: expected - missed + over,
         });
       });
     });
   });
   return result;
+}
+
+/** How many areas fall into each of the four service-completion tiers (see AreaStatus) plus "No Frequency" (areas with nothing scheduled at all for this shift/day), and the overall "serviced at all" percent — the Full Day Report's "Area Coverage"/"Areas Serviced" breakdown, shared by the per-shift cards, the Daily Summary sidebar, and the Map sidebar so all three always read the same real counts against the same site-wide total. */
+export type AreaCoverageBreakdown = {
+  /** Every physical area at the site — the same number for every shift and the unfiltered day, since each shift is responsible for the whole site, not just the areas it happens to have a task for. */
+  totalAreas: number;
+  /** Areas with a scheduled frequency that got at least some (but not necessarily all) of it done — under + fully + over-serviced. Deliberately excludes both "Not Serviced" (had a frequency, got none of it) and "No Frequency" (nothing was ever scheduled) from this headline count. */
+  servicedCount: number;
+  servicedPercent: number;
+  notServicedCount: number;
+  underServicedCount: number;
+  fullyServicedCount: number;
+  overServicedCount: number;
+  /** Areas with no scheduled frequency at all for this shift (or, for the unfiltered day, no scheduled frequency on any of the three shifts) — informational, not a shortfall. */
+  noFrequencyCount: number;
+};
+
+/** Buckets a set of per-area rows into an AreaCoverageBreakdown — an area with servicesExpected <= 0 has no scheduled frequency at all and lands in noFrequencyCount rather than being run through statusForCounts (which would otherwise read "0 completed" as "missed"). */
+function bucketAreaCoverageBreakdown(areaServices: AreaServiceStatus[]): AreaCoverageBreakdown {
+  const totalAreas = areaServices.length;
+  let notServicedCount = 0;
+  let underServicedCount = 0;
+  let fullyServicedCount = 0;
+  let overServicedCount = 0;
+  let noFrequencyCount = 0;
+  areaServices.forEach((area) => {
+    if (area.servicesExpected <= 0) {
+      noFrequencyCount += 1;
+      return;
+    }
+    switch (statusForCounts(area.servicesCompleted, area.servicesExpected)) {
+      case "missed":
+        notServicedCount += 1;
+        break;
+      case "incomplete":
+        underServicedCount += 1;
+        break;
+      case "completed":
+        fullyServicedCount += 1;
+        break;
+      case "over-serviced":
+        overServicedCount += 1;
+        break;
+    }
+  });
+  const servicedCount = underServicedCount + fullyServicedCount + overServicedCount;
+  return {
+    totalAreas,
+    servicedCount,
+    servicedPercent: totalAreas > 0 ? Math.round((servicedCount / totalAreas) * 100) : 0,
+    notServicedCount,
+    underServicedCount,
+    fullyServicedCount,
+    overServicedCount,
+    noFrequencyCount,
+  };
+}
+
+const DAILY_SHIFT_LABELS = ["Day", "Swing", "Graveyard"];
+
+/** Same per-area roll as computeShiftAreaServices, but for EVERY physical area at the site regardless of whether it has a scheduled frequency for `shiftLabel` — areas with none simply come back with servicesExpected 0, so this is what the "Areas Serviced" widget's totalAreas always reflects (every shift is responsible for the whole site). computeShiftAreaServices' own narrower "only areas this shift actually touches" set stays what the map pins/Area Types list read — a pin doesn't make sense for an area with nothing scheduled that shift. */
+function computeAllAreaServicesForShift(buildings: ContractBuilding[], shiftLabel: string, dayOffset: number): AreaServiceStatus[] {
+  const result: AreaServiceStatus[] = [];
+  buildings.forEach((building) => {
+    building.areaTypes.forEach((areaType) => {
+      const typeHitsExpected = areaTypeHitsExpectedServices(areaType.name, shiftLabel, dayOffset);
+      const typeRunsOverServiced = typeHitsExpected && areaTypeRunsOverServiced(areaType.name, dayOffset);
+      areaType.areas.forEach((area) => {
+        const expected = area.expectedByShift[shiftLabel as ShiftLabel] ?? 0;
+        const missed = typeHitsExpected ? 0 : servicesMissedForArea(area.areaId, shiftLabel, dayOffset, expected);
+        const over = missed === 0 && typeRunsOverServiced ? servicesOverForArea(area.areaId, dayOffset) : 0;
+        result.push({
+          areaId: area.areaId,
+          displayName: area.displayName,
+          areaTypeName: areaType.name,
+          servicesExpected: expected,
+          servicesCompleted: expected - missed + over,
+        });
+      });
+    });
+  });
+  return result;
+}
+
+/** Every physical area at the site with its combined expected/completed across all three shifts — an area with a frequency on only one shift still shows up (with that one shift's numbers); an area with no frequency on any of the three shifts lands at 0/0 (No Frequency for the whole day). */
+function computeAllAreaServicesForDay(buildings: ContractBuilding[], dayOffset: number): AreaServiceStatus[] {
+  const merged = new Map<string, AreaServiceStatus>();
+  DAILY_SHIFT_LABELS.forEach((label) => {
+    computeAllAreaServicesForShift(buildings, label, dayOffset).forEach((row) => {
+      const existing = merged.get(row.areaId);
+      if (existing) {
+        existing.servicesExpected += row.servicesExpected;
+        existing.servicesCompleted += row.servicesCompleted;
+      } else {
+        merged.set(row.areaId, { ...row });
+      }
+    });
+  });
+  return Array.from(merged.values());
+}
+
+/** The "Areas Serviced" widget's breakdown for one shift — every area at the site, against just that shift's own expected/completed counts. */
+export function computeShiftAreaCoverageBreakdown(buildings: ContractBuilding[], shiftLabel: string, dayOffset: number): AreaCoverageBreakdown {
+  return bucketAreaCoverageBreakdown(computeAllAreaServicesForShift(buildings, shiftLabel, dayOffset));
+}
+
+/** The "Areas Serviced" widget's breakdown for the whole (unfiltered) day — every area at the site, against its combined expected/completed across all three shifts. */
+export function computeDailyAreaCoverageBreakdown(buildings: ContractBuilding[], dayOffset: number): AreaCoverageBreakdown {
+  return bucketAreaCoverageBreakdown(computeAllAreaServicesForDay(buildings, dayOffset));
+}
+
+/** Same per-area model as computeShiftAreaServices, summed across the day's three shifts — for the map's status pins and the unfiltered (no-shift-selected) Area Types list, where "red/yellow/green" means the area's whole day, not one shift. An area scheduled on more than one shift is merged into a single row rather than counted twice. Areas with no scheduled frequency on any shift are absent here entirely (unlike computeDailyAreaCoverageBreakdown's own full site-wide set) since a status pin/list row wouldn't mean anything for them. */
+export function computeDailyAreaServices(buildings: ContractBuilding[], dayOffset: number): AreaServiceStatus[] {
+  const merged = new Map<string, AreaServiceStatus>();
+  DAILY_SHIFT_LABELS.forEach((label) => {
+    computeShiftAreaServices(buildings, label, dayOffset).forEach((row) => {
+      const existing = merged.get(row.areaId);
+      if (existing) {
+        existing.servicesExpected += row.servicesExpected;
+        existing.servicesCompleted += row.servicesCompleted;
+      } else {
+        merged.set(row.areaId, { ...row });
+      }
+    });
+  });
+  return Array.from(merged.values());
 }

@@ -19,17 +19,20 @@
 
 import type { ContractBuilding } from "./sowContract";
 import { photoForAreaType } from "./sowImages";
-import { computeShiftAreaServices } from "./mapAreaServiceData";
-import { hashSeed, pickClockTime, scaleForDay, scoreForDay } from "./sowData";
-import type { DailyReportPerson, DailyReportShift, QualityScore } from "./mapPageData";
+import { computeShiftAreaServices, computeShiftAreaCoverageBreakdown, type AreaServiceStatus, type AreaCoverageBreakdown } from "./mapAreaServiceData";
+import { dateForDayOffset, hashSeed, pickClockTime, scaleForDay, scoreForDay } from "./sowData";
+import { mapPageData, type DailyReportPerson, type DailyReportShift, type QualityScore } from "./mapPageData";
 
 export type ManagerNote = {
   author: DailyReportPerson;
   timestamp: string;
   text: string;
-  /** Short category label shown as a chip on the note — e.g. "Staffing", "Access", "Facilities" — so a manager can scan what kind of issue each note explains without reading the full text. */
-  tag: string;
+  /** Category chips shown below the note copy — zero, one, or two of SHIFT_NOTE_TAGS ("QR Unreadable", "4Insite Discrepancy", "Staffing", "Access Restricted", "Area Closed") for shift-level notes, so a manager can scan what kind of issue each note explains without reading the full text. Not every note needs one — plenty are routine updates with nothing to categorize. */
+  tags: string[];
 };
+
+/** The five tag categories shift-level notes (Shift Notes, Area Coverage, Service Coverage, Hours, Quality) rotate through — each note's own text explains the specific scenario behind whichever tag it carries. */
+export const SHIFT_NOTE_TAGS = ["QR Unreadable", "4Insite Discrepancy", "Staffing", "Access Restricted", "Area Closed"] as const;
 
 export type ShiftAreaVerification = {
   areaId: string;
@@ -75,6 +78,36 @@ export type ShiftIssue = {
   detail: string;
 };
 
+/** How far a safety incident has progressed through the incident-report workflow — Incident Report (initial report filed) → Investigation (EHS review) → Claims Review (if a claim was filed) → Closed (fully resolved). Drives the Full Shift Report's step tracker for each incident. */
+export type SafetyIncidentStage = "Incident Report" | "Investigation" | "Claims Review" | "Closed";
+
+export type SafetyIncident = ShiftIssue & {
+  /** e.g. "First Aid", "Slip/Trip/Fall", "Property Damage" — shown as a tag next to the incident title. */
+  category: string;
+  stage: SafetyIncidentStage;
+};
+
+/** One roster entry for the Full Shift Report's "Associates on Shift" list — real rows from data/associates.csv (Delta - LaGuardia, NY site), filtered to this shift's own `Shift` column. */
+export type AssociateShiftEntry = {
+  name: string;
+  position: string;
+  avatar: string;
+  /** The CSV's own scheduled arrival time for this associate — shown as a light caption, not a real clock-in/out pair (unlike managers, individual associates aren't clock-tracked in this data model). */
+  time: string;
+};
+
+/** One entry in the Full Shift Report's "Report-Its" list. */
+export type ReportItemEntry = {
+  title: string;
+  tag: string;
+  /** Longer sentence for the Full Day Report's richer Report-Its list — the short `title` above is what the per-shift modal shows instead. */
+  description: string;
+  location: string;
+  /** Who filed it — a real associate from this shift's own roster (data/associates.csv), not a manager. */
+  submittedBy: AssociateShiftEntry;
+  status: "Accepted" | "Rejected";
+};
+
 export type ShiftProject = {
   name: string;
   status: "On Track" | "Needs Attention" | "Complete";
@@ -93,14 +126,18 @@ export type ShiftReport = {
   areaTypesAffected: ShiftAreaTypeVerification[];
   /** Every area type relevant to this shift, for the shift-filtered Area Types list. */
   areaTypeSummaries: ShiftAreaTypeSummary[];
+  /** How many of this shift's areas were fully/under/not/over-serviced — the Full Day Report's "Area Coverage" breakdown. */
+  areaCoverage: AreaCoverageBreakdown;
+  areaCoverageNote: ManagerNote;
   /** Raw services-completed/expected counts for this shift alone, for the overview's Services Completed stat (distinct from the site-wide count shown when no shift is filtered). */
   servicesCompletedCount: number;
   servicesExpectedCount: number;
   servicesPercent: number;
+  servicesNote: ManagerNote;
   hoursCapturedLabel: string;
   hoursPaidLabel: string;
   hoursPercent: number;
-  hoursNote?: ManagerNote;
+  hoursNote: ManagerNote;
   /** AI Verification / Internal Audit / Joint Audit / Customer Audit for this shift alone — same shape as mapPageData's site-wide qualityScores. */
   qualityScores: QualityScore[];
   scheduledHeadcount: number;
@@ -109,22 +146,31 @@ export type ShiftReport = {
   noCallNoShowCount: number;
   callOutsCount: number;
   scoresNote: ManagerNote;
-  safetyIssues: ShiftIssue[];
+  safetyIssues: SafetyIncident[];
+  /** Same as reportItems.length — the count of report-its submitted this shift. */
   totalReportIts: number;
+  reportItsAccepted: number;
+  reportItsRejected: number;
+  reportItsAcceptanceRate: number;
   reportItsNote: ManagerNote;
+  /** Individual Report-It entries backing totalReportIts, for the Full Shift Report's own itemized list — the shift-filtered sidebar only ever shows the aggregate count + note. */
+  reportItems: ReportItemEntry[];
   attendanceIssues: ShiftIssue[];
   projects: ShiftProject[];
   notes: ManagerNote[];
+  /** Real roster for this shift (data/associates.csv), for the Full Shift Report's "Associates on Shift" list. */
+  associates: AssociateShiftEntry[];
+  associatesNote: ManagerNote;
 };
 
-type NoteTemplate = { text: string; tag: string };
+type NoteTemplate = { text: string; tags: string[] };
 
 const MISSED_REASONS: NoteTemplate[] = [
-  { text: "Access restricted — construction crew on site.", tag: "Access" },
-  { text: "Associate called out; reassigned remaining coverage to adjacent areas.", tag: "Staffing" },
-  { text: "Awaiting replacement parts before service could be completed.", tag: "Equipment" },
-  { text: "Flight delay pushed gate access past end of shift.", tag: "Schedule" },
-  { text: "Area occupied by an event through the scheduled service window.", tag: "Access" },
+  { text: "Access restricted for a construction crew on site.", tags: ["Access"] },
+  { text: "Associate called out; reassigned remaining coverage to adjacent areas.", tags: ["Staffing"] },
+  { text: "Awaiting replacement parts before service could be completed.", tags: ["Equipment"] },
+  { text: "Flight delay pushed gate access past end of shift.", tags: ["Schedule"] },
+  { text: "Area occupied by an event through the scheduled service window.", tags: ["Access"] },
 ];
 
 function pickMissedReason(seed: string): NoteTemplate {
@@ -132,20 +178,116 @@ function pickMissedReason(seed: string): NoteTemplate {
 }
 
 const HOURS_SHORTFALL_NOTES: NoteTemplate[] = [
-  { text: "Two associates called out; coverage was split across the remaining team.", tag: "Staffing" },
-  { text: "Held over finishing a deep-clean carried in from the prior shift.", tag: "Handoff" },
-  { text: "Short-staffed for the back half of the shift — supervisor covered floor duties.", tag: "Staffing" },
+  {
+    text: "Two associates called out early in the shift. Coverage was split across the remaining team to keep every zone touched, which cut into total hours captured but kept service moving.",
+    tags: ["Staffing"],
+  },
+  {
+    text: "A restricted access zone delayed check in for part of the crew by close to an hour, cutting into captured hours this shift. Security cleared the area once the escort arrived.",
+    tags: ["Access Restricted", "Staffing"],
+  },
+  {
+    text: "Short staffed for the back half of the shift after a last minute call out; the supervisor covered floor duties personally to keep coverage as close to target as possible.",
+    tags: ["Staffing"],
+  },
 ];
 
-function pickHoursNote(seed: string): NoteTemplate {
-  return HOURS_SHORTFALL_NOTES[hashSeed(seed) % HOURS_SHORTFALL_NOTES.length];
+const HOURS_ON_TARGET_NOTES: NoteTemplate[] = [
+  { text: "Full crew covered the shift as scheduled with no late arrivals or call outs. No coverage gaps to report and every zone was touched on time.", tags: ["Staffing"] },
+  {
+    text: "Hours captured landed right at target this shift; no reassignments needed and the team moved through the floor plan without any hold ups.",
+    tags: [],
+  },
+];
+
+function pickHoursNote(seed: string, percent: number): NoteTemplate {
+  const pool = percent < 100 ? HOURS_SHORTFALL_NOTES : HOURS_ON_TARGET_NOTES;
+  return pool[hashSeed(seed) % pool.length];
+}
+
+const AREA_COVERAGE_NOTES_CLEAN: NoteTemplate[] = [
+  {
+    text: "Every area hit its service goal this shift with a full crew on the floor. No shortfalls to flag, and the team had time to double back on a couple of high traffic spots.",
+    tags: ["Staffing"],
+  },
+  {
+    text: "Coverage held steady across all buildings this shift, no missed areas. Associates rotated through the harder to reach zones without falling behind on the rest of the floor plan.",
+    tags: [],
+  },
+];
+const AREA_COVERAGE_NOTES_SHORTFALL: NoteTemplate[] = [
+  {
+    text: "A restricted access zone kept crews out of several areas for most of the shift while an escort was arranged. Reassigning coverage for next shift so those areas get caught up first.",
+    tags: ["Access Restricted"],
+  },
+  {
+    text: "Coverage was uneven this shift; two areas were closed for scheduled maintenance and could not be serviced at all, while a few others ran ahead of target to compensate.",
+    tags: ["Area Closed"],
+  },
+  {
+    text: "Most areas hit their target this shift. The areas that fell short had QR codes that would not scan at the entry point, so service could not be logged even though the work was done.",
+    tags: ["QR Unreadable"],
+  },
+  {
+    text: "A few areas were skipped after their QR codes failed to scan at an access restricted checkpoint, so service could not be confirmed or logged until a manager badge was used to override it.",
+    tags: ["QR Unreadable", "Access Restricted"],
+  },
+];
+
+function pickAreaCoverageNote(seed: string, notServicedCount: number): NoteTemplate {
+  const pool = notServicedCount === 0 ? AREA_COVERAGE_NOTES_CLEAN : AREA_COVERAGE_NOTES_SHORTFALL;
+  return pool[hashSeed(seed) % pool.length];
+}
+
+const SERVICE_COVERAGE_NOTES_OVER: NoteTemplate[] = [
+  {
+    text: "We exceeded expected services, but coverage was uneven. Some areas were serviced more frequently than required while others just hit their number. Adjusting frequencies and assignments for next shift.",
+    tags: ["Staffing"],
+  },
+  {
+    text: "Services ran ahead of target this shift after the team finished the core floor plan early. Redistributing the extra passes more evenly across the site next time instead of over-servicing the same areas.",
+    tags: [],
+  },
+];
+const SERVICE_COVERAGE_NOTES_SHORT: NoteTemplate[] = [
+  {
+    text: "A 4Insite sync issue caused several completed services to log late, understating today's count on the dashboard. Corrected data has since been sent to 4Insite and should reconcile by the next refresh.",
+    tags: ["4Insite Discrepancy"],
+  },
+  {
+    text: "Fell short of expected services in a few high traffic areas after an unplanned equipment swap slowed the team down. Reallocating staff to catch up on those areas first thing next shift.",
+    tags: ["Staffing"],
+  },
+];
+const SERVICE_COVERAGE_NOTES_ON_TARGET: NoteTemplate[] = [
+  {
+    text: "Services landed right on target this shift with a clean run through the whole floor plan. No reassignment needed heading into the next one.",
+    tags: [],
+  },
+];
+
+function pickServiceCoverageNote(seed: string, percent: number): NoteTemplate {
+  const pool = percent > 100 ? SERVICE_COVERAGE_NOTES_OVER : percent < 100 ? SERVICE_COVERAGE_NOTES_SHORT : SERVICE_COVERAGE_NOTES_ON_TARGET;
+  return pool[hashSeed(seed) % pool.length];
 }
 
 const SCORE_NOTES: NoteTemplate[] = [
-  { text: "Verification scores dipped slightly after two new associates started this week — pairing them with senior staff for the next few shifts.", tag: "Training" },
-  { text: "Strong shift for scores — response time on flagged items has improved across the team.", tag: "Improvement" },
-  { text: "Customer audit score reflects one soft-surface complaint in the lounge; a corrective walkthrough is scheduled.", tag: "Complaint" },
-  { text: "Scores holding steady — no new corrective actions needed this shift.", tag: "Steady" },
+  {
+    text: "Verification scores dipped slightly after two new associates started this week and are still learning the checklist. Pairing them with senior staff for the next few shifts until they're fully ramped up.",
+    tags: ["Staffing"],
+  },
+  {
+    text: "Strong shift for scores across the board. Response time on flagged items has improved noticeably across the team since the last coaching session.",
+    tags: [],
+  },
+  {
+    text: "Customer audit score reflects one soft surface complaint in the lounge that came in mid shift; a corrective walkthrough with the associate is scheduled for tomorrow to review the standard.",
+    tags: ["Staffing"],
+  },
+  {
+    text: "Scores holding steady across all three audit types this shift. No new corrective actions needed, and the team is on pace with last week's averages.",
+    tags: [],
+  },
 ];
 
 function pickScoreNote(seed: string): NoteTemplate {
@@ -153,18 +295,200 @@ function pickScoreNote(seed: string): NoteTemplate {
 }
 
 const REPORT_ITS_NOTES_ZERO: NoteTemplate[] = [
-  { text: "No report-its this shift — a quiet one.", tag: "Routine" },
-  { text: "Nothing to log this shift; team flagged issues before they became report-its.", tag: "Routine" },
+  { text: "No report-its this shift. A quiet one overall, with the team spending the extra time getting ahead on a few lower priority areas.", tags: [] },
+  {
+    text: "Nothing to log this shift; the team flagged a couple of small issues verbally and handled them on the spot before they became report-its.",
+    tags: ["Staffing"],
+  },
 ];
 const REPORT_ITS_NOTES_SOME: NoteTemplate[] = [
-  { text: "Most report-its were minor facilities tickets (lighting, signage) — logged for day shift follow-up.", tag: "Facilities" },
-  { text: "One report-it flagged a recurring elevator issue; forwarded to building engineering.", tag: "Facilities" },
-  { text: "No report-its escalated to safety or security — routine maintenance items only.", tag: "Routine" },
+  {
+    text: "Most report-its traced back to an area closed for maintenance mid-shift, which associates kept flagging out of habit; logged for day shift follow-up once the area reopens.",
+    tags: ["Area Closed"],
+  },
+  {
+    text: "One report-it flagged a QR code that would not scan at the elevator landing, blocking service confirmation there; forwarded to building engineering for a replacement sticker.",
+    tags: ["QR Unreadable"],
+  },
+  {
+    text: "No report-its escalated to safety or security this shift; routine maintenance items only, all logged and assigned to the right team.",
+    tags: [],
+  },
 ];
 
 function pickReportItsNote(seed: string, count: number): NoteTemplate {
   const pool = count === 0 ? REPORT_ITS_NOTES_ZERO : REPORT_ITS_NOTES_SOME;
   return pool[hashSeed(seed) % pool.length];
+}
+
+const ASSOCIATE_NOTES: NoteTemplate[] = [
+  { text: "Full crew showed up on time and ready to go. No coverage gaps to manage today, which made assigning the harder areas a lot easier.", tags: ["Staffing"] },
+  {
+    text: "One late arrival this shift, covered by shifting a floater into their zone until they clocked in about forty minutes later. No areas were left unattended in the meantime.",
+    tags: ["Staffing"],
+  },
+  {
+    text: "Crew handled the load well despite running a person short for the back half of the shift after an early call out. Everyone picked up a little extra without falling behind.",
+    tags: ["Staffing"],
+  },
+  {
+    text: "Team is settling in well overall; two associates are still in their first two weeks and picking things up fast, especially on the checklist steps that trip most new hires up.",
+    tags: [],
+  },
+];
+
+function pickAssociatesNote(seed: string): NoteTemplate {
+  return ASSOCIATE_NOTES[hashSeed(seed) % ASSOCIATE_NOTES.length];
+}
+
+/**
+ * Real associate rows from data/associates.csv, filtered to the "Delta - LaGuardia, NY" `Main` site and each
+ * shift's own `Shift` column (Day/Swing/Graveyard) — same real-sample-data convention as lib/sowData.ts's
+ * ASSOCIATE_POOL, just scoped per shift instead of pooled site-wide. `time` is that CSV row's own scheduled
+ * time, shown as a light caption (individual associates aren't clock-tracked the way managers are here).
+ */
+const ASSOCIATES_BY_SHIFT: Record<DailyReportShift["key"], AssociateShiftEntry[]> = {
+  day: [
+    { name: "Allison Black", position: "Recycle Tech", avatar: "https://cdn.4insite.com/assets/98e43f08a54d44efb022f444da0a392d_Anthony_t.jpg", time: "7:50 AM" },
+    { name: "Antonio Potts", position: "Maintenence Tech", avatar: "https://cdn.4insite.com/assets/c011422cd51a4c96b3e6e67af1a3ef34_IMG_2627_t.jpg", time: "10:30 AM" },
+    { name: "Brett Knowles", position: "Cust Foreperson", avatar: "https://cdn.4insite.com/assets/b0c36261e68d4e3fb8cd26414edd0af2_IMG_20221104_58325_t.jpg", time: "12:50 PM" },
+    { name: "Claude Hall", position: "CSR, Exterior", avatar: "https://cdn.4insite.com/assets/1614178054.708322_AndreaPerrett_t.jpg", time: "9:05 PM" },
+    { name: "Darren Dickson", position: "Custodian", avatar: "https://cdn.4insite.com/image/c4eca239-09b2-b0e5-fead-226214e743c0_t.png", time: "6:40 PM" },
+    { name: "Edward Marshall", position: "Customer Service Rep", avatar: "https://cdn.4insite.com/image/845bcb1a-47ce-a7a8-f040-22aa690c1c7e_t.png", time: "8:25 PM" },
+    { name: "Glen Larsen", position: "Custodial Lead", avatar: "https://cdn.4insite.com/assets/2aaabfc1c8d34c59ad7e469c4207aad4_AMALIAMATEOS_t.jpg", time: "7:40 AM" },
+    { name: "Jacob Whitney", position: "Sr Custodial Lead", avatar: "https://cdn.4insite.com/assets/r594bbe6a515d4b3bbc5e6b8d9211898a_MicrosoftTeamsimage6_t.png", time: "1:55 PM" },
+    { name: "Josephine McCarthy", position: "GMP Floor Tech", avatar: "https://cdn.4insite.com/image/48e0c0be-23ad-8b1b-abf9-ad8143e5c597_t.png", time: "7:15 PM" },
+    { name: "Kent Chang", position: "Custodial Lead, Safety", avatar: "https://cdn.4insite.com/image/71e06da2-0baf-5fde-7763-c0abd59347e6_t.png", time: "2:30 PM" },
+    { name: "Marcus Frost", position: "CSR Lead", avatar: "https://cdn.4insite.com/image/72e0ab8c-59c4-ad0c-1675-e02b0a26b5be_t.png", time: "7:20 PM" },
+    { name: "Melvin Moran", position: "CSR", avatar: "https://cdn.4insite.com/assets/r2d40f3ab68084c50874cf1163069d0ae_Adelina2_t.jpg", time: "2:15 PM" },
+    { name: "Nicholas Delacruz", position: "Custodial Supervisor", avatar: "https://cdn.4insite.com/assets/5f1644dcb6cb46e5bfded64ea8133307_IMG_2611_t.jpg", time: "6:15 AM" },
+    { name: "Rebecca Jacobson", position: "Cleanroom Tech", avatar: "https://cdn.4insite.com/assets/6089d1e951924c5ebc8f1724c05899d8_EarleneWoodson_t.jpg", time: "12:40 PM" },
+    { name: "Samuel Leblanc", position: "Custodial Supervisor", avatar: "https://cdn.4insite.com/image/b5b7a212-2846-4b11-fd95-50c0642d2563_t.png", time: "1:45 PM" },
+    { name: "Timothy Collier", position: "Floor Tech", avatar: "https://cdn.4insite.com/assets/7f90fd3d4d474a6483c1eccafe02219d_20221202_094143_t.jpg", time: "5:15 PM" },
+    { name: "Willard Good", position: "Custodial Lead II", avatar: "https://cdn.4insite.com/image/3eef672f-3a70-5deb-a1a2-1bba22094b80_t.png", time: "8:30 AM" },
+  ],
+  swing: [
+    { name: "Andrew Austin", position: "Custodial Lead, Safety", avatar: "https://cdn.4insite.com/assets/r14876ff55e7c49cbb37f9ed1db6b0221_IMG_08721_t.jpg", time: "4:25 PM" },
+    { name: "Bobby Davidson", position: "CSR Lead", avatar: "https://cdn.4insite.com/assets/465c0fd23241404e8859de5b43cdc2ce_image_t.jpg", time: "6:30 AM" },
+    { name: "Cheryl Moses", position: "CSR", avatar: "https://cdn.4insite.com/assets/c49499a125c44bfd92aa5a21e982fe57_20221202_094054_t.jpg", time: "10:15 PM" },
+    { name: "Connie Hernandez", position: "Custodial Supervisor", avatar: "https://cdn.4insite.com/image/a148ebfa-65da-2799-1072-9acfae6753e6_t.png", time: "8:45 AM" },
+    { name: "Donald Rodriguez", position: "Cleanroom Tech", avatar: "https://cdn.4insite.com/image/69561eb4-5acb-44ce-3402-320f2adfea88_t.png", time: "11:40 AM" },
+    { name: "Eva Sharp", position: "Custodial Supervisor", avatar: "https://cdn.4insite.com/assets/909695ae86d84dd5917532dd3037af8c_AgustinaGarcia_DB_1_t.jpg", time: "10:10 AM" },
+    { name: "Henry Ballard", position: "Floor Tech", avatar: "https://cdn.4insite.com/assets/586c0dfdb23545119eefda790711d3f8_IMG_1889_t.jpg", time: "7:55 AM" },
+    { name: "Jessica Dunn", position: "Custodial Lead II", avatar: "https://cdn.4insite.com/image/b0392430-487e-69f1-1c81-25005fa16c95_t.png", time: "11:05 AM" },
+    { name: "Julian Booth", position: "Recycle Tech", avatar: "https://cdn.4insite.com/image/f8e5ed6b-be8f-135c-b5e9-23e71de4062d_t.png", time: "9:55 AM" },
+    { name: "Lois Shelton", position: "Maintenence Tech", avatar: "https://cdn.4insite.com/assets/4149e7a1c9884b5790d0816c59232625_PDCpics011_t.jpg", time: "1:15 PM" },
+    { name: "Marsha Burgess", position: "Cust Foreperson", avatar: "https://cdn.4insite.com/assets/1579645815.2171333_EdithBuruca_t.jpg", time: "9:35 AM" },
+    { name: "Naomi Fuentes", position: "CSR, Exterior", avatar: "https://cdn.4insite.com/assets/c82f8a6dab1f409fbcc6128af4742c35_Weston_t.jpg", time: "7:45 PM" },
+    { name: "Ramon Conner", position: "Custodian", avatar: "https://cdn.4insite.com/assets/9ee70832ab44406b9707a4bda77482b7_CAthy_t.jpg", time: "10:25 AM" },
+    { name: "Rosemary Flores", position: "Customer Service Rep", avatar: "https://cdn.4insite.com/assets/1600109314.2572758_ScreenShot20200914at11.48_t.18AM", time: "11:10 AM" },
+    { name: "Stacy Alvarez", position: "Custodial Lead", avatar: "https://cdn.4insite.com/assets/f3d4c5f052e3418d91a87e630d46d25f_2_t.jpg", time: "9:15 PM" },
+    { name: "Viola Huff", position: "Sr Custodial Lead", avatar: "https://cdn.4insite.com/image/cd7aac60-6f50-5751-3ec9-48b7926cab7e_t.png", time: "5:10 PM" },
+  ],
+  graveyard: [
+    { name: "Ana Burnett", position: "Cleanroom Tech", avatar: "https://cdn.4insite.com/assets/50391811774747b08381a4916da1d4c8_20240816_072045_t.jpg", time: "8:20 PM" },
+    { name: "Billie Zamora", position: "Custodial Supervisor", avatar: "https://cdn.4insite.com/assets/r2cbbe1d30f314fdf8281ea25b50625f3_image_t.jpg", time: "2:45 PM" },
+    { name: "Bruce Mullen", position: "Floor Tech", avatar: "https://cdn.4insite.com/assets/56aac24b0c5e4f29813e537865eeca0b_IMG_20210922_160106009_t.jpg", time: "9:15 AM" },
+    { name: "Clyde Hardin", position: "Custodial Lead II", avatar: "https://cdn.4insite.com/assets/503bbc9547a8497cb44bd0cf8cd21841_IMG_20221104_45991_t.jpg", time: "2:55 PM" },
+    { name: "Debra Dunlap", position: "Recycle Tech", avatar: "https://cdn.4insite.com/image/7f6b89e0-04e5-907e-8d03-4c044712fc6e_t.png", time: "3:40 PM" },
+    { name: "Emma Skinner", position: "Maintenence Tech", avatar: "https://cdn.4insite.com/image/64d3d91b-36e2-3cba-3b25-ef668df1dcdf_t.png", time: "11:30 AM" },
+    { name: "Gordon Crawford", position: "Cust Foreperson", avatar: "https://cdn.4insite.com/assets/067d5aee17754d9898db1d1f6d12d927_AlesajaCrayton_t.jpg", time: "8:10 AM" },
+    { name: "Jeffery Hardy", position: "CSR, Exterior", avatar: "https://cdn.4insite.com/assets/ecc3eb7cd1d24059baae90108bbd6513_Resized_R_2_t.jpg", time: "6:55 PM" },
+    { name: "Judith Cabrera", position: "Custodian", avatar: "https://cdn.4insite.com/assets/1594678941.8834553_seraheadshot_t.jpg", time: "12:25 PM" },
+    { name: "Kristina Oliver", position: "Customer Service Rep", avatar: "https://cdn.4insite.com/assets/1577776047.9164042_yes2_t.jpg", time: "9:30 AM" },
+    { name: "Marilyn Wolf", position: "Custodial Lead", avatar: "https://cdn.4insite.com/image/e2841eff-3ff3-a6f7-998d-9c894965fbde_t.png", time: "2:40 PM" },
+    { name: "Misty Summers", position: "Sr Custodial Lead", avatar: "https://cdn.4insite.com/assets/c4a0cedc304a4ce5823e773cfd378cd2_Arnoldo_t.jpg", time: "11:55 AM" },
+    { name: "Norman Rutledge", position: "GMP Floor Tech", avatar: "https://cdn.4insite.com/assets/7c18e2f66942433a9cee39601f83eb7d_20230221_130515_t.jpg", time: "6:00 PM" },
+    { name: "Roberta Warren", position: "Custodial Lead, Safety", avatar: "https://cdn.4insite.com/image/20046cbc-7544-e32a-e889-cd0947769de0_t.png", time: "7:05 AM" },
+    { name: "Shirley Bender", position: "CSR Lead", avatar: "https://cdn.4insite.com/assets/e30999eb4957434692210811489f7f94_ChristyR_t.jpg", time: "8:25 AM" },
+    { name: "Veronica Dejesus", position: "CSR", avatar: "https://cdn.4insite.com/assets/ceaa86784444447f97140fd773a7b7e6_IMG_5952_t.jpg", time: "6:15 PM" },
+  ],
+};
+
+/** Category + starting workflow stage for a generated safety incident — a handful of realistic templates, each already assigned a stage so the Full Shift Report's step tracker has something other than "just filed" to show. */
+const SAFETY_INCIDENT_POOL: SafetyIncident[] = [
+  {
+    title: "Wet floor sign missing",
+    detail: "Reported near Baggage Claim; replacement sign placed within the hour.",
+    category: "Slip/Trip/Fall",
+    stage: "Closed",
+  },
+  {
+    title: "Associate minor cut — Concourse D",
+    detail: "Associate caught a finger on a broken cart latch; treated with first aid on site, cart pulled from service.",
+    category: "First Aid",
+    stage: "Investigation",
+  },
+  {
+    title: "Loose handrail reported",
+    detail: "Handrail near Gate 42 flagged as loose during a walkthrough; maintenance ticket opened, area cordoned off.",
+    category: "Property Damage",
+    stage: "Incident Report",
+  },
+  {
+    title: "Associate slipped on spill — Food Court",
+    detail: "Associate slipped on an unmarked spill; evaluated on site, no lost time, claim opened as a precaution.",
+    category: "Slip/Trip/Fall",
+    stage: "Claims Review",
+  },
+];
+
+/** ~1-in-5 shifts report a safety incident — deterministic per shift/day, picking both whether one occurred and which template, so the same shift/day always reproduces the same incident. */
+function buildSafetyIncidents(shift: DailyReportShift, dayOffset: number): SafetyIncident[] {
+  const seed = shift.key;
+  const roll = hashSeed(`${seed}-safety-${dayOffset}`) % 5;
+  if (roll !== 0) return [];
+  return [SAFETY_INCIDENT_POOL[hashSeed(`${seed}-safety-pick-${dayOffset}`) % SAFETY_INCIDENT_POOL.length]];
+}
+
+const REPORT_ITEM_POOL: { title: string; tag: string; description: string }[] = [
+  {
+    title: "Flickering light — Concourse D",
+    tag: "Facilities",
+    description: "Overhead light is flickering intermittently and needs a ballast replacement.",
+  },
+  {
+    title: "Elevator delay — Gate 72",
+    tag: "Facilities",
+    description: "Elevator response time is running 3-4 minutes behind normal during peak hours.",
+  },
+  {
+    title: "Recurring odor complaint — Restroom B12",
+    tag: "Facilities",
+    description: "Passengers have flagged a persistent odor near the east bank of stalls.",
+  },
+  {
+    title: "Torn carpet edge — Baggage Claim",
+    tag: "Facilities",
+    description: "Carpet edge is lifting near carousel 4 and poses a trip hazard.",
+  },
+  {
+    title: "Overflowing recycling bin — Food Court",
+    tag: "Facilities",
+    description: "Recycling bin near the food court entrance is overflowing during the lunch rush.",
+  },
+];
+
+/**
+ * Individual Report-It entries backing the aggregate `totalReportIts` count — rotates through REPORT_ITEM_POOL
+ * starting from a deterministic offset so the same day/shift always lists the same items, each attributed to a
+ * real associate from this shift's own roster (not a manager) and a real area from this shift's own service
+ * breakdown (so the location string points at somewhere that actually exists in the SOW data). Roughly 1 in 6
+ * report-its is rejected — everything else is accepted — so "Rejected" isn't purely theoretical but stays rare.
+ */
+function buildReportItems(shift: DailyReportShift, dayOffset: number, count: number, areaServices: AreaServiceStatus[]): ReportItemEntry[] {
+  if (count === 0) return [];
+  const roster = ASSOCIATES_BY_SHIFT[shift.key];
+  const startIndex = hashSeed(`${shift.key}-report-items-start-${dayOffset}`) % REPORT_ITEM_POOL.length;
+  return Array.from({ length: count }, (_, i) => {
+    const template = REPORT_ITEM_POOL[(startIndex + i) % REPORT_ITEM_POOL.length];
+    const seed = `${shift.key}-report-item-${dayOffset}-${i}`;
+    const submittedBy = roster[hashSeed(`${seed}-associate`) % roster.length];
+    const area = areaServices.length > 0 ? areaServices[hashSeed(`${seed}-area`) % areaServices.length] : null;
+    const location = area ? `${mapPageData.siteName} • ${area.areaTypeName} • ${area.displayName}` : mapPageData.siteName;
+    const status: ReportItemEntry["status"] = hashSeed(`${seed}-status`) % 6 === 0 ? "Rejected" : "Accepted";
+    return { ...template, submittedBy, location, status };
+  });
 }
 
 /** Picks one of the shift's own co-managers to attribute a note to, varying by seed so notes don't all come from the same person. */
@@ -175,7 +499,7 @@ function pickManager(shift: DailyReportShift, seed: string): DailyReportPerson {
 }
 
 function buildNote(shift: DailyReportShift, seed: string, template: NoteTemplate): ManagerNote {
-  return { author: pickManager(shift, seed), timestamp: pickClockTime(`${seed}-time`), text: template.text, tag: template.tag };
+  return { author: pickManager(shift, seed), timestamp: pickClockTime(`${seed}-time`), text: template.text, tags: template.tags };
 }
 
 export type ManagerClockTimes = {
@@ -252,6 +576,21 @@ function buildShiftQualityScores(shift: DailyReportShift, dayOffset: number): Qu
 }
 
 /** The shift-level handoff note shown at the top of the shift-filtered sidebar (MapShiftOverviewSections' Shift Notes card) and in the full report's Notes section. The Day shift uses fixed, realistic copy (matching Figma fileKey SWFMjlBJ4u9vSrVaomRe12, node 183:14426, authored by Carmen Ramos) — multiple short update lines rather than one generic sentence. Swing/Graveyard fall back to the generic templated handoff note, since no equivalent design exists for them yet. */
+/** "9/10/26" — a short calendar date for a note's own follow-up-by line, in the same numeric style the Day shift's handoff note has always used. */
+function shortDate(date: Date): string {
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const yy = String(date.getFullYear()).slice(-2);
+  return `${mm}/${dd}/${yy}`;
+}
+
+/** A follow-up date `daysAhead` after whatever date this report is actually showing (via dateForDayOffset), so the Day shift's handoff note always reads as "a couple days from now" relative to the report, not a fixed date that drifts into the past once you navigate away from it. */
+function followUpDate(dayOffset: number, daysAhead: number): string {
+  const date = dateForDayOffset(dayOffset);
+  date.setDate(date.getDate() + daysAhead);
+  return shortDate(date);
+}
+
 function buildShiftNote(shift: DailyReportShift, dayOffset: number, seed: string): ManagerNote {
   if (shift.key === "day") {
     const carmen = shift.managers.find((m) => m.name === "Carmen Ramos") ?? shift.managers[0];
@@ -259,31 +598,23 @@ function buildShiftNote(shift: DailyReportShift, dayOffset: number, seed: string
       author: carmen,
       timestamp: "6:55 AM EDT",
       text: [
-        "Updated expected services has been completed and sent to 4insite",
-        "Will have updated floor schedule by 09/13/26",
-        "Alignment of staffing will be completed by 09/13/26",
+        "Corrected a 4Insite sync discrepancy in expected services this morning and sent the update through to 4insite, so tonight's numbers should reflect the fix once it processes.",
+        `Reviewed the floor schedule with the team; an updated version covering the new gate assignments will be posted by ${followUpDate(dayOffset, 2)}.`,
+        `Staffing alignment for the two new associates who started this week will be completed by ${followUpDate(dayOffset, 2)}, pairing them with senior floor leads in the meantime.`,
+        `Still waiting on building engineering for the recurring elevator ticket near Gate 72; expecting an update by ${followUpDate(dayOffset, 3)}.`,
       ].join("\n"),
-      tag: "Handoff",
+      tags: ["4Insite Discrepancy", "Staffing"],
     };
   }
   return buildNote(shift, `${seed}-note-${dayOffset}`, {
-    text: `Handed off clean — team stayed on top of ${shift.label.toLowerCase()} coverage despite the day's call-outs.`,
-    tag: "Handoff",
+    text: `Handed off clean. Team stayed on top of ${shift.label.toLowerCase()} coverage despite the day's call-outs, and there's nothing outstanding for the next shift to pick up.`,
+    tags: ["Staffing"],
   });
 }
 
 function formatShiftHours(hours: number): string {
   const totalMinutes = Math.round(hours * 60);
   return `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`;
-}
-
-/** Shift-scoped Services Completed stat for MapStatsPanel's widget — a shift-level illustrative count (not the per-area sums the Areas Missed drill-down uses), in the same "can run past 100%" spirit as the site-wide Services Completed stat (mapPageData.servicesCompleted), landing in the ~1,300–1,500 range per shift. */
-function buildShiftServicesStat(shift: DailyReportShift, dayOffset: number): { completed: number; expected: number; percent: number } {
-  const seed = shift.key;
-  const expected = Math.round(scaleForDay(`${seed}-services-stat-expected`, dayOffset, 1380, 1420));
-  const percent = Math.round(scaleForDay(`${seed}-services-stat-percent`, dayOffset, 100, 106));
-  const completed = Math.round((expected * percent) / 100);
-  return { completed, expected, percent };
 }
 
 /** Shift-scoped Hours Captured stat — the shift's own total paid hours (summed across its scheduled associates) and how much was captured, landing around 350h captured of ~380h paid. Distinct from lib/sowData.ts's hoursCapturedForNode, which is scaled for a single area/node's audit hours, not a whole shift's headcount-wide total. */
@@ -379,16 +710,19 @@ export function buildShiftReport(shift: DailyReportShift, dayOffset: number, bui
 
   const totalAreas = areaServices.length;
   const areasMissedCount = areaServices.filter((a) => a.servicesCompleted < a.servicesExpected).length;
-  const servicesStat = buildShiftServicesStat(shift, dayOffset);
+  const servicesCompletedCount = areaServices.reduce((sum, a) => sum + a.servicesCompleted, 0);
+  const servicesExpectedCount = areaServices.reduce((sum, a) => sum + a.servicesExpected, 0);
+  const servicesPercent = servicesExpectedCount > 0 ? Math.round((servicesCompletedCount / servicesExpectedCount) * 100) : 0;
+  const areaCoverage = computeShiftAreaCoverageBreakdown(buildings, shift.label, dayOffset);
 
   const hours = buildShiftHoursStat(shift, dayOffset);
   const totalReportIts = hashSeed(`${seed}-report-its-${dayOffset}`) % 4;
+  const reportItems = buildReportItems(shift, dayOffset, totalReportIts, areaServices);
+  const reportItsAccepted = reportItems.filter((item) => item.status === "Accepted").length;
+  const reportItsRejected = reportItems.length - reportItsAccepted;
+  const reportItsAcceptanceRate = reportItems.length > 0 ? Math.round((reportItsAccepted / reportItems.length) * 100) : 0;
 
-  const safetyRoll = hashSeed(`${seed}-safety-${dayOffset}`) % 5;
-  const safetyIssues: ShiftIssue[] =
-    safetyRoll === 0
-      ? [{ title: "Wet floor sign missing", detail: "Reported near Baggage Claim; replacement sign placed within the hour." }]
-      : [];
+  const safetyIssues = buildSafetyIncidents(shift, dayOffset);
 
   const attendanceRoll = hashSeed(`${seed}-attendance-${dayOffset}`) % 4;
   const attendanceIssues: ShiftIssue[] =
@@ -409,13 +743,16 @@ export function buildShiftReport(shift: DailyReportShift, dayOffset: number, bui
     totalAreaTypesCount: byAreaType.size,
     areaTypesAffected,
     areaTypeSummaries,
-    servicesCompletedCount: servicesStat.completed,
-    servicesExpectedCount: servicesStat.expected,
-    servicesPercent: servicesStat.percent,
+    areaCoverage,
+    areaCoverageNote: buildNote(shift, `${seed}-area-coverage-note-${dayOffset}`, pickAreaCoverageNote(`${seed}-area-coverage-note-${dayOffset}`, areaCoverage.notServicedCount)),
+    servicesCompletedCount,
+    servicesExpectedCount,
+    servicesPercent,
+    servicesNote: buildNote(shift, `${seed}-services-note-${dayOffset}`, pickServiceCoverageNote(`${seed}-services-note-${dayOffset}`, servicesPercent)),
     hoursCapturedLabel: hours.capturedLabel,
     hoursPaidLabel: hours.paidLabel,
     hoursPercent: hours.percent,
-    hoursNote: hours.percent < 100 ? buildNote(shift, `${seed}-hours-note`, pickHoursNote(`${seed}-hours-note`)) : undefined,
+    hoursNote: buildNote(shift, `${seed}-hours-note-${dayOffset}`, pickHoursNote(`${seed}-hours-note-${dayOffset}`, hours.percent)),
     qualityScores: buildShiftQualityScores(shift, dayOffset),
     scheduledHeadcount: attendance.scheduledHeadcount,
     actualArrival: attendance.actualArrival,
@@ -425,12 +762,18 @@ export function buildShiftReport(shift: DailyReportShift, dayOffset: number, bui
     scoresNote: buildNote(shift, `${seed}-scores-note-${dayOffset}`, pickScoreNote(`${seed}-scores-note-${dayOffset}`)),
     safetyIssues,
     totalReportIts,
+    reportItsAccepted,
+    reportItsRejected,
+    reportItsAcceptanceRate,
     reportItsNote: buildNote(shift, `${seed}-report-its-note-${dayOffset}`, pickReportItsNote(`${seed}-report-its-note-${dayOffset}`, totalReportIts)),
+    reportItems,
     attendanceIssues,
     projects: [
       { name: "Concourse D Floor Refinish", status: "On Track" },
       { name: "Restroom Fixture Upgrade — Pavilion", status: hashSeed(`${seed}-project2`) % 3 === 0 ? "Needs Attention" : "On Track" },
     ],
     notes: [buildShiftNote(shift, dayOffset, seed)],
+    associates: ASSOCIATES_BY_SHIFT[shift.key],
+    associatesNote: buildNote(shift, `${seed}-associates-note-${dayOffset}`, pickAssociatesNote(`${seed}-associates-note-${dayOffset}`)),
   };
 }

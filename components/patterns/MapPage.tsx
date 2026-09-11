@@ -1,16 +1,29 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BriefcaseIcon, ChevronDownIcon, LayerGroupIcon, LocationDotIcon, PinIcon, SearchIcon, XmarkIcon } from "./icons";
+import { ArrowUpRightIcon, BriefcaseIcon, ChevronDownIcon, LayerGroupIcon, LocationDotIcon, PinIcon, SearchIcon, XmarkIcon } from "./icons";
 import type { ZoomTarget } from "./MapShiftReportSections";
 import { MapShiftTimeline } from "./MapShiftTimeline";
 import { MapStatsPanel } from "./MapStatsPanel";
+import { FullShiftReportModal } from "./FullShiftReportModal";
+import { FullDayReportModal } from "./FullDayReportModal";
 import { buildDailyReport, buildMapAreaTypes, mapPageData, type DailyReportShift } from "../../lib/mapPageData";
 import { buildShiftAreaTypeDetail, buildShiftReport } from "../../lib/mapShiftReportData";
+import {
+  computeDailyAreaCoverageBreakdown,
+  computeDailyAreaServices,
+  computeShiftAreaCoverageBreakdown,
+  computeShiftAreaServices,
+  statusForCounts,
+  type AreaStatus,
+} from "../../lib/mapAreaServiceData";
 import type { ContractBuilding } from "../../lib/sowContract";
+import { ANCHOR_DATE } from "../../lib/sowData";
 import styles from "./MapPage.module.css";
 
-const ANCHOR_DATE = new Date(2026, 8, 8);
+/** Worst-first order for rolling several areas' statuses up into one area type's status (see areaTypeStatuses below) — missed or incomplete anywhere in a type outranks it being over-serviced or fully completed elsewhere. */
+const STATUS_PRIORITY: AreaStatus[] = ["missed", "incomplete", "over-serviced", "completed"];
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /** Deterministic pseudo-position for an area on the map backdrop (28–78% x, 38–73% y — roughly the terminal footprint in public/map-clean.png), since real per-area geo-coordinates aren't part of the SOW export. */
@@ -48,6 +61,10 @@ export function MapPage({ contractBuildings }: MapPageProps) {
   const [selectedShiftKey, setSelectedShiftKey] = useState<DailyReportShift["key"] | null>(null);
   const [selectedAreaTypeName, setSelectedAreaTypeName] = useState<string | null>(null);
   const [zoomTarget, setZoomTarget] = useState<ZoomTarget | null>(null);
+  /** null = no filter, every status shown (the default) — clicking one of the status buttons narrows to just that one; clicking the active button again clears back to null. */
+  const [statusFilter, setStatusFilter] = useState<AreaStatus | null>(null);
+  const [fullReportOpen, setFullReportOpen] = useState(false);
+  const [fullDayReportOpen, setFullDayReportOpen] = useState(false);
   const areaMenuRef = useRef<HTMLDivElement>(null);
 
   const dayOffset = Math.round((ANCHOR_DATE.getTime() - date.getTime()) / MS_PER_DAY);
@@ -63,7 +80,65 @@ export function MapPage({ contractBuildings }: MapPageProps) {
     () => (selectedShift && selectedAreaTypeName ? buildShiftAreaTypeDetail(selectedShift, dayOffset, contractBuildings, selectedAreaTypeName) : null),
     [selectedShift, dayOffset, contractBuildings, selectedAreaTypeName]
   );
+  /** All three shifts' full reports, combined by FullDayReportModal into one document with a single Site Manager sign-off — built eagerly (not just for the selected shift) since "View Full Day Report" can be opened without any shift selected. */
+  const allShiftReports = useMemo(
+    () => dailyReport.shifts.map((shift) => buildShiftReport(shift, dayOffset, contractBuildings)),
+    [dailyReport.shifts, dayOffset, contractBuildings]
+  );
+  /** Whole-day "Areas Serviced" breakdown for FullDayReportModal's Daily Summary sidebar — every physical area at the site against its combined expected/completed across all three shifts (see computeDailyAreaCoverageBreakdown), so totalAreas is always the real site-wide count, not a merged/filtered subset. */
+  const dailyAreaCoverage = useMemo(() => computeDailyAreaCoverageBreakdown(contractBuildings, dayOffset), [contractBuildings, dayOffset]);
   const zoomPosition = zoomTarget ? pseudoPositionForArea(zoomTarget.areaId) : null;
+
+  /** Every area WITH a scheduled task for whatever's currently in view — the selected shift once one's picked, otherwise the whole day (see computeDailyAreaServices) — so the map pins and the sidebar's unfiltered Area Types list always agree. Deliberately narrower than dailyAreaCoverage/scopedAreaCoverage below: a status pin doesn't make sense for an area with nothing scheduled. */
+  const activeAreaServices = useMemo(
+    () => (selectedShift ? computeShiftAreaServices(contractBuildings, selectedShift.label, dayOffset) : computeDailyAreaServices(contractBuildings, dayOffset)),
+    [selectedShift, contractBuildings, dayOffset]
+  );
+
+  /** Not/Under/Fully/Over-Serviced/No-Frequency area breakdown for the sidebar's "Areas Serviced" section, against the real site-wide area count (every shift is responsible for the whole site) — shift-filtered reads that shift's own numbers, unfiltered reuses dailyAreaCoverage, so the map sidebar and the Daily Report's Daily Summary always show identical day-level numbers. */
+  const scopedAreaCoverage = useMemo(
+    () => (selectedShift ? computeShiftAreaCoverageBreakdown(contractBuildings, selectedShift.label, dayOffset) : dailyAreaCoverage),
+    [selectedShift, contractBuildings, dayOffset, dailyAreaCoverage]
+  );
+
+  /** Services Completed/Expected summed across just the areas the active status button narrows to (or every area, when no button is active) — so the sidebar's Services Completed stat always matches what the status filter is currently showing, not the whole site regardless of filter. */
+  const filteredServicesStat = useMemo(() => {
+    const relevant =
+      statusFilter === null
+        ? activeAreaServices
+        : activeAreaServices.filter((area) => statusForCounts(area.servicesCompleted, area.servicesExpected) === statusFilter);
+    const completed = relevant.reduce((sum, area) => sum + area.servicesCompleted, 0);
+    const expected = relevant.reduce((sum, area) => sum + area.servicesExpected, 0);
+    return { completed, expected, percent: expected > 0 ? Math.round((completed / expected) * 100) : 0 };
+  }, [activeAreaServices, statusFilter]);
+
+  /** Services Completed/Expected summed across every area in the current scope, regardless of the active status filter — the denominator MapStatsPanel uses to scale Hours Captured and Quality Scores down to just the filtered subset (there's no per-area hours/audit data to sum directly, so those are derived proportionally from how much of the site's total completed/expected services the filtered areas represent). */
+  const totalServicesStat = useMemo(() => {
+    const completed = activeAreaServices.reduce((sum, area) => sum + area.servicesCompleted, 0);
+    const expected = activeAreaServices.reduce((sum, area) => sum + area.servicesExpected, 0);
+    return { completed, expected };
+  }, [activeAreaServices]);
+
+  /** Area-type-level status (one map pin per type, not per individual area — 714 individual pins on pseudo-random positions would just be noise): the "worst" status present among the type's own areas, worst-first by STATUS_PRIORITY. A sum-of-the-type's-completed/expected approach would dilute a single missed or incomplete area into invisibility once a type has a dozen-plus otherwise-fine areas — this way one shortfall anywhere in a type still flags the whole type's pin. */
+  const areaTypeStatuses = useMemo(() => {
+    const statusesByType = new Map<string, Set<AreaStatus>>();
+    activeAreaServices.forEach((area) => {
+      const status = statusForCounts(area.servicesCompleted, area.servicesExpected);
+      const statuses = statusesByType.get(area.areaTypeName) ?? new Set<AreaStatus>();
+      statuses.add(status);
+      statusesByType.set(area.areaTypeName, statuses);
+    });
+    const result = new Map<string, AreaStatus>();
+    statusesByType.forEach((statuses, name) => {
+      result.set(name, STATUS_PRIORITY.find((status) => statuses.has(status)) ?? "completed");
+    });
+    return result;
+  }, [activeAreaServices]);
+
+  /** Clicking the already-active status button clears back to "show all"; clicking any other one switches to just that status. */
+  function toggleStatusFilter(status: AreaStatus) {
+    setStatusFilter((prev) => (prev === status ? null : status));
+  }
 
   useEffect(() => {
     if (!areaMenuOpen) return;
@@ -110,6 +185,20 @@ export function MapPage({ contractBuildings }: MapPageProps) {
         style={zoomPosition ? { transform: "scale(1.6)", transformOrigin: `${zoomPosition.x}% ${zoomPosition.y}%` } : undefined}
       >
         <img src="/map-clean.png" alt="" className={styles.backdrop} />
+        {Array.from(areaTypeStatuses.entries())
+          .filter(([, status]) => statusFilter === null || statusFilter === status)
+          .map(([name, status]) => {
+            const pos = pseudoPositionForArea(name);
+            return (
+              <span
+                key={name}
+                className={styles.statusPin}
+                data-status={status}
+                style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+                title={`${name} — ${status}`}
+              />
+            );
+          })}
         {zoomTarget && zoomPosition && (
           <div className={styles.zoomPin} style={{ left: `${zoomPosition.x}%`, top: `${zoomPosition.y}%` }}>
             <LocationDotIcon className={styles.zoomPinIcon} />
@@ -189,7 +278,17 @@ export function MapPage({ contractBuildings }: MapPageProps) {
             </ul>
           )}
         </div>
+
+        <button type="button" className={styles.listViewButton}>
+          <span>List View</span>
+          <ArrowUpRightIcon className={styles.listViewIcon} />
+        </button>
       </div>
+
+      <button type="button" className={styles.viewDailyReportButton} onClick={() => setFullDayReportOpen(true)}>
+        <span>View Daily Report</span>
+        <ArrowUpRightIcon className={styles.viewDailyReportIcon} />
+      </button>
 
       <div className={styles.statsPanelWrap}>
         <MapStatsPanel
@@ -204,17 +303,42 @@ export function MapPage({ contractBuildings }: MapPageProps) {
           areaTypeDetail={areaTypeDetail}
           onSelectAreaType={setSelectedAreaTypeName}
           onClearAreaType={() => setSelectedAreaTypeName(null)}
-          siteManager={dailyReport.siteManager}
-          siteManagerSignOff={dailyReport.siteManagerSignOff}
-          siteManagerNote={dailyReport.aiOverview}
-          dailyShifts={dailyReport.shifts}
-          onSelectShift={handleSelectShift}
+          onOpenFullReport={() => setFullReportOpen(true)}
+          statusFilter={statusFilter}
+          onToggleStatusFilter={toggleStatusFilter}
+          areaTypeStatuses={areaTypeStatuses}
+          areaCoverage={scopedAreaCoverage}
+          filteredServicesStat={filteredServicesStat}
+          totalServicesStat={totalServicesStat}
         />
       </div>
 
       <footer className={styles.footer}>
         <MapShiftTimeline selectedShiftKey={selectedShiftKey} shifts={dailyReport.shifts} onSelectShift={handleSelectShift} />
       </footer>
+
+      {fullReportOpen && shiftReport && (
+        <FullShiftReportModal
+          report={shiftReport}
+          siteName={mapPageData.siteName}
+          date={date}
+          siteManager={dailyReport.siteManager}
+          onClose={() => setFullReportOpen(false)}
+        />
+      )}
+
+      {fullDayReportOpen && (
+        <FullDayReportModal
+          shiftReports={allShiftReports}
+          siteName={mapPageData.siteName}
+          date={date}
+          siteManager={dailyReport.siteManager}
+          aiOverview={dailyReport.aiOverview}
+          siteManagerSignOff={dailyReport.siteManagerSignOff}
+          areaCoverage={dailyAreaCoverage}
+          onClose={() => setFullDayReportOpen(false)}
+        />
+      )}
     </div>
   );
 }

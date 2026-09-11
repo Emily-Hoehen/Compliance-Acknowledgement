@@ -168,6 +168,38 @@
   outline-offset: 2px;
 }
 
+.openFullReportButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  margin-left: 8px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 4px;
+  background-color: var(--color-neutral-700);
+  color: var(--color-text-dt-default);
+  font-family: var(--type-h4-family);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.15;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.openFullReportButton:hover {
+  background-color: var(--color-neutral-600);
+}
+
+.openFullReportButton:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+.openFullReportIcon {
+  font-size: 11px;
+}
+
 /* ---------------- "View Full Shift Report" ↔ back link ---------------- */
 
 .backToOverviewLink {
@@ -233,91 +265,6 @@
   flex-shrink: 0;
 }
 
-/* ---------------- Site Manager sign-off (unfiltered/full day view only) ---------------- */
-
-.siteManagerSection {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 20px 16px;
-  flex-shrink: 0;
-}
-
-.siteManagerHeading {
-  font-family: var(--type-h3-family);
-  font-size: var(--type-h3-size);
-  font-weight: var(--type-h3-weight);
-  line-height: 1.5;
-  color: var(--color-text-dt-default);
-}
-
-.siteManagerSignOffRow {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.siteManagerSignOffIcon {
-  flex-shrink: 0;
-  font-size: 11px;
-  color: var(--color-text-dt-success);
-}
-
-.siteManagerSignOffText {
-  font-family: var(--type-body-sm-family);
-  font-size: 11px;
-  color: var(--color-text-dt-grey);
-}
-
-.viewFullReportLink {
-  align-self: flex-start;
-  border: none;
-  background: transparent;
-  padding: 0;
-  color: var(--color-text-dt-blue);
-  font-family: var(--type-h4-family);
-  font-size: var(--type-h4-size);
-  font-weight: var(--type-h4-weight);
-  cursor: pointer;
-}
-
-.viewFullReportLink:hover {
-  text-decoration: underline;
-}
-
-.viewFullReportLink:focus-visible {
-  outline: 2px solid var(--color-primary-500);
-  outline-offset: 2px;
-}
-
-/* ---------------- Full Day Report (all three shifts, node-agnostic — no Figma source) ---------------- */
-
-.fullDayReportList {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 20px 16px;
-  flex-shrink: 0;
-}
-
-.fullDayReportCard {
-  border-radius: 8px;
-  padding: 12px;
-  margin: -12px;
-  cursor: pointer;
-  transition: background-color 120ms ease;
-}
-
-.fullDayReportCard:hover,
-.fullDayReportCard:focus-visible {
-  background-color: var(--color-neutral-800);
-}
-
-.fullDayReportCard:focus-visible {
-  outline: 2px solid var(--color-primary-500);
-  outline-offset: 2px;
-}
-
 .statRow {
   display: flex;
   align-items: center;
@@ -372,52 +319,77 @@
   letter-spacing: -0.02em;
 }
 
-/* ---------------- Attendance rows (shift-filtered view only) ---------------- */
+.statChevron {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--color-text-dt-grey);
+}
 
-.attendanceBlock {
+/* ---------------- Areas Serviced breakdown (moved in from the map's old floating status-filter stack) ---------------- */
+
+.areaCoverageRows {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  width: 100%;
 }
 
-.attendanceRow {
+.areaCoverageRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 4px;
+  background-color: var(--color-neutral-800);
+  cursor: pointer;
+  transition: opacity 150ms ease;
 }
 
-.attendanceLabel {
+.areaCoverageRow[data-dimmed="true"] {
+  opacity: 0.5;
+}
+
+.areaCoverageRow[aria-pressed="true"] {
+  outline: 2px solid var(--color-text-dt-blue);
+  outline-offset: -2px;
+}
+
+.areaCoverageRow:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+.areaCoverageBar {
+  flex-shrink: 0;
+  width: 4px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.areaCoverageLabel {
+  flex: 1;
+  min-width: 0;
   font-family: var(--type-h4-family);
   font-size: var(--type-h4-size);
   font-weight: var(--type-h4-weight);
   color: var(--color-text-dt-default);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.attendanceValue {
-  font-family: var(--type-h4-family);
-  font-size: 16px;
-  font-weight: var(--type-h4-weight);
-}
-
-.attendanceSubRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding-left: 16px;
-}
-
-.attendanceSubLabel {
+.areaCoverageCount {
+  flex-shrink: 0;
   font-family: var(--type-body-md-family);
   font-size: var(--type-body-md-size);
-  color: var(--color-text-dt-grey);
+  color: var(--color-text-dt-default);
+  white-space: nowrap;
 }
 
-.attendanceSubValue {
-  font-family: var(--type-h4-family);
-  font-size: 16px;
-  font-weight: var(--type-h4-weight);
+.areaCoveragePercent {
   color: var(--color-text-dt-grey);
 }
 
@@ -429,59 +401,42 @@
   color: var(--color-text-dt-default);
 }
 
-.qualityRow {
+.qualityChipRow {
   display: flex;
-  align-items: center;
-  gap: 20px;
+  gap: 13px;
 }
 
-.qualityText {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-}
-
-.qualityLabel {
-  font-family: var(--type-h4-family);
-  font-size: var(--type-h4-size);
-  font-weight: var(--type-h4-weight);
-  line-height: var(--type-h4-leading);
-  color: var(--color-text-dt-default);
-}
-
-.qualityCount {
-  font-family: var(--type-body-sm-family);
-  font-size: var(--type-body-sm-size);
-  font-weight: var(--type-body-sm-weight);
-  line-height: var(--type-body-sm-leading);
-  color: var(--color-text-dt-grey);
-}
-
+/* Figma: Core/Success/100 (#bfffe2) chip with dark inverted text — value + short label both inside one equal-width chip. */
 .qualityChip {
-  display: inline-flex;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  width: 54px;
-  height: 32px;
-  flex-shrink: 0;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-family: var(--type-h4-family);
-  font-size: 16px;
-  font-weight: 500;
-  line-height: 1.15;
+  gap: 12px;
+  padding: 16px 8px;
+  border-radius: 8px;
+  text-align: center;
 }
 
 .qualityChip[data-tone="success"] {
-  background-color: var(--color-success-900);
-  color: var(--color-text-dt-default);
+  background-color: var(--color-success-100);
+  color: var(--color-text-dt-default-inverted);
 }
 
 .qualityChip[data-tone="neutral"] {
   background-color: var(--color-neutral-700);
   color: var(--color-text-dt-grey);
+}
+
+.qualityChipValue {
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+}
+
+.qualityChipLabel {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--type-body-sm-size);
 }
 
 /* ---------------- Area Types / Areas ---------------- */
@@ -725,6 +680,32 @@
   white-space: nowrap;
 }
 
+/* Service-completion indicator (missed/incomplete/completed/over-serviced), shown inline before an Area Type's or Area's name — same status the map's own pins and the status filter dropdown use. */
+.statusDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+
+.statusDot[data-status="missed"] {
+  background-color: var(--color-danger-700);
+}
+
+.statusDot[data-status="incomplete"] {
+  background-color: var(--color-warning-900);
+}
+
+.statusDot[data-status="completed"] {
+  background-color: var(--color-success-700);
+}
+
+.statusDot[data-status="over-serviced"] {
+  background-color: var(--color-success-900);
+}
+
 .rowMeta {
   font-family: var(--type-body-sm-family);
   font-size: var(--type-body-sm-size);
@@ -812,7 +793,9 @@
 }
 
 .statNoteText {
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   font-family: var(--type-body-md-family);
   font-size: var(--type-body-md-size);
   line-height: var(--type-body-md-leading);

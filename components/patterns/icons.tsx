@@ -212,6 +212,34 @@ export function MagnifyingGlassLocationIcon({ className }: IconProps) {
   return fa("solid", "magnifying-glass-location", className);
 }
 
+export function BroomWideIcon({ className }: IconProps) {
+  return fa("solid", "broom-wide", className);
+}
+
+export function NoteStickyIcon({ className }: IconProps) {
+  return fa("solid", "note-sticky", className);
+}
+
+export function ClipboardCheckIcon({ className }: IconProps) {
+  return fa("solid", "clipboard-check", className);
+}
+
+export function UserHardHatIcon({ className }: IconProps) {
+  return fa("solid", "user-hard-hat", className);
+}
+
+export function UserGroupIcon({ className }: IconProps) {
+  return fa("solid", "user-group", className);
+}
+
+export function VectorSquareIcon({ className }: IconProps) {
+  return fa("solid", "vector-square", className);
+}
+
+export function ArrowUpRightIcon({ className }: IconProps) {
+  return fa("solid", "arrow-up-right", className);
+}
+
 export function XmarkIcon({ className }: IconProps) {
   return fa("solid", "xmark", className);
 }

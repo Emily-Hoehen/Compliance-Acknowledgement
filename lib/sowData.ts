@@ -336,6 +336,16 @@ export function pickClockTime(seed: string): string {
   return `${hour12}:${String(minute).padStart(2, "0")} ${period} EDT`;
 }
 
+/** The calendar date dayOffset=0 refers to everywhere in this app's day-offset convention (0 = today, 1 = yesterday, ...) — the same "today" MapPage's date picker starts on. Shared here so any generator that needs a real calendar date (not just a relative day index) stays in sync with whatever date is actually being viewed. */
+export const ANCHOR_DATE = new Date(2026, 8, 8);
+
+/** dayOffset -> the actual calendar Date it refers to, per ANCHOR_DATE above. */
+export function dateForDayOffset(dayOffset: number): Date {
+  const result = new Date(ANCHOR_DATE);
+  result.setDate(result.getDate() - dayOffset);
+  return result;
+}
+
 /** A single day's avg-score-shaped value (4.2–5.0) for one seed. dayOffset: 0 = today, 1 = yesterday, etc. */
 export function scoreForDay(seed: string, dayOffset: number): number {
   const hash = hashSeed(seed);

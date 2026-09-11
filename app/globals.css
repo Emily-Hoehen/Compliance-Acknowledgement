@@ -60,6 +60,7 @@
   --color-neutral-500: #a7b1b9;
   --color-neutral-600: #5b6671;
   --color-neutral-700: #3a434d;
+  --color-neutral-750: #2e3e4d;
   --color-neutral-800: #283038;
   --color-neutral-850: #20272e;
   --color-neutral-900: #181e24;
@@ -272,11 +273,13 @@
   --wash-purple-15: rgba(89, 64, 179, 0.15); /* Datavis Purple/700 @15% */
   --wash-pinkle-15: rgba(162, 48, 210, 0.15); /* Datavis Pinkle/700 @15% */
   --wash-warning-15: rgba(194, 146, 1, 0.15); /* Accent/Warning/700 @15% */
+  --wash-warning-light-15: rgba(255, 215, 94, 0.15); /* Opacity/DT/Warning 300 @15% — dark-theme tag pills (fileKey 0UJDRcrFiXkn16yfc2MUEW, node 43:13374) use this lighter step instead of Warning/700's wash. */
   --wash-success-15: rgba(0, 134, 73, 0.15); /* Text/Success @15% */
   --wash-danger-15: rgba(204, 0, 82, 0.15); /* Danger/700 @15% */
   --wash-pinkle-light-15: rgba(217, 128, 255, 0.15); /* Datavis Pinkle/100 @15% */
   --wash-bubblegum-15: rgba(255, 128, 233, 0.15); /* Datavis Bubblegum/100 @15% */
   --wash-neutral-15: rgba(167, 177, 185, 0.15); /* Core/Neutral/500 @15% */
+  --wash-neutral-300-15: rgba(223, 227, 230, 0.15); /* Core/Neutral/300 @15% — the report modals' circular icon-only close button. */
 
   /* -- Added for Manager App mobile dashboard (fileKey
      gtME8Hrbr497WEZi1U2HeZ, node 4:1289) — same hue-@15% formula

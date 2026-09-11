@@ -281,61 +281,97 @@
    attributed to its author with a small avatar and an absolute clock
    timestamp. */
 
+/* Figma: same accent-bar treatment as the Daily Summary's site-director note card — Core/Neutral/800 fill, Core/Neutral/750 left border, 4px corners. */
 .noteCallout {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 10px;
-  border-radius: 6px;
-  background-color: var(--color-neutral-700);
+  gap: 12px;
+  padding: 16px;
+  border-left: 5px solid var(--color-neutral-750);
+  border-radius: 12px;
+  background-color: var(--color-neutral-800);
+}
+
+/* Shift-level note category pill (Shift Notes, Area Coverage, Service Coverage, Hours, Quality — not the compact per-area notes). One color per SHIFT_NOTE_TAGS entry (lib/mapShiftReportData.ts), all existing datavis hue + wash pairs. */
+.noteCalloutTagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.noteCalloutTag {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: var(--type-h3-family);
+  font-size: var(--type-body-md-size);
+  font-weight: 500;
+}
+
+.noteCalloutTag[data-tag="qr-unreadable"] {
+  background-color: var(--wash-orange-15);
+  color: var(--color-datavis-orange-100);
+}
+
+.noteCalloutTag[data-tag="4insite-discrepancy"] {
+  background-color: var(--wash-pinkle-15);
+  color: var(--color-datavis-pinkle-100);
+}
+
+.noteCalloutTag[data-tag="staffing"] {
+  background-color: var(--wash-sky-blue-15);
+  color: var(--color-datavis-sky-blue-100);
+}
+
+.noteCalloutTag[data-tag="access-restricted"] {
+  background-color: var(--wash-purple-15);
+  color: var(--color-datavis-purple-100);
+}
+
+.noteCalloutTag[data-tag="area-closed"] {
+  background-color: var(--wash-red-orange-15);
+  color: var(--color-datavis-red-orange-100);
 }
 
 .noteCalloutCompact {
-  padding: 8px;
+  padding: 10px 10px 10px 12px;
+  gap: 8px;
 }
 
-.noteCalloutHeader {
+.noteCalloutFooter {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .noteCalloutAvatar {
-  width: 20px;
-  height: 20px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
   border-radius: 100px;
   object-fit: cover;
 }
 
 .noteCalloutAvatarFallback {
-  width: 20px;
-  height: 20px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
   border-radius: 100px;
   background-color: var(--color-neutral-600);
 }
 
-.noteCalloutTag {
-  display: inline-flex;
+/* Name + timestamp sit inline, time to the right of the name. */
+.noteCalloutAuthorInfo {
+  display: flex;
+  flex-direction: row;
   align-items: center;
-  align-self: flex-start;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background-color: var(--color-neutral-600);
-  color: var(--color-text-dt-grey);
-  font-family: var(--type-body-sm-family);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  gap: 8px;
+  min-width: 0;
 }
 
 .noteCalloutAuthor {
-  flex: 1;
-  min-width: 0;
   font-family: var(--type-h4-family);
-  font-size: var(--type-body-sm-size);
+  font-size: var(--type-body-md-size);
   font-weight: var(--type-h4-weight);
   color: var(--color-text-dt-default);
   overflow: hidden;
@@ -344,17 +380,17 @@
 }
 
 .noteCalloutTime {
-  flex-shrink: 0;
   font-family: var(--type-body-sm-family);
-  font-size: 11px;
+  font-size: var(--type-body-md-size);
   color: var(--color-text-dt-grey);
   white-space: nowrap;
 }
 
 .noteCalloutText {
-  font-family: var(--type-body-sm-family);
-  font-size: var(--type-body-sm-size);
-  line-height: var(--type-body-sm-leading);
+  font-family: var(--type-body-lg-family);
+  font-size: var(--type-body-lg-size);
+  font-weight: var(--type-body-lg-weight);
+  line-height: var(--type-body-lg-leading);
   color: var(--color-text-dt-default);
 }
 
