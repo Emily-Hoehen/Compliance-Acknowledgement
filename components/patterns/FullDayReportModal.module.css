@@ -200,10 +200,19 @@
   min-width: 0;
 }
 
+/* Sticks 8px below the top of .scrollArea's own viewport as the page scrolls, same as before. On top of that, capped to that same viewport height (minus a little breathing room) with its own overflow-y:auto — the Daily Summary card can run longer than the screen once every stat/quality row is showing, and without this it would just get clipped at the bottom edge with no way to reach the rest while stuck. */
 .sidebar {
   flex: 0 0 360px;
   position: sticky;
   top: 8px;
+  max-height: calc(100vh - 280px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar::-webkit-scrollbar {
+  display: none;
 }
 
 @media (max-width: 960px) {
@@ -212,6 +221,8 @@
     order: -1;
     flex-basis: auto;
     width: 100%;
+    max-height: none;
+    overflow: visible;
   }
 }
 
@@ -413,8 +424,8 @@
 }
 
 .managerAvatar {
-  width: 40px;
-  height: 40px;
+  width: 56px;
+  height: 56px;
   flex-shrink: 0;
   border-radius: 100px;
   object-fit: cover;

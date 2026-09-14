@@ -14,7 +14,7 @@ import {
 import { DonutRing, SegmentedDonutRing } from "../ui/Charts";
 import { NoteCallout } from "./MapShiftReportSections";
 import { formatMinutesToHoursLabel, parseHoursLabelToMinutes } from "./FullShiftReportModal";
-import { mapPageData, type DailyReportPerson } from "../../lib/mapPageData";
+import type { DailyReportPerson, QualityScore } from "../../lib/mapPageData";
 import type { ShiftReport } from "../../lib/mapShiftReportData";
 import type { AreaCoverageBreakdown } from "../../lib/mapAreaServiceData";
 import styles from "./FullDayReportModal.module.css";
@@ -23,6 +23,18 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", { weekday: "long", month:
 
 /** The three Quality categories this report shows everywhere (header chips and the Daily Summary sidebar alike) — drops "Joint Audit" from mapPageData/ShiftReport's own 4-entry qualityScores array (AI Verification/Internal Audit/Joint Audit/Customer Audit), matching the Figma file's own 3-category Quality treatment. */
 const QUALITY_DISPLAY_LABELS = ["AI Verification", "Internal Audit", "Customer Audit"] as const;
+
+/** One quality category's whole-day figure, built from the three shifts' own scores rather than a separate static number — the score is the average of whichever shifts actually scored this category (a shift with no audits that category reports "N/A" and is excluded, so it doesn't drag the average toward zero), and the count is the real total across all three shifts. */
+function buildDailyQualityScore(shiftReports: ShiftReport[], label: (typeof QUALITY_DISPLAY_LABELS)[number]): QualityScore {
+  const perShift = shiftReports
+    .map((report) => report.qualityScores.find((score) => score.label === label))
+    .filter((score): score is QualityScore => Boolean(score));
+  const totalCount = perShift.reduce((sum, score) => sum + (parseInt(score.count.replace(/[^\d]/g, ""), 10) || 0), 0);
+  const scoredValues = perShift.filter((score) => score.value !== "N/A").map((score) => Number(score.value));
+  const averageValue = scoredValues.length > 0 ? (scoredValues.reduce((sum, value) => sum + value, 0) / scoredValues.length).toFixed(2) : "N/A";
+  const countLabel = label === "AI Verification" ? `${totalCount.toLocaleString()} services` : `${totalCount} audit${totalCount === 1 ? "" : "s"}`;
+  return { label, count: countLabel, value: averageValue, tone: scoredValues.length > 0 ? "success" : "neutral" };
+}
 
 export type FullDayReportModalProps = {
   /** All three shifts' full reports (Day, Swing, Graveyard), in that order — combined here into one document. */
@@ -84,7 +96,7 @@ export function FullDayReportModal({
   }, [onClose]);
 
   const totalManagers = shiftReports.reduce((sum, r) => sum + r.managers.length, 0);
-  const totalAssociates = shiftReports.reduce((sum, r) => sum + r.associates.length, 0);
+  const totalAssociates = shiftReports.reduce((sum, r) => sum + r.scheduledHeadcount, 0);
 
   const capturedMinutes = shiftReports.reduce((sum, r) => sum + parseHoursLabelToMinutes(r.hoursCapturedLabel), 0);
   const paidMinutes = shiftReports.reduce((sum, r) => sum + parseHoursLabelToMinutes(r.hoursPaidLabel), 0);
@@ -93,7 +105,7 @@ export function FullDayReportModal({
   const realServicesExpected = shiftReports.reduce((sum, r) => sum + r.servicesExpectedCount, 0);
   const realServicesPercent = realServicesExpected > 0 ? Math.round((realServicesCompleted / realServicesExpected) * 100) : 0;
 
-  const dailyQualityScores = QUALITY_DISPLAY_LABELS.map((label) => mapPageData.qualityScores.find((q) => q.label === label));
+  const dailyQualityScores = QUALITY_DISPLAY_LABELS.map((label) => buildDailyQualityScore(shiftReports, label));
   const totalSafetyIssues = shiftReports.reduce((sum, r) => sum + r.safetyIssues.length, 0);
   const reportItsSubmitted = shiftReports.reduce((sum, r) => sum + r.totalReportIts, 0);
   const reportItsAccepted = shiftReports.reduce((sum, r) => sum + r.reportItsAccepted, 0);
@@ -179,6 +191,10 @@ export function FullDayReportModal({
                   <div className={styles.sidebarSubRow}>
                     <span>Over Serviced</span>
                     <span>{areaCoverage.overServicedCount}</span>
+                  </div>
+                  <div className={styles.sidebarSubRow}>
+                    <span>No Frequency</span>
+                    <span>{areaCoverage.noFrequencyCount}</span>
                   </div>
                 </SidebarStat>
 

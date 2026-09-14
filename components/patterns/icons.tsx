@@ -240,6 +240,10 @@ export function ArrowUpRightIcon({ className }: IconProps) {
   return fa("solid", "arrow-up-right", className);
 }
 
+export function UpRightAndDownLeftFromCenterIcon({ className }: IconProps) {
+  return fa("solid", "up-right-and-down-left-from-center", className);
+}
+
 export function XmarkIcon({ className }: IconProps) {
   return fa("solid", "xmark", className);
 }

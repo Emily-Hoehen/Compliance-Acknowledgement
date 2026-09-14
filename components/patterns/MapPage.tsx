@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpRightIcon, BriefcaseIcon, ChevronDownIcon, LayerGroupIcon, LocationDotIcon, PinIcon, SearchIcon, XmarkIcon } from "./icons";
+import { BriefcaseIcon, ChevronDownIcon, LayerGroupIcon, LocationDotIcon, PinIcon, SearchIcon, UpRightAndDownLeftFromCenterIcon, XmarkIcon } from "./icons";
 import type { ZoomTarget } from "./MapShiftReportSections";
 import { MapShiftTimeline } from "./MapShiftTimeline";
 import { MapStatsPanel } from "./MapStatsPanel";
@@ -85,7 +85,7 @@ export function MapPage({ contractBuildings }: MapPageProps) {
     () => dailyReport.shifts.map((shift) => buildShiftReport(shift, dayOffset, contractBuildings)),
     [dailyReport.shifts, dayOffset, contractBuildings]
   );
-  /** Whole-day "Areas Serviced" breakdown for FullDayReportModal's Daily Summary sidebar — every physical area at the site against its combined expected/completed across all three shifts (see computeDailyAreaCoverageBreakdown), so totalAreas is always the real site-wide count, not a merged/filtered subset. */
+  /** Whole-day "Areas Serviced" breakdown for FullDayReportModal's Daily Summary sidebar — every one of the site's 709 areas against its combined expected/completed across the Day/Swing/Graveyard shifts (see computeDailyAreaCoverageBreakdown), so it's the same physical areas being counted once each for the day, not a fresh set (or a sum of shift-level counts) per shift. */
   const dailyAreaCoverage = useMemo(() => computeDailyAreaCoverageBreakdown(contractBuildings, dayOffset), [contractBuildings, dayOffset]);
   const zoomPosition = zoomTarget ? pseudoPositionForArea(zoomTarget.areaId) : null;
 
@@ -280,14 +280,14 @@ export function MapPage({ contractBuildings }: MapPageProps) {
         </div>
 
         <button type="button" className={styles.listViewButton}>
+          <UpRightAndDownLeftFromCenterIcon className={styles.listViewIcon} />
           <span>List View</span>
-          <ArrowUpRightIcon className={styles.listViewIcon} />
         </button>
       </div>
 
       <button type="button" className={styles.viewDailyReportButton} onClick={() => setFullDayReportOpen(true)}>
+        <UpRightAndDownLeftFromCenterIcon className={styles.viewDailyReportIcon} />
         <span>View Daily Report</span>
-        <ArrowUpRightIcon className={styles.viewDailyReportIcon} />
       </button>
 
       <div className={styles.statsPanelWrap}>

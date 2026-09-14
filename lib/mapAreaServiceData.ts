@@ -104,7 +104,7 @@ export function computeShiftAreaServices(buildings: ContractBuilding[], shiftLab
 
 /** How many areas fall into each of the four service-completion tiers (see AreaStatus) plus "No Frequency" (areas with nothing scheduled at all for this shift/day), and the overall "serviced at all" percent — the Full Day Report's "Area Coverage"/"Areas Serviced" breakdown, shared by the per-shift cards, the Daily Summary sidebar, and the Map sidebar so all three always read the same real counts against the same site-wide total. */
 export type AreaCoverageBreakdown = {
-  /** Every physical area at the site — the same number for every shift and the unfiltered day, since each shift is responsible for the whole site, not just the areas it happens to have a task for. */
+  /** Every physical area at the site — the same fixed count (709 site-wide) for every shift AND for the unfiltered day, since each shift is responsible for the whole site (not just the areas it happens to have a task for), and the day is those same shifts cleaning the same physical areas again, not a different, larger set of areas. */
   totalAreas: number;
   /** Areas with a scheduled frequency that got at least some (but not necessarily all) of it done — under + fully + over-serviced. Deliberately excludes both "Not Serviced" (had a frequency, got none of it) and "No Frequency" (nothing was ever scheduled) from this headline count. */
   servicedCount: number;
@@ -113,7 +113,7 @@ export type AreaCoverageBreakdown = {
   underServicedCount: number;
   fullyServicedCount: number;
   overServicedCount: number;
-  /** Areas with no scheduled frequency at all for this shift (or, for the unfiltered day, no scheduled frequency on any of the three shifts) — informational, not a shortfall. */
+  /** Areas with no scheduled frequency at all for this shift (or, for the unfiltered day, on any of the three shifts) — informational, not a shortfall. */
   noFrequencyCount: number;
 };
 
@@ -165,10 +165,15 @@ function computeAllAreaServicesForShift(buildings: ContractBuilding[], shiftLabe
   const result: AreaServiceStatus[] = [];
   buildings.forEach((building) => {
     building.areaTypes.forEach((areaType) => {
-      const typeHitsExpected = areaTypeHitsExpectedServices(areaType.name, shiftLabel, dayOffset);
+      // Whether this area type has any real SOW task scheduled on this shift at all — expectedByShift can still
+      // resolve to a non-zero fallback value even for a shift the type has no task on (the expected-services
+      // reference data's own broader building/area-type defaults apply regardless), so that field alone can't be
+      // used to detect "nothing scheduled"; the type's own task list is the real signal.
+      const typeHasFrequency = areaType.tasks.some((task) => task.shifts.includes(shiftLabel));
+      const typeHitsExpected = typeHasFrequency && areaTypeHitsExpectedServices(areaType.name, shiftLabel, dayOffset);
       const typeRunsOverServiced = typeHitsExpected && areaTypeRunsOverServiced(areaType.name, dayOffset);
       areaType.areas.forEach((area) => {
-        const expected = area.expectedByShift[shiftLabel as ShiftLabel] ?? 0;
+        const expected = typeHasFrequency ? (area.expectedByShift[shiftLabel as ShiftLabel] ?? 0) : 0;
         const missed = typeHitsExpected ? 0 : servicesMissedForArea(area.areaId, shiftLabel, dayOffset, expected);
         const over = missed === 0 && typeRunsOverServiced ? servicesOverForArea(area.areaId, dayOffset) : 0;
         result.push({
@@ -176,7 +181,7 @@ function computeAllAreaServicesForShift(buildings: ContractBuilding[], shiftLabe
           displayName: area.displayName,
           areaTypeName: areaType.name,
           servicesExpected: expected,
-          servicesCompleted: expected - missed + over,
+          servicesCompleted: typeHasFrequency ? expected - missed + over : 0,
         });
       });
     });
@@ -184,7 +189,7 @@ function computeAllAreaServicesForShift(buildings: ContractBuilding[], shiftLabe
   return result;
 }
 
-/** Every physical area at the site with its combined expected/completed across all three shifts — an area with a frequency on only one shift still shows up (with that one shift's numbers); an area with no frequency on any of the three shifts lands at 0/0 (No Frequency for the whole day). */
+/** Every physical area at the site with its combined expected/completed across all three shifts — an area with a frequency on only one shift still shows up (with that one shift's numbers); an area with no frequency on any of the three shifts lands at 0/0 (No Frequency for the whole day). The same 709 areas are what every shift cleans, once or twice a day — not a fresh set of areas per shift — so this merges each area into one row rather than counting it three times. */
 function computeAllAreaServicesForDay(buildings: ContractBuilding[], dayOffset: number): AreaServiceStatus[] {
   const merged = new Map<string, AreaServiceStatus>();
   DAILY_SHIFT_LABELS.forEach((label) => {
@@ -206,7 +211,18 @@ export function computeShiftAreaCoverageBreakdown(buildings: ContractBuilding[],
   return bucketAreaCoverageBreakdown(computeAllAreaServicesForShift(buildings, shiftLabel, dayOffset));
 }
 
-/** The "Areas Serviced" widget's breakdown for the whole (unfiltered) day — every area at the site, against its combined expected/completed across all three shifts. */
+/**
+ * The "Areas Serviced" widget's breakdown for the whole (unfiltered) day —
+ * every one of the site's 709 areas, bucketed once each against its
+ * combined expected/completed across all three shifts. An area Not
+ * Serviced on Day but Fully Serviced on Swing and Graveyard nets out to
+ * whatever its combined day total lands on (e.g. Fully or Over-Serviced),
+ * not "Not Serviced" — it's the same physical area getting cleaned by
+ * more than one shift, not three separate areas, so it's counted once for
+ * the day. That's what keeps totalAreas fixed at the real site count and
+ * the Not/Under/Fully/Over-Serviced/No-Frequency counts summing to it
+ * exactly, the same way each individual shift's own breakdown already does.
+ */
 export function computeDailyAreaCoverageBreakdown(buildings: ContractBuilding[], dayOffset: number): AreaCoverageBreakdown {
   return bucketAreaCoverageBreakdown(computeAllAreaServicesForDay(buildings, dayOffset));
 }
