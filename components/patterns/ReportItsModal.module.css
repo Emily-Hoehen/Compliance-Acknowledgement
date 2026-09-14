@@ -1,0 +1,231 @@
+/* ============================================================
+   ReportItsModal — body content for the shared BottomSheet chrome
+   (see BottomSheet.module.css for the sheet/overlay/header itself).
+   Matches Figma fileKey 0UJDRcrFiXkn16yfc2MUEW, node 98:4172. Design
+   tokens only.
+   ============================================================ */
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+.statRow {
+  display: flex;
+  gap: 20px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 100px;
+}
+
+.statLabel {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: 500;
+  line-height: var(--type-body-md-leading);
+  color: var(--color-text-dt-default);
+}
+
+.statValue {
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  color: var(--color-text-dt-default);
+}
+
+.table {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  width: 100%;
+}
+
+.headerCell {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: 500;
+  line-height: var(--type-body-md-leading);
+  color: var(--color-text-dt-grey);
+}
+
+.headerCell[data-col="associate"] {
+  width: 218px;
+  flex-shrink: 0;
+}
+
+.headerCell[data-col="status"] {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+.headerCell[data-col="goodCatch"] {
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.headerCell[data-col="location"] {
+  width: 218px;
+  flex-shrink: 0;
+}
+
+.headerCell[data-col="comments"] {
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.headerCell[data-col="summary"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.headerCell[data-col="view"] {
+  width: 40px;
+  flex-shrink: 0;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+}
+
+.cell[data-col="associate"] {
+  width: 218px;
+  flex-shrink: 0;
+  gap: 16px;
+}
+
+.cell[data-col="status"] {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+.cell[data-col="goodCatch"] {
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.cell[data-col="location"] {
+  width: 218px;
+  flex-shrink: 0;
+}
+
+.cell[data-col="comments"] {
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.cell[data-col="summary"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.cell[data-col="view"] {
+  width: 40px;
+  flex-shrink: 0;
+}
+
+.hairline {
+  height: 1px;
+  width: 100%;
+  flex-shrink: 0;
+  background-color: var(--wash-neutral-15);
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 100px;
+  object-fit: cover;
+}
+
+.associateInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.associateName {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-dt-default);
+}
+
+.associatePosition {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-leading);
+  color: var(--color-text-dt-grey);
+}
+
+.statusStack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.statusAccepted {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-dt-default);
+}
+
+.statusWorkOrder {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-leading);
+  color: var(--color-warning-300);
+}
+
+.statusRejected {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-danger-300);
+}
+
+.plainText {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-dt-default);
+}
+
+.viewLink {
+  font-family: var(--type-h4-family);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-text-dt-blue);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.empty {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--color-text-dt-grey);
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+}
+
+@media (max-width: 960px) {
+  .row {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}

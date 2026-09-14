@@ -1,14 +1,14 @@
 /* ============================================================
-   FullDayReportModal — dark-theme recreation of the "Manager Shift
+   FullDayReportModalV3 — third exploration of the "Manager Shift
    Report" Figma file's Daily Report screen (fileKey
-   0UJDRcrFiXkn16yfc2MUEW, node 47:14064). Every type/spacing/wash
-   value below traces back to that file's own DS2 tokens — see the
-   inline notes wherever a value is a direct match (e.g.
-   --type-data-point for the 48px date, --wash-warning-15 for the
-   exact rgba the Tags pill used). Design tokens only.
+   0UJDRcrFiXkn16yfc2MUEW, node 107:9550, "Daily Report" shift detail
+   page). Shares its outer chrome/typography/section tokens with V2
+   (see FullDayReportModalV2.module.css) — this file only adds what's
+   different: per-shift tinted overview cards, a full-width Site
+   Director banner, and the page-navigation detail view in place of
+   V2's in-place accordion.
    ============================================================ */
 
-/* Backdrop — dimmed page behind the dialog, same rgba(24,30,36,*) scrim convention as components/ui/Modal.tsx's own overlay, just darker (0.5 there is tuned for a small centered dialog; this report is large enough that a heavier scrim reads better behind it). */
 .overlay {
   position: fixed;
   inset: 0;
@@ -21,7 +21,6 @@
   animation: fullReportFadeIn 200ms cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
-/* The dialog card itself — inset from the backdrop on every side, rounded, its own elevation shadow. overflow:hidden clips the top bar's corners to match without needing its own border-radius. */
 .panel {
   display: flex;
   flex-direction: column;
@@ -31,7 +30,6 @@
   border: 1px solid var(--color-neutral-700);
   border-radius: 20px;
   overflow: hidden;
-  /* rgb(24, 30, 36) = Core/Neutral/900 — same panel background FullShiftReportModal already uses. */
   background-color: var(--color-neutral-900);
   color: var(--color-text-dt-default);
   font-family: var(--font-family-ui);
@@ -68,7 +66,6 @@
 
 /* ---------------- Header ---------------- */
 
-/* Figma node 61:18957: no more logo/top bar — the greeting+date header row itself is the fixed (non-scrolling) chrome now, with the close button inline at its right edge and a hairline rule dividing it from the scrolling content below. Border spans the full panel width; .headerBlockInner re-centers the actual content at the same max-width the scrolling body below uses. */
 .headerBlock {
   flex-shrink: 0;
   border-bottom: 1px solid var(--wash-neutral-15);
@@ -90,8 +87,8 @@
   min-width: 0;
 }
 
-/* Figma: circular icon-only close button — Core/Neutral/300 wash fill, no label. */
-.closeButton {
+.closeButton,
+.backButton {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -107,11 +104,13 @@
   transition: background-color 120ms ease;
 }
 
-.closeButton:hover {
+.closeButton:hover,
+.backButton:hover {
   background-color: var(--color-neutral-700);
 }
 
-.closeButton:focus-visible {
+.closeButton:focus-visible,
+.backButton:focus-visible {
   outline: 2px solid var(--color-primary-500);
   outline-offset: 2px;
 }
@@ -128,7 +127,6 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  /* Scroll still works (wheel/touch/keyboard) — just no visible track/thumb. */
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -137,7 +135,6 @@
   display: none;
 }
 
-/* Figma: Headers/H2 — Lato Black 20px, 100% leading. Exact token match. */
 .greeting {
   font-family: var(--type-h2-family);
   font-size: var(--type-h2-size);
@@ -145,7 +142,6 @@
   line-height: var(--type-h2-leading);
 }
 
-/* Figma: Headers/Data Point — Lato Black 48px, 100% leading. Exact token match. */
 .bigDate {
   font-family: var(--type-data-point-family);
   font-size: var(--type-data-point-size);
@@ -153,7 +149,7 @@
   line-height: var(--type-data-point-leading);
 }
 
-/* Figma: bg Core/Neutral/800 (#283038), border-left Core/Neutral/750 (#2e3e4d) — same note-card convention as the shift sections below, just larger (Body/Body Large text + a 40px avatar) since it carries the whole day's AI overview plus the site manager's sign-off. */
+/* Matches V1's own dailySummaryCard exactly (Core/Neutral/800, 5px Core/Neutral/750 left accent, 12px radius) — sits inside .mainColumn as the FIRST item, above the shift list. */
 .dailySummaryCard {
   display: flex;
   flex-direction: column;
@@ -165,7 +161,7 @@
   background-color: var(--color-neutral-800);
 }
 
-/* Figma: Body/Body Large — Lato Medium 18px, 24px leading. */
+/* Figma: Body/Body Large — Roboto Regular 16px, 24px leading. Matches V2's dailySummaryText exactly. */
 .dailySummaryText {
   display: flex;
   flex-direction: column;
@@ -199,7 +195,6 @@
   min-width: 0;
 }
 
-/* Sticks 8px below the top of .scrollArea's own viewport as the page scrolls, same as before. On top of that, capped to that same viewport height (minus a little breathing room) with its own overflow-y:auto — the Daily Summary card can run longer than the screen once every stat/quality row is showing, and without this it would just get clipped at the bottom edge with no way to reach the rest while stuck. */
 .sidebar {
   flex: 0 0 360px;
   position: sticky;
@@ -225,62 +220,90 @@
   }
 }
 
-/* ---------------- Shift card ---------------- */
+/* ---------------- Overview: shift nav card ---------------- */
 
-/* Figma: Primary/100 (#80c2ff) @15% wash instead of the flat neutral card background — same --wash-primary-15 token the dashboard's other tinted cards use. */
-.shiftCard {
+/* Matches V1's own shiftCard wash exactly (Primary/100 @15%) instead of a flat neutral fill — a plain nav trigger to the shift's own full page, not an accordion header. */
+.shiftNavCard {
+  display: block;
+  width: 100%;
+  border: none;
   border-radius: 12px;
+  padding: 0 12px 12px;
   background-color: var(--wash-primary-15);
-  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  transition: filter 120ms ease;
 }
 
-.shiftCardHeader {
+.shiftNavCard:hover {
+  filter: brightness(1.2);
+}
+
+.shiftNavCard:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+.shiftNavCardHeader {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 24px;
   width: 100%;
-  padding: 20px 24px;
-  border: none;
-  background: transparent;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
+  padding: 28px 16px 12px 12px;
   flex-wrap: wrap;
+}
+
+/* Figma: Primary/100 @15% circular button, blue chevron-right — a real nav affordance instead of a bare icon. */
+.shiftNavCardChevronButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 100px;
+  background-color: var(--wash-primary-15);
+  color: var(--color-text-dt-blue);
+  font-size: 14px;
+}
+
+.shiftNavCardMetrics {
+  display: flex;
+  align-items: flex-start;
+  gap: 32px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .shiftCardHeaderText {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 12px;
   flex: 1 1 220px;
   min-width: 0;
 }
 
-/* Figma: Headers/H2 — Lato Black 20px. Shift title uses the same style as the page greeting. */
-.shiftCardTitle {
+/* Figma: Headline Small — Lato ExtraBold 24px/28px leading. Shared by the overview card title and the detail page's own toolbar title. */
+.detailHeadingTitle {
   font-family: var(--type-h2-family);
-  font-weight: var(--type-h2-weight);
+  font-weight: 800;
   font-size: 24px;
-  line-height: var(--type-h2-leading);
+  line-height: 28px;
   color: var(--color-text-dt-default);
-}
-
-/* Figma: Primary/300 (#4aa8ff) — same value as --color-text-dt-blue used elsewhere in this card. */
-.shiftCardTitleCollapsed {
-  color: var(--color-text-dt-blue);
 }
 
 .shiftCardMeta {
   font-family: var(--type-body-sm-family);
-  font-size: var(--type-body-md-size);
+  font-size: 12px;
+  line-height: 18px;
   color: var(--color-text-dt-grey);
 }
 
-/* Header stats (Areas Serviced / Services Completed / Hours Captured) — a two-line "X% Label" + "A of B" pair per stat, shown the same way whether the card is collapsed or expanded. */
+/* Detail toolbar's own metrics row — wider gap than the overview card's .shiftNavCardMetrics (Figma: 56px vs 32px). */
 .shiftCardStatsExpanded {
   display: flex;
   align-items: flex-start;
-  gap: 48px;
+  gap: 56px;
   flex-wrap: wrap;
   flex-shrink: 0;
 }
@@ -297,7 +320,6 @@
   color: var(--color-text-dt-blue);
 }
 
-/* Figma: Datavis Purple/100 and Yellow/100 — matches the Service Coverage and Hours Captured donut rings further down this same card, so the header icon and its section's ring read as the same metric. */
 .shiftHeaderStatIconPurple {
   color: var(--color-datavis-purple-100);
 }
@@ -327,84 +349,104 @@
   white-space: nowrap;
 }
 
-/* Figma: Primary/300 (#4aa8ff) — same value as --color-text-dt-blue used elsewhere in this card. Chevron points right while collapsed, rotates to point down when expanded. */
-.shiftCardCaret {
-  flex-shrink: 0;
-  margin-left: 24px;
-  font-size: 14px;
-  color: var(--color-text-dt-blue);
-  transform: rotate(-90deg);
-  transition: transform 160ms cubic-bezier(0.4, 0, 0.2, 1);
+/* ---------------- Shift detail page (full page, no sidebar) ---------------- */
+
+/* The outer "full screen" padding — same formula as .body's, so the detail page reads consistently with the overview instead of the toolbar/sections running edge-to-edge against the panel. */
+.detailWrap {
+  width: 100%;
+  padding: 24px 40px 56px;
 }
 
-.shiftCardCaretOpen {
-  transform: rotate(0deg);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .shiftCardCaret {
-    transition: none;
+@media (max-width: 960px) {
+  .detailWrap {
+    padding: 20px 20px 40px;
   }
 }
 
-/* Grid-rows expand/collapse trick — .shiftCardBody stays mounted at all times (rather than conditionally rendered) so this wrapper can animate its height smoothly between 0 and its natural content height, instead of an abrupt mount/unmount. */
-.shiftCardBodyWrap {
-  display: grid;
-  grid-template-rows: 0fr;
-  min-height: 0;
-  overflow: hidden;
-  transition: grid-template-rows 280ms cubic-bezier(0.4, 0, 0.2, 1);
+/* No more wrapping "card" behind the toolbar+sections (dropped per feedback) — the toolbar is now its own full-bleed sticky bar, edge-to-edge like the modal's own .headerBlock, with its divider spanning the full panel width instead of stopping at the sections' own inset padding. */
+.detailToolbarBar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  width: 100%;
+  border-bottom: 1px solid var(--color-neutral-700);
+  background-color: var(--color-neutral-900);
 }
 
-.shiftCardBodyWrapOpen {
-  grid-template-rows: 1fr;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .shiftCardBodyWrap {
-    transition: none;
-  }
-}
-
-/* No padding of its own — the grid item being height-animated can't carry padding, or a border-box element can never shrink past its own padding sum (32px bottom) even when its computed height is 0. The real padding lives on .shiftCardBodyContent, one level further in, where it's simply clipped away by this element's overflow:hidden while collapsed. */
-.shiftCardBody {
+.detailToolbar {
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  min-height: 0;
-}
-
-.shiftCardBodyContent {
-  display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 24px;
-  padding: 0 24px 32px;
+  flex-wrap: wrap;
+  padding: 28px 40px 24px;
+}
+
+/* Title + "Checked out by" subtitle stack — flex:1 so it pushes .shiftCardStatsExpanded's metrics all the way to the toolbar's right edge instead of them trailing right after the title. */
+.detailHeadingTextStack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 960px) {
+  .detailToolbar {
+    padding: 20px 20px 16px;
+  }
+}
+
+/* Figma: gap-[40px] between each stacked card on the detail page, inset from the card's own edges. */
+.detailSections {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  width: 100%;
 }
 
 /* ---------------- Section (Managers / Shift Notes / etc.) ---------------- */
 
-/* Figma: Core/Neutral/850 (#20272e) card behind each section — header and body share one box. */
+/* Matches V1's shiftCard wash (Primary/100 @15%) — every card on the detail page shares the same blue tint as the overview's shift boxes and V1's own accordion cards. */
 .section {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 32px;
   padding: 20px;
   border-radius: 12px;
-  background-color: var(--color-neutral-850);
+  background-color: var(--wash-primary-15);
+}
+
+/* Shared Core/Neutral/800 pill used for every individual stat block nested inside a .section (a manager row, the Hours ring, the Headcount grid, Area/Service Coverage, each Quality box) — the section itself is now a blue-tinted shell, so this is what actually reads as a distinct "card" inside it. */
+.statBox {
+  padding: 20px;
+  border-radius: 8px;
+  background-color: var(--color-neutral-800);
+}
+
+.statBoxButton {
+  display: block;
+  width: 100%;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.statBoxButton:hover {
+  background-color: var(--color-neutral-700);
+}
+
+.statBoxButton:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
 }
 
 .sectionTitle {
-  font-family: var(--type-h3-family);
-  font-size: var(--type-h3-size);
-  font-weight: var(--type-h3-weight);
-  line-height: var(--type-h3-leading);
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-leading);
   color: var(--color-text-dt-default);
-}
-
-.sectionBody {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
 }
 
 /* ---------------- Managers ---------------- */
@@ -413,12 +455,14 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 100%;
 }
 
+/* Each manager is now its own .statBox pill (Figma node 108:12459) rather than a flat row in a borderless list. */
 .managerRow {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 32px;
   flex-wrap: wrap;
 }
 
@@ -451,20 +495,16 @@
   color: var(--color-text-dt-grey);
 }
 
-/* Same green treatment as the Daily Summary card's own "Signed off at..." line — shown only for the shift's lead manager (managers[0]), since that's the one whose sign-off/checkout this report is tracking. */
 .managerCheckedOut {
   font-family: var(--type-body-md-family);
   font-size: var(--type-body-md-size);
   color: var(--color-text-dt-success);
 }
 
-/* .managerRow's own gap:16px is uniform on both sides of this divider by default — these margins pull it closer to the manager name/role (left) and push it farther from Clocked In (right) instead of sitting dead-center. */
 .managerDivider {
   width: 1px;
   height: 40px;
   flex-shrink: 0;
-  margin-left: -8px;
-  margin-right: 16px;
   background-color: var(--wash-neutral-15);
 }
 
@@ -496,6 +536,37 @@
   white-space: nowrap;
 }
 
+/* Hours and Headcount's two side-by-side .statBox pills (the ring block and the headcount grid). */
+.hoursHeadcountRow {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+/* Fixed-ish width so the ring+text block doesn't stretch to match the (much wider) headcount grid beside it. */
+.hoursBox {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Area Coverage's single .statBox, wrapping both the ring+text and its Not/Under/Fully/Over-Serviced breakdown together. */
+.areaCoverageBox {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+/* Service Coverage's single .statBox, wrapping just its ring+text (no breakdown). */
+.serviceCoverageBox {
+  display: inline-flex;
+  align-items: center;
+}
+
 /* ---------------- Lead stat + ring (Hours Captured / Services Completed) ---------------- */
 
 .leadStatRow {
@@ -525,14 +596,6 @@
   color: var(--color-text-dt-grey);
 }
 
-/* Shared donut-stat text stack (Areas Serviced, Services Completed, Hours Captured) — label sits above the value, so each stat can share one row with the breakdown/headcount content beside it. */
-.areaCoverageRow {
-  display: flex;
-  align-items: flex-start;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
 .leadStatTextStack {
   display: flex;
   flex-direction: column;
@@ -541,12 +604,11 @@
   flex-shrink: 0;
 }
 
-.leadStatStackLabel {
-  font-family: var(--type-h3-family);
-  font-size: var(--type-h3-size);
-  font-weight: var(--type-h3-weight);
-  line-height: var(--type-h3-leading);
-  color: var(--color-text-dt-default);
+.leadStatValueRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .leadStatStackValue {
@@ -555,15 +617,22 @@
   font-weight: var(--type-h2-weight);
 }
 
+.leadStatValueLabel {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-dt-default);
+}
+
 /* ---------------- Headcount / Report-Its stat grids ---------------- */
 
-/* Sits to the right of the Hours Captured donut+text within .areaCoverageRow, same right-aligned pattern as the Area Coverage breakdown. */
+/* The headcount grid IS its own .statBox pill now (composed together in JSX) — flex:1 so it fills the rest of .hoursHeadcountRow beside the fixed-width .hoursBox. */
 .headcountGrid {
   display: flex;
   flex: 1 1 320px;
   align-items: flex-start;
   justify-content: flex-start;
-  gap: 48px;
+  gap: 32px;
   flex-wrap: wrap;
 }
 
@@ -580,7 +649,6 @@
   gap: 6px;
 }
 
-/* Figma: Body/Medium — Roboto Regular 14px, 22px leading. */
 .headcountLabel {
   font-family: var(--type-body-md-family);
   font-size: var(--type-body-md-size);
@@ -589,7 +657,6 @@
   white-space: nowrap;
 }
 
-/* Figma: Headers/Data Point — Lato Black 20px. Same stat-number style Report Its and To Dos share. */
 .headcountValue {
   font-family: var(--type-h2-family);
   font-size: var(--type-h2-size);
@@ -605,7 +672,6 @@
   min-width: 160px;
 }
 
-/* Figma: these two inline sub-stats (No Call/No Show, Call Outs) are a smaller, grey Roboto Medium 16px — not the big white Headers/Data Point value the primary stats use. */
 .headcountInlineLabel {
   font-family: var(--type-body-md-family);
   font-size: var(--type-body-md-size);
@@ -623,14 +689,11 @@
 
 /* ---------------- Area Coverage breakdown ---------------- */
 
-/* Fills the remaining width of .areaCoverageRow, to the right of the donut stat — its items' own flex-grow (below) spreads them across that space. */
 .coverageBreakdownRow {
   display: flex;
-  flex: 1 1 320px;
   flex-wrap: wrap;
   align-items: flex-start;
-  justify-content: flex-end;
-  gap: 20px;
+  gap: 32px;
 }
 
 .coverageBreakdownItem {
@@ -668,10 +731,11 @@
   flex-wrap: wrap;
 }
 
+/* Figma: Headers/H3 — Roboto Medium 16px, not the big Lato Black stat style the ring's own value uses. */
 .coverageBreakdownValue {
-  font-family: var(--type-h2-family);
-  font-size: var(--type-h2-size);
-  font-weight: var(--type-h2-weight);
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
   color: var(--color-text-dt-default);
   white-space: nowrap;
 }
@@ -695,16 +759,15 @@
   flex: 0 1 140px;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: 16px;
 }
 
 .scoreCardTextGroup {
   display: flex;
   flex-direction: column;
-  gap: 0px;
+  gap: 8px;
 }
 
-/* Figma: Core/Success/100 (#bfffe2) badge holding just the score value — the label and count sit below it, on the section's own background rather than inside the badge. */
 .scoreBadge {
   display: inline-flex;
   align-self: flex-start;
@@ -720,7 +783,6 @@
   color: var(--color-text-dt-default-inverted);
 }
 
-/* No audit occurred (N/A) — same grey treatment as the Map sidebar's own Quality Score chips. */
 .scoreBadge[data-tone="neutral"] {
   background-color: var(--color-neutral-700);
   color: var(--color-text-dt-grey);
@@ -739,56 +801,35 @@
   color: var(--color-text-dt-grey);
 }
 
-/* Report Its / Safety, folded into the same Quality section as the AI Verification/Internal Audit/Customer Audit chips above — their own totals already roll up into the Daily Summary sidebar's Report Its Accepted/Safety issues stats (see FullDayReportModal's own totalSafetyIssues/reportItsSubmitted/reportItsAccepted sums), so what's shown per shift here always matches what the day adds up to. Side by side (not flex:1 — each sized to its own content, so Report Its' wider 3-stat row and Safety's narrower one don't stretch to match each other) with .verticalDivider between them. */
-.qualitySubsectionRow {
+/* Quality's three .statBox pills (Score chips / Report Its / Safety) sitting side by side, each taking an equal share of the row. */
+.qualityBoxRow {
   display: flex;
-  align-items: flex-start;
-  gap: 40px;
+  align-items: stretch;
+  gap: 32px;
   flex-wrap: wrap;
+  width: 100%;
 }
 
-.qualitySubsection {
+.qualityBox {
   display: flex;
-  flex: 1 1 0;
   flex-direction: column;
-  gap: 12px;
-  min-width: 200px;
+  gap: 16px;
+  flex: 1 1 220px;
+  min-width: 0;
 }
 
-/* Report Its is clickable (opens ReportItsModal) — Safety isn't, so this layers button chrome/hover onto .qualitySubsection only where it's actually used as a button. Same negative-margin-offsets-padding trick as .headcountCard, so the added hover padding doesn't shift the row's own alignment. */
-.qualitySubsectionButton {
-  border: none;
-  background-color: transparent;
-  text-align: left;
-  padding: 12px;
-  margin: -12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 120ms ease;
-}
-
-.qualitySubsectionButton:hover {
-  background-color: var(--color-neutral-700);
-}
-
-.qualitySubsectionButton:focus-visible {
-  outline: 2px solid var(--color-primary-500);
-  outline-offset: 2px;
-}
-
-.qualitySubsectionTitle {
-  font-family: var(--type-h4-family);
-  font-size: var(--type-h4-size);
-  font-weight: var(--type-h4-weight);
+.qualityBoxTitle {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: 500;
   color: var(--color-text-dt-default);
 }
 
-/* Same look as .headcountGrid's stat row, without that class's flex:1 1 320px — meant for a row-context flex item (Hours and Headcount's LeadStat + grid side by side), which reused here inside .qualitySubsection's column flow would set a 320px flex-basis *height* instead. */
 .qualityStatRow {
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
-  gap: 48px;
+  gap: 20px;
   flex-wrap: wrap;
 }
 
@@ -807,35 +848,6 @@
   color: var(--color-text-dt-success);
 }
 
-/* Vertical rule between two side-by-side blocks — Hours Captured/the headcount grid, and Report Its/Safety within Quality. align-self:stretch (rather than a fixed height like .managerDivider) so it always matches whichever of the two sides is taller. */
-.verticalDivider {
-  width: 1px;
-  align-self: stretch;
-  flex-shrink: 0;
-  background-color: var(--wash-neutral-15);
-}
-
-/* Button chrome layered onto .headcountGrid (which already supplies that class's own flex/gap layout) — just the Scheduled Headcount/Actual Arrival/Total Absences numbers are clickable to open the associate attendance modal, not the whole Hours and Headcount row (Hours Captured's own ring/label stays inert on the other side of .verticalDivider). */
-.headcountCard {
-  border: none;
-  border-radius: 8px;
-  background-color: transparent;
-  padding: 12px;
-  margin: -12px;
-  text-align: left;
-  cursor: pointer;
-  transition: background-color 120ms ease;
-}
-
-.headcountCard:hover {
-  background-color: var(--color-neutral-700);
-}
-
-.headcountCard:focus-visible {
-  outline: 2px solid var(--color-primary-500);
-  outline-offset: 2px;
-}
-
 /* ---------------- Sidebar (Daily Sign Off) ---------------- */
 
 .summaryCard {
@@ -848,7 +860,6 @@
   box-shadow: var(--shadow-dt-modal);
 }
 
-/* Figma: Headers/H2 — Lato Black 20px. */
 .summaryTitle {
   font-family: var(--type-h2-family);
   font-size: var(--type-h2-size);
@@ -869,7 +880,6 @@
   gap: 4px;
 }
 
-/* Icon + value/label sit in their own row, centered against each other — the body below (caption/subrows) is indented to align under the label rather than stretching the icon down the whole block. */
 .sidebarStatHeaderRow {
   display: flex;
   align-items: center;
@@ -914,7 +924,6 @@
   min-width: 0;
 }
 
-/* Quality block in the Daily Summary sidebar — three equally-weighted value/label rows, the first sharing the icon's header row, the rest indented below it (unlike the other sidebar stats, which have one headline value with smaller caption/subrows beneath it). */
 .sidebarQualityRows {
   display: flex;
   flex-direction: column;
@@ -930,7 +939,6 @@
   flex-wrap: wrap;
 }
 
-/* Figma: Headers/H2 — Lato Black 20px. */
 .sidebarStatValue {
   font-family: var(--type-h2-family);
   font-size: var(--type-h2-size);
@@ -1021,4 +1029,96 @@
   font-family: var(--type-body-sm-family);
   font-size: var(--type-body-lg-size);
   color: var(--color-text-dt-success);
+}
+
+/* Note card — matches V1's own .noteCallout exactly (see MapShiftReportSections.module.css): Core/Neutral/800 fill, 5px Core/Neutral/750 left accent bar, 12px radius. */
+.noteV2 {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  border-left: 5px solid var(--color-neutral-750);
+  background-color: var(--color-neutral-800);
+}
+
+.noteV2Text {
+  font-family: var(--type-body-lg-family);
+  font-size: var(--type-body-lg-size);
+  line-height: var(--type-body-lg-leading);
+  color: var(--color-text-dt-default);
+}
+
+.noteV2TagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.noteV2Tag {
+  display: inline-flex;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+}
+
+.noteV2Tag[data-tag="qr-unreadable"] {
+  background-color: var(--wash-orange-15);
+  color: var(--color-datavis-orange-100);
+}
+
+.noteV2Tag[data-tag="4insite-discrepancy"] {
+  background-color: var(--wash-pinkle-15);
+  color: var(--color-datavis-pinkle-100);
+}
+
+.noteV2Tag[data-tag="staffing"] {
+  background-color: var(--wash-sky-blue-15);
+  color: var(--color-datavis-sky-blue-100);
+}
+
+.noteV2Tag[data-tag="access-restricted"] {
+  background-color: var(--wash-purple-15);
+  color: var(--color-datavis-purple-100);
+}
+
+.noteV2Tag[data-tag="area-closed"] {
+  background-color: var(--wash-red-orange-15);
+  color: var(--color-datavis-red-orange-100);
+}
+
+.noteV2Footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.noteV2Avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 100px;
+  object-fit: cover;
+}
+
+.noteV2Author {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-body-md-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-dt-default);
+}
+
+.noteV2Time {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-dt-grey);
+}
+
+.noteV2List {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
 }

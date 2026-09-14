@@ -14,7 +14,7 @@ import {
   XmarkIcon,
 } from "./icons";
 import { DonutRing } from "../ui/Charts";
-import { NoteCallout } from "./MapShiftReportSections";
+import { NoteCallout, NoteCalloutList } from "./MapShiftReportSections";
 import type { DailyReportPerson } from "../../lib/mapPageData";
 import type { SafetyIncident, SafetyIncidentStage, ShiftAreaTypeVerification, ShiftReport } from "../../lib/mapShiftReportData";
 import { photoForAreaType } from "../../lib/sowImages";
@@ -183,7 +183,7 @@ export function FullShiftReportModal({ report, siteName, date, siteManager, onCl
                     <span className={styles.leadStatRingLabel}>{report.hoursPercent}%</span>
                   </div>
                 </div>
-                {report.hoursNote && <NoteCallout note={report.hoursNote} />}
+                <NoteCalloutList notes={report.hoursNote} />
               </NumberedSection>
 
               <NumberedSection index={5} title="Attendance">
@@ -219,7 +219,7 @@ export function FullShiftReportModal({ report, siteName, date, siteManager, onCl
                     </div>
                   ))}
                 </div>
-                <NoteCallout note={report.associatesNote} />
+                <NoteCalloutList notes={report.associatesNote} />
               </NumberedSection>
 
               <NumberedSection index={7} title="Quality Scores">
@@ -236,7 +236,7 @@ export function FullShiftReportModal({ report, siteName, date, siteManager, onCl
                     </div>
                   ))}
                 </div>
-                <NoteCallout note={report.scoresNote} />
+                <NoteCalloutList notes={report.scoresNote} />
               </NumberedSection>
 
               <NumberedSection index={8} title="Safety Issues">
@@ -263,7 +263,7 @@ export function FullShiftReportModal({ report, siteName, date, siteManager, onCl
                     ))}
                   </div>
                 )}
-                <NoteCallout note={report.reportItsNote} />
+                <NoteCalloutList notes={report.reportItsNote} />
               </NumberedSection>
 
               <NumberedSection index={10} title="Projects">

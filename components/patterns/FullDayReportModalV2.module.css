@@ -153,14 +153,13 @@
   line-height: var(--type-data-point-leading);
 }
 
-/* Figma: bg Core/Neutral/800 (#283038), border-left Core/Neutral/750 (#2e3e4d) — same note-card convention as the shift sections below, just larger (Body/Body Large text + a 40px avatar) since it carries the whole day's AI overview plus the site manager's sign-off. */
+/* V2: bg Core/Neutral/800 (#283038), no left accent bar (unlike V1's own version of this card) — same flat note-card convention as the shift sections below, just larger (Body/Body Large text + a 40px avatar) since it carries the whole day's AI overview plus the site manager's sign-off. */
 .dailySummaryCard {
   display: flex;
   flex-direction: column;
   gap: 20px;
   width: 100%;
   padding: 16px;
-  border-left: 5px solid var(--color-neutral-750);
   border-radius: 12px;
   background-color: var(--color-neutral-800);
 }
@@ -377,7 +376,7 @@
 .shiftCardBodyContent {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 32px;
   padding: 0 24px 32px;
 }
 
@@ -387,24 +386,25 @@
 .section {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 20px;
+  gap: 28px;
+  padding: 24px;
   border-radius: 12px;
   background-color: var(--color-neutral-850);
 }
 
+/* V2-only: every card title (Shift Managers, Shift Notes, Hours and Headcount, Coverage, Quality) is H2, one step bigger/bolder than V1's H3. */
 .sectionTitle {
-  font-family: var(--type-h3-family);
-  font-size: var(--type-h3-size);
-  font-weight: var(--type-h3-weight);
-  line-height: var(--type-h3-leading);
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-leading);
   color: var(--color-text-dt-default);
 }
 
 .sectionBody {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 28px;
 }
 
 /* ---------------- Managers ---------------- */
@@ -412,7 +412,7 @@
 .managerList {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 28px;
 }
 
 .managerRow {
@@ -533,12 +533,18 @@
   flex-wrap: wrap;
 }
 
+/* V2-only: stacks the Areas Serviced donut+value above its Not/Under/Fully/Over-Serviced breakdown instead of running them side by side. */
+.areaCoverageStack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* No fixed width — a fixed 200px was forcing Hours Captured's longer "of 380h 33m shift time" caption to wrap onto its own line below the value instead of staying bottom-aligned beside it. Sizing to content keeps the caption on the same row as the value for every stat, short or long. */
 .leadStatTextStack {
   display: flex;
   flex-direction: column;
   gap: 0px;
-  width: 200px;
-  flex-shrink: 0;
 }
 
 .leadStatStackLabel {
@@ -555,9 +561,26 @@
   font-weight: var(--type-h2-weight);
 }
 
+/* V2: amount + its own label ("330h 10m" + "Hours Captured", "748" + "Areas Serviced") sit on one bottom-aligned baseline instead of the label stacking above/below the amount. */
+.leadStatValueRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.leadStatValueLabel {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-dt-default);
+}
+
 /* ---------------- Headcount / Report-Its stat grids ---------------- */
 
 /* Sits to the right of the Hours Captured donut+text within .areaCoverageRow, same right-aligned pattern as the Area Coverage breakdown. */
+/* No flex-basis here — this now sits as its own standalone block in .sectionRows' column flow (not beside a ring in a row), and a flex-basis like the old "1 1 320px" would be read as a 320px min-height in that context instead of a width. */
+/* flex:1 (not a fixed width) — sits beside the Hours Captured ring in .sectionRows' row and fills the remaining space rather than stacking full-width below it. */
 .headcountGrid {
   display: flex;
   flex: 1 1 320px;
@@ -624,13 +647,14 @@
 /* ---------------- Area Coverage breakdown ---------------- */
 
 /* Fills the remaining width of .areaCoverageRow, to the right of the donut stat — its items' own flex-grow (below) spreads them across that space. */
+/* V2: no flex:1 1 320px here (unlike V1) — that flex-basis was meant for a row context (V1 sits it beside the ring), and inside V2's own column-stacked .areaCoverageStack it was instead being read as a 320px min-height, leaving a large gap below the breakdown. */
+/* Offset by the ring's own width + gap (68px + 12px) so this row's left edge lines up with "Areas Serviced" above it instead of the ring. */
 .coverageBreakdownRow {
   display: flex;
-  flex: 1 1 320px;
   flex-wrap: wrap;
   align-items: flex-start;
-  justify-content: flex-end;
   gap: 20px;
+  margin-left: 80px;
 }
 
 .coverageBreakdownItem {
@@ -669,9 +693,9 @@
 }
 
 .coverageBreakdownValue {
-  font-family: var(--type-h2-family);
-  font-size: var(--type-h2-size);
-  font-weight: var(--type-h2-weight);
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
   color: var(--color-text-dt-default);
   white-space: nowrap;
 }
@@ -684,10 +708,12 @@
 
 /* ---------------- Quality ---------------- */
 
+/* Tighter gap between the three score chips themselves; margin-bottom adds extra breathing room below the row (on top of .sectionBody's own 28px gap) before Report Its/Safety. */
 .scoreChipRow {
   display: flex;
-  gap: 20px;
+  gap: 12px;
   flex-wrap: wrap;
+  margin-bottom: 16px;
 }
 
 .scoreCard {
@@ -777,9 +803,10 @@
 }
 
 .qualitySubsectionTitle {
-  font-family: var(--type-h4-family);
-  font-size: var(--type-h4-size);
-  font-weight: var(--type-h4-weight);
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-leading);
   color: var(--color-text-dt-default);
 }
 
@@ -790,6 +817,13 @@
   justify-content: flex-start;
   gap: 48px;
   flex-wrap: wrap;
+}
+
+/* Safety's zero-incidents empty state — plain 14px text in place of the Incidents/Incident Status stats. */
+.safetyEmptyState {
+  font-family: var(--type-body-md-family);
+  font-size: 14px;
+  color: var(--color-text-dt-default);
 }
 
 .safetyReportStatusBadge {
@@ -1021,4 +1055,135 @@
   font-family: var(--type-body-sm-family);
   font-size: var(--type-body-lg-size);
   color: var(--color-text-dt-success);
+}
+
+/* ============================================================
+   V2-only additions — Figma fileKey 0UJDRcrFiXkn16yfc2MUEW,
+   node 104:5253 ("Shift Accordion" v2). Two things differ from V1:
+   notes drop the colored left accent bar for a flat Core/Neutral/700
+   fill, and each card's sub-topics run as label-left/content-right
+   rows instead of separate titled sections.
+   ============================================================ */
+
+/* Label-left/content-right row, used for every sub-topic inside a V2 card (Hours/Headcount, Area Coverage/Service Coverage, Average Scores/Report Its/Safety). */
+/* Hours and Headcount's two pieces sit side by side — the headcount grid to the right of the Hours Captured ring, not stacked below it. */
+.sectionRows {
+  display: flex;
+  align-items: flex-start;
+  gap: 48px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+/* Label stacks above its content now (was label-left/content-right in a row). */
+.sectionRow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.sectionRowLabel {
+  font-family: var(--type-h4-family);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 22px;
+  color: var(--color-text-dt-default);
+}
+
+.sectionRowContent {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Note card — Core/Neutral/800 fill with a 5px Core/Neutral/750 left accent bar (back to V1's own note treatment, re-added per feedback). */
+.noteV2 {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  border-left: 5px solid var(--color-neutral-750);
+  background-color: var(--color-neutral-800);
+}
+
+.noteV2Text {
+  font-family: var(--type-body-lg-family);
+  font-size: var(--type-body-lg-size);
+  line-height: var(--type-body-lg-leading);
+  color: var(--color-text-dt-default);
+}
+
+.noteV2TagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.noteV2Tag {
+  display: inline-flex;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+}
+
+.noteV2Tag[data-tag="qr-unreadable"] {
+  background-color: var(--wash-orange-15);
+  color: var(--color-datavis-orange-100);
+}
+
+.noteV2Tag[data-tag="4insite-discrepancy"] {
+  background-color: var(--wash-pinkle-15);
+  color: var(--color-datavis-pinkle-100);
+}
+
+.noteV2Tag[data-tag="staffing"] {
+  background-color: var(--wash-sky-blue-15);
+  color: var(--color-datavis-sky-blue-100);
+}
+
+.noteV2Tag[data-tag="access-restricted"] {
+  background-color: var(--wash-purple-15);
+  color: var(--color-datavis-purple-100);
+}
+
+.noteV2Tag[data-tag="area-closed"] {
+  background-color: var(--wash-red-orange-15);
+  color: var(--color-datavis-red-orange-100);
+}
+
+.noteV2Footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.noteV2Avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 100px;
+  object-fit: cover;
+}
+
+.noteV2Author {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-body-md-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-dt-default);
+}
+
+.noteV2Time {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  color: var(--color-text-dt-grey);
+}
+
+.noteV2List {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
 }

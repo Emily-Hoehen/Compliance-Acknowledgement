@@ -106,6 +106,10 @@ export type ReportItemEntry = {
   /** Who filed it — a real associate from this shift's own roster (data/associates.csv), not a manager. */
   submittedBy: AssociateShiftEntry;
   status: "Accepted" | "Rejected";
+  /** Whether this report-it flagged something proactively rather than a routine complaint — shown in the Report Its modal's own "Good Catch" column. */
+  goodCatch: boolean;
+  /** How many comments the report-it has picked up (manager/associate follow-up), shown in the Report Its modal's own "Comments" column. */
+  commentsCount: number;
 };
 
 export type ShiftProject = {
@@ -128,31 +132,34 @@ export type ShiftReport = {
   areaTypeSummaries: ShiftAreaTypeSummary[];
   /** How many of this shift's areas were fully/under/not/over-serviced — the Full Day Report's "Area Coverage" breakdown. */
   areaCoverage: AreaCoverageBreakdown;
-  areaCoverageNote: ManagerNote;
+  /** One or two manager notes on this shift's Area Coverage — more than one shift manager can weigh in on the same section (see buildNotes). */
+  areaCoverageNote: ManagerNote[];
   /** Raw services-completed/expected counts for this shift alone, for the overview's Services Completed stat (distinct from the site-wide count shown when no shift is filtered). */
   servicesCompletedCount: number;
   servicesExpectedCount: number;
   servicesPercent: number;
-  servicesNote: ManagerNote;
+  servicesNote: ManagerNote[];
   hoursCapturedLabel: string;
   hoursPaidLabel: string;
   hoursPercent: number;
-  hoursNote: ManagerNote;
+  hoursNote: ManagerNote[];
   /** AI Verification / Internal Audit / Joint Audit / Customer Audit for this shift alone — same shape as mapPageData's site-wide qualityScores. */
   qualityScores: QualityScore[];
   scheduledHeadcount: number;
   actualArrival: number;
   totalAbsences: number;
+  /** Named-associate detail backing the "View Associates" modal on Hours and Headcount — a real, individually-tracked sample of who's on shift, each with their own Arrived/Call Out/No Call/No Show status. Its own counts don't reconcile to scheduledHeadcount/totalAbsences above (see buildAssociateAttendance) — those describe the whole site-wide crew, this is just the roster this project has real names for. */
+  associateAttendance: AssociateAttendanceEntry[];
   noCallNoShowCount: number;
   callOutsCount: number;
-  scoresNote: ManagerNote;
+  scoresNote: ManagerNote[];
   safetyIssues: SafetyIncident[];
   /** Same as reportItems.length — the count of report-its submitted this shift. */
   totalReportIts: number;
   reportItsAccepted: number;
   reportItsRejected: number;
   reportItsAcceptanceRate: number;
-  reportItsNote: ManagerNote;
+  reportItsNote: ManagerNote[];
   /** Individual Report-It entries backing totalReportIts, for the Full Shift Report's own itemized list — the shift-filtered sidebar only ever shows the aggregate count + note. */
   reportItems: ReportItemEntry[];
   attendanceIssues: ShiftIssue[];
@@ -160,7 +167,7 @@ export type ShiftReport = {
   notes: ManagerNote[];
   /** Real roster for this shift (data/associates.csv), for the Full Shift Report's "Associates on Shift" list. */
   associates: AssociateShiftEntry[];
-  associatesNote: ManagerNote;
+  associatesNote: ManagerNote[];
 };
 
 type NoteTemplate = { text: string; tags: string[] };
@@ -200,9 +207,8 @@ const HOURS_ON_TARGET_NOTES: NoteTemplate[] = [
   },
 ];
 
-function pickHoursNote(seed: string, percent: number): NoteTemplate {
-  const pool = percent < 100 ? HOURS_SHORTFALL_NOTES : HOURS_ON_TARGET_NOTES;
-  return pool[hashSeed(seed) % pool.length];
+function hoursNotePool(percent: number): NoteTemplate[] {
+  return percent < 100 ? HOURS_SHORTFALL_NOTES : HOURS_ON_TARGET_NOTES;
 }
 
 const AREA_COVERAGE_NOTES_CLEAN: NoteTemplate[] = [
@@ -234,9 +240,8 @@ const AREA_COVERAGE_NOTES_SHORTFALL: NoteTemplate[] = [
   },
 ];
 
-function pickAreaCoverageNote(seed: string, notServicedCount: number): NoteTemplate {
-  const pool = notServicedCount === 0 ? AREA_COVERAGE_NOTES_CLEAN : AREA_COVERAGE_NOTES_SHORTFALL;
-  return pool[hashSeed(seed) % pool.length];
+function areaCoverageNotePool(notServicedCount: number): NoteTemplate[] {
+  return notServicedCount === 0 ? AREA_COVERAGE_NOTES_CLEAN : AREA_COVERAGE_NOTES_SHORTFALL;
 }
 
 const SERVICE_COVERAGE_NOTES_OVER: NoteTemplate[] = [
@@ -266,9 +271,8 @@ const SERVICE_COVERAGE_NOTES_ON_TARGET: NoteTemplate[] = [
   },
 ];
 
-function pickServiceCoverageNote(seed: string, percent: number): NoteTemplate {
-  const pool = percent > 100 ? SERVICE_COVERAGE_NOTES_OVER : percent < 100 ? SERVICE_COVERAGE_NOTES_SHORT : SERVICE_COVERAGE_NOTES_ON_TARGET;
-  return pool[hashSeed(seed) % pool.length];
+function serviceCoverageNotePool(percent: number): NoteTemplate[] {
+  return percent > 100 ? SERVICE_COVERAGE_NOTES_OVER : percent < 100 ? SERVICE_COVERAGE_NOTES_SHORT : SERVICE_COVERAGE_NOTES_ON_TARGET;
 }
 
 const SCORE_NOTES: NoteTemplate[] = [
@@ -290,9 +294,6 @@ const SCORE_NOTES: NoteTemplate[] = [
   },
 ];
 
-function pickScoreNote(seed: string): NoteTemplate {
-  return SCORE_NOTES[hashSeed(seed) % SCORE_NOTES.length];
-}
 
 const REPORT_ITS_NOTES_ZERO: NoteTemplate[] = [
   { text: "No report-its this shift. A quiet one overall, with the team spending the extra time getting ahead on a few lower priority areas.", tags: [] },
@@ -316,9 +317,8 @@ const REPORT_ITS_NOTES_SOME: NoteTemplate[] = [
   },
 ];
 
-function pickReportItsNote(seed: string, count: number): NoteTemplate {
-  const pool = count === 0 ? REPORT_ITS_NOTES_ZERO : REPORT_ITS_NOTES_SOME;
-  return pool[hashSeed(seed) % pool.length];
+function reportItsNotePool(count: number): NoteTemplate[] {
+  return count === 0 ? REPORT_ITS_NOTES_ZERO : REPORT_ITS_NOTES_SOME;
 }
 
 const ASSOCIATE_NOTES: NoteTemplate[] = [
@@ -337,9 +337,6 @@ const ASSOCIATE_NOTES: NoteTemplate[] = [
   },
 ];
 
-function pickAssociatesNote(seed: string): NoteTemplate {
-  return ASSOCIATE_NOTES[hashSeed(seed) % ASSOCIATE_NOTES.length];
-}
 
 /**
  * Real associate rows from data/associates.csv, filtered to the "Delta - LaGuardia, NY" `Main` site and each
@@ -487,19 +484,51 @@ function buildReportItems(shift: DailyReportShift, dayOffset: number, count: num
     const area = areaServices.length > 0 ? areaServices[hashSeed(`${seed}-area`) % areaServices.length] : null;
     const location = area ? `${mapPageData.siteName} • ${area.areaTypeName} • ${area.displayName}` : mapPageData.siteName;
     const status: ReportItemEntry["status"] = hashSeed(`${seed}-status`) % 6 === 0 ? "Rejected" : "Accepted";
-    return { ...template, submittedBy, location, status };
+    const goodCatch = hashSeed(`${seed}-good-catch`) % 4 !== 0; // ~3 in 4 report-its are a genuine good catch
+    const commentsCount = hashSeed(`${seed}-comments`) % 3; // 0-2 follow-up comments
+    return { ...template, submittedBy, location, status, goodCatch, commentsCount };
   });
 }
 
-/** Picks one of the shift's own co-managers to attribute a note to, varying by seed so notes don't all come from the same person. */
-function pickManager(shift: DailyReportShift, seed: string): DailyReportPerson {
-  const managers = shift.managers;
-  if (managers.length === 0) return { name: "Shift Manager", position: "Manager", avatar: "" };
-  return managers[hashSeed(seed) % managers.length];
+/** Picks one of the shift's own co-managers to attribute a note to, varying by seed so notes don't all come from the same person. `exclude` (an author name) keeps a second note in the same section from being credited to whoever already wrote the first one. */
+function pickManager(shift: DailyReportShift, seed: string, exclude?: string): DailyReportPerson {
+  const managers = exclude ? shift.managers.filter((m) => m.name !== exclude) : shift.managers;
+  const pool = managers.length > 0 ? managers : shift.managers;
+  if (pool.length === 0) return { name: "Shift Manager", position: "Manager", avatar: "" };
+  return pool[hashSeed(seed) % pool.length];
 }
 
 function buildNote(shift: DailyReportShift, seed: string, template: NoteTemplate): ManagerNote {
   return { author: pickManager(shift, seed), timestamp: pickClockTime(`${seed}-time`), text: template.text, tags: template.tags };
+}
+
+/**
+ * Same section-level note as buildNote, but drawn from a whole template
+ * pool rather than one resolved template, so a second co-manager can
+ * sometimes weigh in on the same section — e.g. one manager flags a
+ * shortfall and another adds a different angle on it, matching how a real
+ * shift report can carry more than one manager's comment on the same
+ * topic. Only ever adds that second note when the shift actually has more
+ * than one manager (nobody to credit it to otherwise) and the pool has
+ * more than one template to draw a genuinely different one from — and
+ * it's always a different author than the first note, never the same
+ * person doubling up.
+ */
+function buildNotes(shift: DailyReportShift, seed: string, pool: NoteTemplate[]): ManagerNote[] {
+  if (pool.length === 0) return [];
+  const firstIndex = hashSeed(seed) % pool.length;
+  const primary: ManagerNote = { author: pickManager(shift, seed), timestamp: pickClockTime(`${seed}-time`), text: pool[firstIndex].text, tags: pool[firstIndex].tags };
+  const wantsSecond = shift.managers.length > 1 && pool.length > 1 && hashSeed(`${seed}-second`) % 100 < 40;
+  if (!wantsSecond) return [primary];
+  let secondIndex = hashSeed(`${seed}-second-index`) % (pool.length - 1);
+  if (secondIndex >= firstIndex) secondIndex += 1;
+  const secondary: ManagerNote = {
+    author: pickManager(shift, `${seed}-second-author`, primary.author.name),
+    timestamp: pickClockTime(`${seed}-second-time`),
+    text: pool[secondIndex].text,
+    tags: pool[secondIndex].tags,
+  };
+  return [primary, secondary];
 }
 
 export type ManagerClockTimes = {
@@ -626,7 +655,7 @@ function buildShiftHoursStat(shift: DailyReportShift, dayOffset: number): { capt
   return { capturedLabel: formatShiftHours(capturedHours), paidLabel: formatShiftHours(paidHours), percent };
 }
 
-/** Scheduled headcount / actual arrival / absence breakdown for one shift — deterministic per shift/day, in the same ~1-in-5 shifts have a couple of absences spirit as the rest of this file's issue rolls. */
+/** Scheduled headcount / actual arrival / absence breakdown for one shift — deterministic per shift/day, in the same ~1-in-5 shifts have a couple of absences spirit as the rest of this file's issue rolls. This is a site-wide headcount figure (includes support roles beyond the individually-named roster below), not a 1:1 count of ASSOCIATES_BY_SHIFT — real per-shift rosters only run ~16-17 people, well short of a realistic ~50-person crew. */
 function buildShiftAttendance(shift: DailyReportShift, dayOffset: number) {
   const seed = shift.key;
   const scheduledHeadcount = Math.round(scaleForDay(`${seed}-scheduled-headcount`, dayOffset, 46, 54));
@@ -634,6 +663,21 @@ function buildShiftAttendance(shift: DailyReportShift, dayOffset: number) {
   const noCallNoShowCount = 0;
   const totalAbsences = callOutsCount + noCallNoShowCount;
   return { scheduledHeadcount, actualArrival: scheduledHeadcount - totalAbsences, totalAbsences, noCallNoShowCount, callOutsCount };
+}
+
+/** One named associate's attendance status for the "View Associates" roster detail — Arrived unless a deterministic roll flags them absent (~1 in 7), in which case it's almost always a Call Out, rarely a No Call/No Show. A separate, independent roll from buildShiftAttendance's own scheduledHeadcount/totalAbsences figures (see AssociateAttendanceEntry), since the named roster here is a sample of real associates.csv rows, not the same headcount the site-wide numbers represent. */
+export type AssociateAttendanceEntry = AssociateShiftEntry & {
+  status: "Arrived" | "Call Out" | "No Call/No Show";
+};
+
+function buildAssociateAttendance(shift: DailyReportShift, dayOffset: number): AssociateAttendanceEntry[] {
+  return ASSOCIATES_BY_SHIFT[shift.key].map((associate) => {
+    const seed = `${shift.key}-${associate.name}-attendance-${dayOffset}`;
+    const isAbsent = hashSeed(seed) % 100 < 14;
+    if (!isAbsent) return { ...associate, status: "Arrived" };
+    const isNoCallNoShow = hashSeed(`${seed}-type`) % 100 < 15;
+    return { ...associate, status: isNoCallNoShow ? "No Call/No Show" : "Call Out" };
+  });
 }
 
 /** Builds the "click an area type" detail view for one shift — matches Figma fileKey SWFMjlBJ4u9vSrVaomRe12, node 183:14544. Every area of the type gets a row (not only missed ones); a shortfall area gets the same manager note (same seed) the Areas Missed drill-down would show for it, so the two surfaces never disagree. Returns null if the type has no areas scheduled for this shift (shouldn't happen for a type the Area Types list itself surfaced). */
@@ -744,28 +788,29 @@ export function buildShiftReport(shift: DailyReportShift, dayOffset: number, bui
     areaTypesAffected,
     areaTypeSummaries,
     areaCoverage,
-    areaCoverageNote: buildNote(shift, `${seed}-area-coverage-note-${dayOffset}`, pickAreaCoverageNote(`${seed}-area-coverage-note-${dayOffset}`, areaCoverage.notServicedCount)),
+    areaCoverageNote: buildNotes(shift, `${seed}-area-coverage-note-${dayOffset}`, areaCoverageNotePool(areaCoverage.notServicedCount)),
     servicesCompletedCount,
     servicesExpectedCount,
     servicesPercent,
-    servicesNote: buildNote(shift, `${seed}-services-note-${dayOffset}`, pickServiceCoverageNote(`${seed}-services-note-${dayOffset}`, servicesPercent)),
+    servicesNote: buildNotes(shift, `${seed}-services-note-${dayOffset}`, serviceCoverageNotePool(servicesPercent)),
     hoursCapturedLabel: hours.capturedLabel,
     hoursPaidLabel: hours.paidLabel,
     hoursPercent: hours.percent,
-    hoursNote: buildNote(shift, `${seed}-hours-note-${dayOffset}`, pickHoursNote(`${seed}-hours-note-${dayOffset}`, hours.percent)),
+    hoursNote: buildNotes(shift, `${seed}-hours-note-${dayOffset}`, hoursNotePool(hours.percent)),
     qualityScores: buildShiftQualityScores(shift, dayOffset),
     scheduledHeadcount: attendance.scheduledHeadcount,
     actualArrival: attendance.actualArrival,
     totalAbsences: attendance.totalAbsences,
     noCallNoShowCount: attendance.noCallNoShowCount,
     callOutsCount: attendance.callOutsCount,
-    scoresNote: buildNote(shift, `${seed}-scores-note-${dayOffset}`, pickScoreNote(`${seed}-scores-note-${dayOffset}`)),
+    associateAttendance: buildAssociateAttendance(shift, dayOffset),
+    scoresNote: buildNotes(shift, `${seed}-scores-note-${dayOffset}`, SCORE_NOTES),
     safetyIssues,
     totalReportIts,
     reportItsAccepted,
     reportItsRejected,
     reportItsAcceptanceRate,
-    reportItsNote: buildNote(shift, `${seed}-report-its-note-${dayOffset}`, pickReportItsNote(`${seed}-report-its-note-${dayOffset}`, totalReportIts)),
+    reportItsNote: buildNotes(shift, `${seed}-report-its-note-${dayOffset}`, reportItsNotePool(totalReportIts)),
     reportItems,
     attendanceIssues,
     projects: [
@@ -774,6 +819,6 @@ export function buildShiftReport(shift: DailyReportShift, dayOffset: number, bui
     ],
     notes: [buildShiftNote(shift, dayOffset, seed)],
     associates: ASSOCIATES_BY_SHIFT[shift.key],
-    associatesNote: buildNote(shift, `${seed}-associates-note-${dayOffset}`, pickAssociatesNote(`${seed}-associates-note-${dayOffset}`)),
+    associatesNote: buildNotes(shift, `${seed}-associates-note-${dayOffset}`, ASSOCIATE_NOTES),
   };
 }

@@ -1,0 +1,117 @@
+/* ============================================================
+   BottomSheet — shared full-width bottom-sheet chrome. Matches Figma
+   fileKey 0UJDRcrFiXkn16yfc2MUEW (nodes 98:4172, 98:3539). Design
+   tokens only.
+   ============================================================ */
+
+/* Full-viewport scrim behind the sheet, blurred per spec ("overlay and blur behind the bottom sheet") — a flex column so the sheet's own margin-top is what creates the 40px gap above it, with the sheet then filling every remaining pixel down to the bottom edge (a real bottom sheet, not a centered dialog). */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  display: flex;
+  flex-direction: column;
+  background-color: rgba(24, 30, 36, 0.72);
+  backdrop-filter: blur(8px);
+  animation: bottomSheetFadeIn 200ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes bottomSheetFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay {
+    animation: none;
+  }
+}
+
+/* Core/Neutral/850 (#20272e) — exact match to the Figma frames' own fill. Rounded top corners only; flush with the viewport's bottom edge like a real bottom sheet. */
+.sheet {
+  flex: 1;
+  margin-top: 40px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 20px 20px 0 0;
+  background-color: var(--color-neutral-850);
+  color: var(--color-text-dt-default);
+  font-family: var(--font-family-ui);
+  box-shadow: var(--shadow-dt-popup-menu);
+  outline: none;
+}
+
+.sheetScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* Scroll still works (wheel/touch/keyboard) — just no visible track/thumb, matching the daily report modals' own scroll areas. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sheetScroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Content capped at 1440px and centered, with a 40px "border" of padding around it — independent of the sheet's own full viewport width. */
+.sheetContent {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.title {
+  font-family: var(--type-h2-family);
+  font-size: 32px;
+  font-weight: 900;
+  line-height: var(--type-h2-leading);
+  color: var(--color-text-dt-default);
+}
+
+.closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--color-text-dt-grey);
+  font-size: 30px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  color: var(--color-text-dt-default);
+}
+
+.closeButton:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+@media (max-width: 960px) {
+  .sheetContent {
+    padding: 24px 20px;
+  }
+}

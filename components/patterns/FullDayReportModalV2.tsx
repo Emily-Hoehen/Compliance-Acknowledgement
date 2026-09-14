@@ -14,13 +14,12 @@ import {
 } from "./icons";
 import { DonutRing, SegmentedDonutRing } from "../ui/Charts";
 import { AssociateAttendanceModal } from "./AssociateAttendanceModal";
-import { NoteCallout, NoteCalloutList } from "./MapShiftReportSections";
 import { ReportItsModal } from "./ReportItsModal";
 import { formatMinutesToHoursLabel, parseHoursLabelToMinutes } from "./FullShiftReportModal";
 import type { DailyReportPerson, QualityScore } from "../../lib/mapPageData";
-import type { ShiftReport } from "../../lib/mapShiftReportData";
+import type { ManagerNote, ShiftReport } from "../../lib/mapShiftReportData";
 import type { AreaCoverageBreakdown } from "../../lib/mapAreaServiceData";
-import styles from "./FullDayReportModal.module.css";
+import styles from "./FullDayReportModalV2.module.css";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" });
 
@@ -39,7 +38,7 @@ function buildDailyQualityScore(shiftReports: ShiftReport[], label: (typeof QUAL
   return { label, count: countLabel, value: averageValue, tone: scoredValues.length > 0 ? "success" : "neutral" };
 }
 
-export type FullDayReportModalProps = {
+export type FullDayReportModalV2Props = {
   /** All three shifts' full reports (Day, Swing, Graveyard), in that order — combined here into one document. */
   shiftReports: ShiftReport[];
   siteName: string;
@@ -56,21 +55,18 @@ export type FullDayReportModalProps = {
 };
 
 /**
- * FullDayReportModal — full-page dark-theme recreation of the "Manager Shift
- * Report" Figma file's Daily Report screen (fileKey 0UJDRcrFiXkn16yfc2MUEW,
- * node 61:20862), reusing this project's own design tokens rather than that
- * file's light-theme hex values. Three collapsible shift cards (Day expanded
- * by default, Swing/Graveyard collapsed) on the left, a persistent "Daily
- * Summary" card on the right. Each shift card runs Shift Manager → Shift
- * Notes → Area Coverage → Service Coverage → Hours and Headcount → Quality,
- * each of the last four carrying its own manager note — Safety Issues/
- * Report Its/To Dos (present in an earlier iteration of this modal) aren't
- * part of this design; their totals still roll up into the Daily Summary
- * sidebar via each ShiftReport's own safetyIssues/reportIts* fields. Distinct
- * from FullShiftReportModal, which is one shift's report at a time with its
- * own (different) numbered-section layout.
+ * FullDayReportModalV2 — a second exploration of the Daily Report screen,
+ * matching Figma fileKey 0UJDRcrFiXkn16yfc2MUEW, node 104:5253 ("Shift
+ * Accordion" v2). Same data and outer chrome (overlay, header, Daily
+ * Summary sidebar, shift-card accordion header) as FullDayReportModal —
+ * V1 is untouched by this file. What's different is scoped to each shift
+ * card's expanded body: manager notes drop their colored left accent bar
+ * for a flat Core/Neutral/700 fill (see NoteCalloutV2Item), and each
+ * card's sub-topics (Hours/Headcount, Area Coverage/Service Coverage,
+ * Average Scores/Report Its/Safety) run as label-left/content-right rows
+ * within one card instead of V1's separate titled Section per topic.
  */
-export function FullDayReportModal({
+export function FullDayReportModalV2({
   shiftReports,
   siteName,
   date,
@@ -79,7 +75,7 @@ export function FullDayReportModal({
   siteManagerSignOff,
   areaCoverage,
   onClose,
-}: FullDayReportModalProps) {
+}: FullDayReportModalV2Props) {
   /** Each shift toggles independently — opening one never collapses another, so expanding a later shift (e.g. Swing after Day) never shifts the ones above it. */
   const [expandedShiftKeys, setExpandedShiftKeys] = useState<Set<ShiftReport["shiftKey"]>>(() => new Set());
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -116,11 +112,11 @@ export function FullDayReportModal({
 
   return (
     <div className={styles.overlay}>
-      <div className={styles.panel} role="dialog" aria-modal="true" aria-labelledby="full-day-report-title" ref={overlayRef} tabIndex={-1}>
+      <div className={styles.panel} role="dialog" aria-modal="true" aria-labelledby="full-day-report-v2-title" ref={overlayRef} tabIndex={-1}>
         <header className={styles.headerBlock}>
           <div className={styles.headerBlockInner}>
             <div className={styles.headerText}>
-              <p className={styles.greeting} id="full-day-report-title">
+              <p className={styles.greeting} id="full-day-report-v2-title">
                 Here is the daily report for
               </p>
               <h1 className={styles.bigDate}>{dateFormatter.format(date)}</h1>
@@ -353,130 +349,151 @@ function ShiftCard({ report, expanded, onToggle }: { report: ShiftReport; expand
       >
         <div className={styles.shiftCardBody}>
           <div className={styles.shiftCardBodyContent}>
-          <Section title="Shift Manager">
-            <div className={styles.managerList}>
-              {report.managers.map((manager, index) => {
-                const clock = report.managerClockTimes[manager.name];
-                return (
-                  <div key={manager.name} className={styles.managerRow}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={manager.avatar} alt="" className={styles.managerAvatar} />
-                    <div className={styles.managerInfo}>
-                      <span className={styles.managerName}>{manager.name}</span>
-                      <span className={styles.managerPosition}>{manager.position}</span>
-                      {index === 0 && clock && <span className={styles.managerCheckedOut}>Checked out at {clock.clockOut}</span>}
+            <Section title="Shift Managers">
+              <div className={styles.managerList}>
+                {report.managers.map((manager, index) => {
+                  const clock = report.managerClockTimes[manager.name];
+                  return (
+                    <div key={manager.name} className={styles.managerRow}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={manager.avatar} alt="" className={styles.managerAvatar} />
+                      <div className={styles.managerInfo}>
+                        <span className={styles.managerName}>{manager.name}</span>
+                        <span className={styles.managerPosition}>{manager.position}</span>
+                        {index === 0 && reportedNote && (
+                          <span className={styles.managerCheckedOut}>Reported at {reportedNote.timestamp}</span>
+                        )}
+                      </div>
+                      <div className={styles.managerDivider} />
+                      <ManagerTimeStat value={clock?.clockIn ?? "—"} label="Clocked In" />
+                      <ManagerTimeStat value={clock?.clockOut ?? "—"} label="Clocked Out" />
+                      <ManagerTimeStat value={clock?.totalTimeLabel ?? "—"} label="Total Time" />
                     </div>
-                    <div className={styles.managerDivider} />
-                    <ManagerTimeStat value={clock?.clockIn ?? "—"} label="Clocked In" />
-                    <ManagerTimeStat value={clock?.clockOut ?? "—"} label="Clocked Out" />
-                    <ManagerTimeStat value={clock?.totalTimeLabel ?? "—"} label="Total Time" />
+                  );
+                })}
+              </div>
+            </Section>
+
+            <Section title="Shift Notes">
+              <div className={styles.noteV2List}>
+                {report.notes.map((note, i) => (
+                  <NoteCalloutV2Item key={`${note.author.name}-${i}`} note={note} />
+                ))}
+              </div>
+            </Section>
+
+            <Section title="Hours and Headcount">
+              <div className={styles.sectionRows}>
+                <LeadStatV2
+                  ringColor="var(--color-datavis-yellow-100)"
+                  percent={report.hoursPercent}
+                  amount={report.hoursCapturedLabel}
+                  label="Hours Captured"
+                  caption={`of ${report.hoursPaidLabel} shift time`}
+                />
+                <button
+                  type="button"
+                  className={[styles.headcountGrid, styles.headcountCard].join(" ")}
+                  onClick={() => setHeadcountModalOpen(true)}
+                >
+                  <HeadcountStat label="Scheduled Headcount" value={report.scheduledHeadcount} />
+                  <HeadcountStat label="Actual Arrival" value={report.actualArrival} />
+                  <HeadcountStat label="Total Absences" value={report.totalAbsences} />
+                  <div className={styles.headcountSubGroup}>
+                    <HeadcountInlineStat label="No Call/No Show" value={report.noCallNoShowCount} />
+                    <HeadcountInlineStat label="Call Outs" value={report.callOutsCount} />
                   </div>
-                );
-              })}
-            </div>
-          </Section>
+                </button>
+              </div>
+              <div className={styles.noteV2List}>
+                {report.hoursNote.map((note, i) => (
+                  <NoteCalloutV2Item key={`${note.author.name}-${i}`} note={note} />
+                ))}
+              </div>
+            </Section>
 
-          <Section title="Shift Notes">
-            {report.notes.map((note, i) => (
-              <NoteCallout key={`${note.author.name}-${i}`} note={note} />
-            ))}
-          </Section>
+            <Section title="Area Coverage">
+              <div className={styles.areaCoverageStack}>
+                <AreaCoverageStat coverage={report.areaCoverage} />
+                <AreaCoverageBreakdownRow coverage={report.areaCoverage} />
+              </div>
+              <div className={styles.noteV2List}>
+                {report.areaCoverageNote.map((note, i) => (
+                  <NoteCalloutV2Item key={`${note.author.name}-${i}`} note={note} />
+                ))}
+              </div>
+            </Section>
 
-          <Section title="Hours and Headcount">
-            <div className={styles.areaCoverageRow}>
-              <LeadStat
-                ringColor="var(--color-datavis-yellow-100)"
-                percent={report.hoursPercent}
-                value={report.hoursCapturedLabel}
-                caption={`of ${report.hoursPaidLabel} shift time`}
-                label="Hours Captured"
+            <Section title="Service Coverage">
+              <LeadStatV2
+                ringColor="var(--color-datavis-purple-100)"
+                percent={report.servicesPercent}
+                amount={report.servicesCompletedCount.toLocaleString()}
+                label="Services Completed"
+                caption={`of ${report.servicesExpectedCount.toLocaleString()} expected`}
               />
-              <div className={styles.verticalDivider} />
-              <button
-                type="button"
-                className={[styles.headcountGrid, styles.headcountCard].join(" ")}
-                onClick={() => setHeadcountModalOpen(true)}
-              >
-                <HeadcountStat label="Scheduled Headcount" value={report.scheduledHeadcount} />
-                <HeadcountStat label="Actual Arrival" value={report.actualArrival} />
-                <HeadcountStat label="Total Absences" value={report.totalAbsences} />
-                <div className={styles.headcountSubGroup}>
-                  <HeadcountInlineStat label="No Call/No Show" value={report.noCallNoShowCount} />
-                  <HeadcountInlineStat label="Call Outs" value={report.callOutsCount} />
-                </div>
-              </button>
-            </div>
-            <NoteCalloutList notes={report.hoursNote} />
-          </Section>
+              <div className={styles.noteV2List}>
+                {report.servicesNote.map((note, i) => (
+                  <NoteCalloutV2Item key={`${note.author.name}-${i}`} note={note} />
+                ))}
+              </div>
+            </Section>
 
-          <Section title="Area Coverage">
-            <div className={styles.areaCoverageRow}>
-              <AreaCoverageStat coverage={report.areaCoverage} />
-              <AreaCoverageBreakdownRow coverage={report.areaCoverage} />
-            </div>
-            <NoteCalloutList notes={report.areaCoverageNote} />
-          </Section>
-
-          <Section title="Service Coverage">
-            <LeadStat
-              ringColor="var(--color-datavis-purple-100)"
-              percent={report.servicesPercent}
-              value={report.servicesCompletedCount.toLocaleString()}
-              caption={`of ${report.servicesExpectedCount.toLocaleString()} expected`}
-              label="Services Completed"
-            />
-            <NoteCalloutList notes={report.servicesNote} />
-          </Section>
-
-          <Section title="Quality">
-            <div className={styles.scoreChipRow}>
-              {shiftQualityScores.map((score) => (
-                <div key={score.label} className={styles.scoreCard}>
-                  <span className={styles.scoreBadge} data-tone={score.tone}>
-                    {score.value}
-                  </span>
-                  <div className={styles.scoreCardTextGroup}>
-                    <span className={styles.scoreCardLabel}>{score.label}</span>
-                    <span className={styles.scoreCardCaption}>{score.count}</span>
+            <Section title="Quality">
+              <div className={styles.scoreChipRow}>
+                {shiftQualityScores.map((score) => (
+                  <div key={score.label} className={styles.scoreCard}>
+                    <span className={styles.scoreBadge} data-tone={score.tone}>
+                      {score.value}
+                    </span>
+                    <div className={styles.scoreCardTextGroup}>
+                      <span className={styles.scoreCardLabel}>{score.label}</span>
+                      <span className={styles.scoreCardCaption}>{score.count}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            <div className={styles.qualitySubsectionRow}>
-              <button
-                type="button"
-                className={[styles.qualitySubsection, styles.qualitySubsectionButton].join(" ")}
-                onClick={() => setReportItsModalOpen(true)}
-              >
-                <h4 className={styles.qualitySubsectionTitle}>Report Its</h4>
-                <div className={styles.qualityStatRow}>
-                  <HeadcountStat label="Submitted" value={report.totalReportIts} />
-                  <HeadcountStat label="Rejected" value={report.reportItsRejected} />
-                  <HeadcountStat label="Acceptance Rate" value={`${report.reportItsAcceptanceRate}%`} />
-                </div>
-              </button>
+              <div className={styles.qualitySubsectionRow}>
+                <button
+                  type="button"
+                  className={[styles.qualitySubsection, styles.qualitySubsectionButton].join(" ")}
+                  onClick={() => setReportItsModalOpen(true)}
+                >
+                  <h4 className={styles.qualitySubsectionTitle}>Report Its</h4>
+                  <div className={styles.qualityStatRow}>
+                    <HeadcountStat label="Submitted" value={report.totalReportIts} />
+                    <HeadcountStat label="Rejected" value={report.reportItsRejected} />
+                    <HeadcountStat label="Acceptance Rate" value={`${report.reportItsAcceptanceRate}%`} />
+                  </div>
+                </button>
 
-              <div className={styles.verticalDivider} />
+                <div className={styles.verticalDivider} />
 
-              <div className={styles.qualitySubsection}>
-                <h4 className={styles.qualitySubsectionTitle}>Safety</h4>
-                <div className={styles.qualityStatRow}>
-                  <HeadcountStat label="Incidents" value={report.safetyIssues.length} />
-                  {report.safetyIssues.length > 0 && (
-                    <div className={styles.headcountStat}>
-                      <span className={styles.headcountLabel}>Incident Status</span>
-                      <span className={styles.safetyReportStatusBadge}>
-                        <CircleCheckIcon className={styles.safetyReportStatusIcon} /> Incident Report Created
-                      </span>
+                <div className={styles.qualitySubsection}>
+                  <h4 className={styles.qualitySubsectionTitle}>Safety</h4>
+                  {report.safetyIssues.length === 0 ? (
+                    <span className={styles.safetyEmptyState}>There are no safety issues for this shift</span>
+                  ) : (
+                    <div className={styles.qualityStatRow}>
+                      <HeadcountStat label="Incidents" value={report.safetyIssues.length} />
+                      <div className={styles.headcountStat}>
+                        <span className={styles.headcountLabel}>Incident Status</span>
+                        <span className={styles.safetyReportStatusBadge}>
+                          <CircleCheckIcon className={styles.safetyReportStatusIcon} /> Incident Report Created
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
-            </div>
 
-            <NoteCalloutList notes={report.scoresNote} />
-          </Section>
+              <div className={styles.noteV2List}>
+                {report.scoresNote.map((note, i) => (
+                  <NoteCalloutV2Item key={`${note.author.name}-${i}`} note={note} />
+                ))}
+              </div>
+            </Section>
           </div>
         </div>
       </div>
@@ -504,6 +521,16 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+/** Label-left/content-right row for a card's sub-topic — e.g. "Hours" next to its own ring+value, "Headcount" next to its own stat grid. */
+function SectionRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className={styles.sectionRow}>
+      <span className={styles.sectionRowLabel}>{label}</span>
+      <div className={styles.sectionRowContent}>{children}</div>
+    </div>
+  );
+}
+
 function ShiftHeaderStat({
   icon,
   iconClassName,
@@ -526,7 +553,20 @@ function ShiftHeaderStat({
   );
 }
 
-function LeadStat({ percent, value, caption, label, ringColor }: { percent: number; value: string; caption: string; label: string; ringColor: string }) {
+/** Same ring+value+caption as V1's LeadStat, minus the separate top label line — the row's own left-hand SectionRow label already names the metric, so V2 folds label + value into one line (e.g. "330h 10m hours captured") instead of stacking "Hours Captured" above "346h 18m". */
+function LeadStatV2({
+  percent,
+  amount,
+  label,
+  caption,
+  ringColor,
+}: {
+  percent: number;
+  amount: string;
+  label: string;
+  caption: string;
+  ringColor: string;
+}) {
   return (
     <div className={styles.leadStatRow}>
       <div className={styles.leadStatRing}>
@@ -534,15 +574,17 @@ function LeadStat({ percent, value, caption, label, ringColor }: { percent: numb
         <span className={styles.leadStatRingLabel}>{percent}%</span>
       </div>
       <div className={styles.leadStatTextStack}>
-        <span className={styles.leadStatStackLabel}>{label}</span>
-        <span className={styles.leadStatStackValue}>{value}</span>
-        <span className={styles.leadStatCaption}>{caption}</span>
+        <span className={styles.leadStatValueLabel}>{label}</span>
+        <div className={styles.leadStatValueRow}>
+          <span className={styles.leadStatStackValue}>{amount}</span>
+          <span className={styles.leadStatCaption}>{caption}</span>
+        </div>
       </div>
     </div>
   );
 }
 
-/** Same left-hand layout as LeadStat (ring + value/label + caption), but the ring is a 4-color SegmentedDonutRing reflecting the Not/Under/Fully/Over-Serviced split rather than one percent value. */
+/** Same left-hand layout as LeadStatV2 (ring + amount/label/caption), but the ring is a 4-color SegmentedDonutRing reflecting the Not/Under/Fully/Over-Serviced split rather than one percent value. */
 function AreaCoverageStat({ coverage }: { coverage: AreaCoverageBreakdown }) {
   return (
     <div className={styles.leadStatRow}>
@@ -561,9 +603,11 @@ function AreaCoverageStat({ coverage }: { coverage: AreaCoverageBreakdown }) {
         <span className={styles.leadStatRingLabel}>{coverage.servicedPercent}%</span>
       </div>
       <div className={styles.leadStatTextStack}>
-        <span className={styles.leadStatStackLabel}>Areas Serviced</span>
-        <span className={styles.leadStatStackValue}>{coverage.servicedCount.toLocaleString()}</span>
-        <span className={styles.leadStatCaption}>of {coverage.totalAreas.toLocaleString()} total areas</span>
+        <span className={styles.leadStatValueLabel}>Areas Serviced</span>
+        <div className={styles.leadStatValueRow}>
+          <span className={styles.leadStatStackValue}>{coverage.servicedCount.toLocaleString()}</span>
+          <span className={styles.leadStatCaption}>of {coverage.totalAreas.toLocaleString()} total areas</span>
+        </div>
       </div>
     </div>
   );
@@ -599,7 +643,6 @@ function AreaCoverageBreakdownRow({ coverage }: { coverage: AreaCoverageBreakdow
     </div>
   );
 }
-
 
 function HeadcountStat({ label, value }: { label: string; value: number | string }) {
   return (
@@ -651,6 +694,48 @@ function SidebarStat({
         </div>
       </div>
       {children && <div className={styles.sidebarStatBody}>{children}</div>}
+    </div>
+  );
+}
+
+function tagSlug(tag: string): string {
+  return tag
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/** V2's own note card — same content (text/tags/author/timestamp) as the shared NoteCallout, but flat Core/Neutral/700 fill with no colored left accent bar, matching Figma node 104:5253. Scoped to this file rather than changing the shared component, so V1 stays exactly as it was. */
+function NoteCalloutV2Item({ note }: { note: ManagerNote }) {
+  return (
+    <div className={styles.noteV2}>
+      <p className={styles.noteV2Text}>
+        {note.text.split("\n").map((line, i) => (
+          <span key={i}>
+            {line}
+            <br />
+          </span>
+        ))}
+      </p>
+      {note.tags.length > 0 && (
+        <div className={styles.noteV2TagRow}>
+          {note.tags.map((tag) => (
+            <span key={tag} className={styles.noteV2Tag} data-tag={tagSlug(tag)}>
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className={styles.noteV2Footer}>
+        {note.author.avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={note.author.avatar} alt="" className={styles.noteV2Avatar} />
+        ) : (
+          <span className={styles.noteV2Avatar} aria-hidden="true" />
+        )}
+        <span className={styles.noteV2Author}>{note.author.name}</span>
+        <span className={styles.noteV2Time}>{note.timestamp}</span>
+      </div>
     </div>
   );
 }

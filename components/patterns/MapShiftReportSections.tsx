@@ -57,13 +57,13 @@ export function MapShiftReportSections({ report, onZoomToArea }: MapShiftReportS
           </span>
           <span className={styles.leadStatCaption}>{report.hoursPercent}% of paid hours captured</span>
         </div>
-        {report.hoursNote && <NoteCallout note={report.hoursNote} />}
+        <NoteCalloutList notes={report.hoursNote} />
       </ReportSection>
 
       <div className={styles.hairline} />
 
       <ReportSection title="Scores">
-        <NoteCallout note={report.scoresNote} />
+        <NoteCalloutList notes={report.scoresNote} />
       </ReportSection>
 
       <div className={styles.hairline} />
@@ -75,7 +75,7 @@ export function MapShiftReportSections({ report, onZoomToArea }: MapShiftReportS
       <div className={styles.hairline} />
 
       <ReportSection title="Report-Its" headerExtra={<span className={styles.inlineStatValue}>{report.totalReportIts}</span>}>
-        <NoteCallout note={report.reportItsNote} />
+        <NoteCalloutList notes={report.reportItsNote} />
       </ReportSection>
 
       <div className={styles.hairline} />
@@ -219,6 +219,17 @@ function tagSlug(tag: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+/** Renders every note in a section's note array (see ManagerNote[] fields like ShiftReport's areaCoverageNote/hoursNote/scoresNote/etc.) — usually just one, but sometimes a second co-manager's note follows it. A plain .map would work too; this just saves every call site from repeating the key/mapping boilerplate. */
+export function NoteCalloutList({ notes }: { notes: ManagerNote[] }) {
+  return (
+    <>
+      {notes.map((note, i) => (
+        <NoteCallout key={`${note.author.name}-${i}`} note={note} />
+      ))}
+    </>
+  );
 }
 
 export function NoteCallout({ note, compact = false }: { note: ManagerNote; compact?: boolean }) {

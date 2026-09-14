@@ -6,7 +6,7 @@ import type { ZoomTarget } from "./MapShiftReportSections";
 import { MapShiftTimeline } from "./MapShiftTimeline";
 import { MapStatsPanel } from "./MapStatsPanel";
 import { FullShiftReportModal } from "./FullShiftReportModal";
-import { FullDayReportModal } from "./FullDayReportModal";
+import { FullDayReportModalV2 } from "./FullDayReportModalV2";
 import { buildDailyReport, buildMapAreaTypes, mapPageData, type DailyReportShift } from "../../lib/mapPageData";
 import { buildShiftAreaTypeDetail, buildShiftReport } from "../../lib/mapShiftReportData";
 import {
@@ -64,7 +64,7 @@ export function MapPage({ contractBuildings }: MapPageProps) {
   /** null = no filter, every status shown (the default) — clicking one of the status buttons narrows to just that one; clicking the active button again clears back to null. */
   const [statusFilter, setStatusFilter] = useState<AreaStatus | null>(null);
   const [fullReportOpen, setFullReportOpen] = useState(false);
-  const [fullDayReportOpen, setFullDayReportOpen] = useState(false);
+  const [fullDayReportV2Open, setFullDayReportV2Open] = useState(false);
   const areaMenuRef = useRef<HTMLDivElement>(null);
 
   const dayOffset = Math.round((ANCHOR_DATE.getTime() - date.getTime()) / MS_PER_DAY);
@@ -285,7 +285,7 @@ export function MapPage({ contractBuildings }: MapPageProps) {
         </button>
       </div>
 
-      <button type="button" className={styles.viewDailyReportButton} onClick={() => setFullDayReportOpen(true)}>
+      <button type="button" className={styles.viewDailyReportButton} onClick={() => setFullDayReportV2Open(true)}>
         <UpRightAndDownLeftFromCenterIcon className={styles.viewDailyReportIcon} />
         <span>View Daily Report</span>
       </button>
@@ -327,8 +327,8 @@ export function MapPage({ contractBuildings }: MapPageProps) {
         />
       )}
 
-      {fullDayReportOpen && (
-        <FullDayReportModal
+      {fullDayReportV2Open && (
+        <FullDayReportModalV2
           shiftReports={allShiftReports}
           siteName={mapPageData.siteName}
           date={date}
@@ -336,7 +336,7 @@ export function MapPage({ contractBuildings }: MapPageProps) {
           aiOverview={dailyReport.aiOverview}
           siteManagerSignOff={dailyReport.siteManagerSignOff}
           areaCoverage={dailyAreaCoverage}
-          onClose={() => setFullDayReportOpen(false)}
+          onClose={() => setFullDayReportV2Open(false)}
         />
       )}
     </div>

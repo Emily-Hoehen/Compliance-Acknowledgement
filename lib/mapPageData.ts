@@ -127,11 +127,33 @@ const siteManager: DailyReportPerson = {
   avatar: "/Juan.png",
 };
 
-/** Each shift is managed by one person. */
+/**
+ * Each shift is covered by more than one manager — a lead (the shift's
+ * long-standing named manager) plus two co-managers, all specific named
+ * people with their own avatars in /public rather than pulled from
+ * data/managers.csv. The lead is always managers[0]: FullDayReportModal's
+ * Shift Manager section shows only the lead's own checkout status, and
+ * buildNote's pickManager still picks from this whole array for
+ * shift-note authorship — including buildShiftNote's own Day-shift
+ * handoff note, which is specifically authored by Carmen Ramos.
+ */
 const shiftManagers: Record<DailyReportShift["key"], DailyReportPerson[]> = {
-  day: [{ name: "William Guy", position: "Senior Site Manager", avatar: "/william.png" }],
-  swing: [{ name: "Braulio Abreu", position: "Shift Manager", avatar: "/Braulio.png" }],
-  graveyard: [{ name: "Carlos Muruzumbay", position: "Shift Manager", avatar: "/Carlos.png" }],
+  day: [
+    { name: "William Guy", position: "Senior Site Manager", avatar: "/william.png" },
+    { name: "Betty Rodriguez", position: "Operations Manager", avatar: "/Betty.jpg" },
+    { name: "Edga Tacuri", position: "Site Supervisor", avatar: "/Edga.png" },
+    { name: "Carmen Ramos", position: "Site Supervisor", avatar: "/Carmen.png" },
+  ],
+  swing: [
+    { name: "Carlos Muruzumbay", position: "Shift Manager", avatar: "/Carlos.png" },
+    { name: "Tonya Breland", position: "Site Supervisor", avatar: "/Tonya.png" },
+    { name: "Kadeem Byfield", position: "Site Supervisor", avatar: "/Kadeem.png" },
+  ],
+  graveyard: [
+    { name: "Braulio Abreu", position: "Shift Manager", avatar: "/Braulio.png" },
+    { name: "Anabel Ramirez", position: "Site Supervisor", avatar: "/Anabel.jpg" },
+    { name: "David Padilla", position: "Site Supervisor", avatar: "/David.png" },
+  ],
 };
 
 function missedServicesLabel(count: number, total: number): string {

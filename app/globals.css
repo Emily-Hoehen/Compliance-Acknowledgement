@@ -288,6 +288,7 @@
   --wash-red-orange-15: rgba(255, 138, 128, 0.15); /* Datavis Red Orange/100 @15% */
   --wash-teal-15: rgba(1, 255, 207, 0.15); /* Datavis Teal/500 @15% */
   --wash-danger-light-15: rgba(255, 125, 177, 0.15); /* Core/Danger/300 @15% */
+  --wash-success-light-15: rgba(102, 255, 186, 0.15); /* Opacity/DT/Success 300 @15% — same fileKey/dark-theme-tag-pill convention as wash-warning-light-15/wash-danger-light-15 (node 98:3280, Day Shift Associates modal). */
 }
 
 /* ============================================================

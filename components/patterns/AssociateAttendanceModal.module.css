@@ -1,0 +1,165 @@
+/* ============================================================
+   AssociateAttendanceModal — body content for the shared BottomSheet
+   chrome (see BottomSheet.module.css for the sheet/overlay/header
+   itself). Matches Figma fileKey 0UJDRcrFiXkn16yfc2MUEW, node
+   98:3539. Design tokens only.
+   ============================================================ */
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.filterRow {
+  display: flex;
+  gap: 8px;
+}
+
+/* Filled pill filter buttons — dim/blue fill swap on the selected one, same pill shape/radius as the status tags below. */
+.filterButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--wash-neutral-15);
+  color: var(--color-text-dt-grey);
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.filterButton[aria-pressed="true"] {
+  background-color: var(--btn-ghost-dt-primary-static);
+  color: var(--color-text-dt-blue);
+}
+
+.table {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  width: 100%;
+}
+
+.headerCell {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: 500;
+  line-height: var(--type-body-md-leading);
+  color: var(--color-text-dt-grey);
+}
+
+.headerCell[data-col="associate"] {
+  width: 300px;
+  flex-shrink: 0;
+}
+
+.headerCell[data-col="status"] {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+}
+
+.cell[data-col="associate"] {
+  width: 300px;
+  flex-shrink: 0;
+  gap: 16px;
+}
+
+.cell[data-col="status"] {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+.hairline {
+  height: 1px;
+  width: 100%;
+  flex-shrink: 0;
+  background-color: var(--wash-neutral-15);
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 100px;
+  object-fit: cover;
+}
+
+.associateInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.associateName {
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  color: var(--color-text-dt-default);
+}
+
+.associatePosition {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-leading);
+  color: var(--color-text-dt-grey);
+}
+
+.statusTag {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-family: var(--type-h4-family);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+}
+
+.statusTag[data-tone="success"] {
+  background-color: var(--wash-success-light-15);
+  color: var(--color-success-300);
+}
+
+.statusTag[data-tone="warning"] {
+  background-color: var(--wash-warning-light-15);
+  color: var(--color-warning-300);
+}
+
+.statusTag[data-tone="danger"] {
+  background-color: var(--wash-danger-light-15);
+  color: var(--color-danger-300);
+}
+
+.empty {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--color-text-dt-grey);
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+}
+
+@media (max-width: 960px) {
+  .row {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}
