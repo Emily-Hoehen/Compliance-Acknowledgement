@@ -1,16 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BadgeCheckIcon, ChevronRightIcon, CircleCheckIcon, LockIcon, NoteStickyIcon } from "./icons";
+import { BroomWideIcon, CircleCheckIcon, ClipboardCheckIcon, ClockIcon, LockIcon, NoteStickyIcon, VectorSquareIcon } from "./icons";
 import { ManagerAppScreenHeader } from "./ManagerAppScreenHeader";
 import {
   CURRENT_MANAGER_ID,
   SECTION_ORDER,
   SECTION_TITLES,
+  allSectionsHaveNotes,
+  formatMinutesRemaining,
+  formatTightClockTime,
   getManager,
   getResponsibleManager,
   getSectionNoteCount,
   getSectionPreview,
+  getShiftEndTimeLabel,
+  getShiftMinutesRemaining,
+  getShiftReportHeading,
   type SectionKey,
   type ShiftReportState,
 } from "../../lib/managerShiftReportData";
@@ -20,25 +26,48 @@ export type ManagerAppShiftReportListProps = {
   shift: ShiftReportState;
   onBack: () => void;
   onOpenSection: (key: SectionKey) => void;
+  onOpenManagers: () => void;
   onComplete: () => void;
+  /** True while ManagerAppHome renders this screen's header itself (outside the slide-transition layer, so the header bar never slides — only the content beneath it does). */
+  hideHeader?: boolean;
 };
 
 const CONFIRM_EXIT_DURATION_MS = 260;
 
+/** Icon + wash/icon color per section, matching Figma fileKey 0UJDRcrFiXkn16yfc2MUEW, node 134:26579's own icon bubbles — same hue-@15%-wash-plus-"100"-icon pairing convention as ManagerAppHome's KPI row. */
+const SECTION_ICON: Record<SectionKey, { icon: React.ReactNode; wash: string; color: string }> = {
+  shiftNotes: { icon: <NoteStickyIcon />, wash: "var(--wash-pinkle-light-15)", color: "var(--color-datavis-pinkle-100)" },
+  hoursHeadcount: { icon: <ClockIcon />, wash: "var(--wash-warning-15)", color: "var(--color-text-dt-warning)" },
+  areaCoverage: { icon: <VectorSquareIcon />, wash: "var(--wash-primary-15)", color: "var(--color-text-dt-blue)" },
+  serviceCoverage: { icon: <BroomWideIcon />, wash: "rgba(175, 153, 255, 0.15)", color: "var(--color-datavis-purple-100)" },
+  quality: { icon: <ClipboardCheckIcon />, wash: "var(--wash-success-light-15)", color: "var(--color-success-100)" },
+};
+
 /**
  * ManagerAppShiftReportList — the Day Shift Report section list.
- * Reached from Home's "End of Shift Report" tile. Shows who was on
- * shift (with the Responsible Manager flagged), then one row per
- * report section with a preview stat and note count; tapping a row
- * pushes ManagerAppShiftReportSection. The Complete Shift Report
- * action at the bottom only fires for the Responsible Manager —
- * everyone else sees the same slot as a locked, informational state.
+ * Reached from Home's "End of Shift Report" tile. Shows the shift's
+ * own live heading, a Shift Managers row that pushes its own full
+ * roster screen (clock times, Responsible Manager flag, live Checked
+ * In/Out status), then one row per report section with its own
+ * preview stat and a check-circle
+ * — grey until that section has at least one note, green once it
+ * does. No arrows anywhere on this screen; nothing here is a "drill
+ * into a list" affordance. Complete Report is a fixed footer: dimmed
+ * and inert until every section has a note, then actionable only for
+ * the Responsible Manager — everyone else sees a locked, informational
+ * state instead once notes are complete.
  */
-export function ManagerAppShiftReportList({ shift, onBack, onOpenSection, onComplete }: ManagerAppShiftReportListProps) {
+export function ManagerAppShiftReportList({ shift, onBack, onOpenSection, onOpenManagers, onComplete, hideHeader }: ManagerAppShiftReportListProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const currentManager = getManager(shift, CURRENT_MANAGER_ID);
   const responsibleManager = getResponsibleManager(shift);
   const isCurrentResponsible = currentManager?.isResponsible ?? false;
+  const leadManager = shift.managers[0];
+  const minutesRemaining = getShiftMinutesRemaining(shift.shiftKey);
+  const hasEnded = minutesRemaining <= 0;
+  const readyToComplete = allSectionsHaveNotes(shift);
+  const canComplete = readyToComplete && hasEnded;
+  const isCompleted = Boolean(shift.completedBy);
 
   function handleConfirmComplete() {
     setConfirmOpen(false);
@@ -47,72 +76,77 @@ export function ManagerAppShiftReportList({ shift, onBack, onOpenSection, onComp
 
   return (
     <div className={styles.screen}>
-      <ManagerAppScreenHeader title="Day Shift Report" onBack={onBack} />
+      {!hideHeader && <ManagerAppScreenHeader title="End of Shift Report" onBack={onBack} />}
 
-      <div className={styles.main}>
-        <div className={styles.group}>
-          <span className={styles.groupLabel}>Shift Managers</span>
-          <div className={styles.managersCard}>
-            {shift.managers.map((manager) => (
-              <div key={manager.id} className={styles.managerRow}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={manager.avatar} alt="" className={styles.managerAvatar} />
-                <div className={styles.managerInfo}>
-                  <div className={styles.managerNameRow}>
-                    <span className={styles.managerName}>{manager.name}</span>
-                    {manager.isResponsible && (
-                      <span className={styles.responsibleBadge}>
-                        <BadgeCheckIcon />
-                        Responsible Manager
-                      </span>
-                    )}
-                  </div>
-                  <span className={styles.managerRole}>{manager.role}</span>
-                  <span className={styles.managerTimes}>
-                    {manager.clockIn} – {manager.clockOut} · {manager.totalTime}
-                  </span>
-                </div>
-              </div>
-            ))}
+      <div className={[styles.main, isCompleted ? styles.mainNoFooter : ""].filter(Boolean).join(" ")}>
+        <div className={styles.titleBlock}>
+          <h1 className={styles.heading}>{getShiftReportHeading(shift.shiftKey)}</h1>
+          <div className={styles.metaRow}>
+            <span className={styles.metaTime}>
+              {formatTightClockTime(leadManager.clockIn)} to {hasEnded ? getShiftEndTimeLabel(shift.shiftKey) : "Current"}
+            </span>
+            <span className={styles.metaDot}>•</span>
+            <span className={hasEnded ? styles.metaEnded : styles.metaCountdown}>{hasEnded ? "Shift has ended" : `Shift ends in ${formatMinutesRemaining(minutesRemaining)}`}</span>
           </div>
         </div>
 
-        <div className={styles.group}>
-          <span className={styles.groupLabel}>Report Sections</span>
-          <div className={styles.sectionsCard}>
-            {SECTION_ORDER.map((key) => (
+        {isCompleted && (
+          <div className={styles.completedBanner}>
+            <CircleCheckIcon className={styles.completeIconDone} />
+            <div className={styles.completeText}>
+              <span className={styles.completeTitle}>Report Completed</span>
+              <span className={styles.completeCaption}>
+                By {getManager(shift, shift.completedBy!)?.name ?? "a manager"} at {shift.completedAt}
+              </span>
+            </div>
+          </div>
+        )}
+
+        <div className={styles.sectionsGroup}>
+          <button type="button" className={styles.sectionRow} onClick={onOpenManagers}>
+            <div className={styles.sectionRowMain}>
+              <span className={styles.sectionRowTitle}>Shift Managers</span>
+              <span className={styles.sectionRowPreview}>{shift.managers.length} managers checked into shift</span>
+            </div>
+            <div className={styles.managerAvatarStack}>
+              {shift.managers.slice(0, 4).map((manager) => (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img key={manager.id} src={manager.avatar} alt="" className={styles.managerStackAvatar} />
+              ))}
+            </div>
+          </button>
+
+          {SECTION_ORDER.map((key) => {
+            const sectionDone = getSectionNoteCount(shift, key) > 0;
+            return (
               <button key={key} type="button" className={styles.sectionRow} onClick={() => onOpenSection(key)}>
+                <span className={styles.sectionIconBubble} style={{ backgroundColor: SECTION_ICON[key].wash, color: SECTION_ICON[key].color }}>
+                  {SECTION_ICON[key].icon}
+                </span>
                 <div className={styles.sectionRowMain}>
                   <span className={styles.sectionRowTitle}>{SECTION_TITLES[key]}</span>
                   <span className={styles.sectionRowPreview}>{getSectionPreview(shift, key)}</span>
                 </div>
-                <div className={styles.sectionRowMeta}>
-                  <span className={styles.noteBadge}>
-                    <NoteStickyIcon />
-                    {getSectionNoteCount(shift, key)}
-                  </span>
-                  <ChevronRightIcon className={styles.chevron} />
-                </div>
+                {!isCompleted && <CircleCheckIcon className={[styles.sectionCheck, sectionDone ? styles.sectionCheckDone : ""].filter(Boolean).join(" ")} />}
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
 
-        <div className={styles.group}>
-          <span className={styles.groupLabel}>Complete Shift Report</span>
-          {shift.completedBy ? (
-            <div className={styles.completeCard}>
-              <CircleCheckIcon className={styles.completeIconDone} />
-              <div className={styles.completeText}>
-                <span className={styles.completeTitle}>Report completed</span>
-                <span className={styles.completeCaption}>
-                  By {getManager(shift, shift.completedBy)?.name ?? "a manager"} at {shift.completedAt}
-                </span>
-              </div>
-            </div>
+        {!isCompleted && !canComplete && (
+          <p className={styles.completionHint}>Shift report can only be completed once a shift has ended and all sections have at least one note added</p>
+        )}
+      </div>
+
+      {!isCompleted && (
+        <div className={styles.footer}>
+          {!canComplete ? (
+            <button type="button" className={styles.completeButton} disabled>
+              Complete Report
+            </button>
           ) : isCurrentResponsible ? (
             <button type="button" className={styles.completeButton} onClick={() => setConfirmOpen(true)}>
-              Complete Shift Report
+              Complete Report
             </button>
           ) : (
             <div className={styles.completeCard}>
@@ -126,7 +160,7 @@ export function ManagerAppShiftReportList({ shift, onBack, onOpenSection, onComp
             </div>
           )}
         </div>
-      </div>
+      )}
 
       <CompleteConfirmSheet open={confirmOpen} onConfirm={handleConfirmComplete} onCancel={() => setConfirmOpen(false)} />
     </div>

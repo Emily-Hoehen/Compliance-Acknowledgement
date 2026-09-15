@@ -85,44 +85,57 @@ export function ManagerAppClockSheet({ open, mode, elapsedLabel, selectedShift, 
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
-        <span className={styles.grabber} aria-hidden="true" />
-
         <h2 id={titleId} className={styles.title}>
           {isCheckIn ? "Check in to start your shift" : "Check out to end your shift"}
         </h2>
-        <p className={styles.subtitle}>
-          {isCheckIn
-            ? "We’ve confirmed your location to help verify your check-in."
-            : `You’re about to end your shift after ${elapsedLabel ?? "0m"}.`}
-        </p>
 
         {isCheckIn && (
-          <div className={styles.shiftPicker}>
-            <span className={styles.shiftPickerLabel}>Clocking in for</span>
-            <div className={styles.shiftPickerRow}>
-              {SHIFT_OPTIONS.map((shift) => (
-                <button
-                  key={shift.key}
-                  type="button"
-                  className={[styles.shiftOption, selectedShift === shift.key ? styles.shiftOptionSelected : ""].filter(Boolean).join(" ")}
-                  aria-pressed={selectedShift === shift.key}
-                  onClick={() => onSelectShift(shift.key)}
-                >
-                  {shift.label}
-                </button>
-              ))}
+          <>
+            <div className={styles.shiftPicker}>
+              <span className={styles.shiftPickerLabel}>Checking in for</span>
+              <div className={styles.shiftPickerRow}>
+                {SHIFT_OPTIONS.map((shift) => (
+                  <button
+                    key={shift.key}
+                    type="button"
+                    className={[styles.shiftOption, selectedShift === shift.key ? styles.shiftOptionSelected : ""].filter(Boolean).join(" ")}
+                    aria-pressed={selectedShift === shift.key}
+                    onClick={() => onSelectShift(shift.key)}
+                  >
+                    {shift.label}
+                  </button>
+                ))}
+              </div>
+              <span className={styles.shiftPickerCaption}>{SHIFT_OPTIONS.find((s) => s.key === selectedShift)?.timeRange}</span>
             </div>
-            <span className={styles.shiftPickerCaption}>{SHIFT_OPTIONS.find((s) => s.key === selectedShift)?.timeRange}</span>
-          </div>
+
+            <span className={styles.divider} aria-hidden="true" />
+          </>
         )}
 
-        <div className={styles.locationBadge}>
-          <CircleCheckIcon className={styles.locationIcon} />
-          <span>You&rsquo;re within the service area.</span>
-        </div>
+        <div className={styles.introGroup}>
+          <p className={styles.subtitle}>
+            {isCheckIn ? (
+              <>
+                We&rsquo;ve confirmed your location to help
+                <br />
+                verify your check-in.
+              </>
+            ) : (
+              `You’re about to end your shift after ${elapsedLabel ?? "0m"}.`
+            )}
+          </p>
 
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/checkinpic.png" alt="" className={styles.mapPreview} aria-hidden="true" />
+          <div className={styles.locationGroup}>
+            <div className={styles.locationBadge}>
+              <CircleCheckIcon className={styles.locationIcon} />
+              <span>You&rsquo;re within the service area.</span>
+            </div>
+
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/checkinpic.png" alt="" className={styles.mapPreview} aria-hidden="true" />
+          </div>
+        </div>
 
         <div className={styles.actions}>
           <button type="button" className={styles.confirmButton} onClick={onConfirm}>

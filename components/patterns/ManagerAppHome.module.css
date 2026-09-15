@@ -23,10 +23,10 @@
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  height: 28px;
+  height: 40px;
   padding: 0 12px;
   flex-shrink: 0;
-  background-color: var(--color-neutral-900);
+  background-color: var(--color-neutral-800);
 }
 
 /* Empty middle slot — AndroidPhoneFrame masks a hole through the
@@ -47,6 +47,93 @@
 .statusBarIcon {
   width: 16px;
   height: 16px;
+}
+
+/* ---------------- Screen navigation transitions ----------------
+   Pushing a screen (navigateForward in ManagerAppHome.tsx) mounts it
+   wrapped in .screenEnter, sliding it in from the right over whatever
+   was there. Going back (navigateBack) instead leaves the revealed
+   target screen static and mounts the outgoing screen as a fixed
+   .screenExitOverlay on top, sliding IT out to the right — same
+   "reveal" motion as a real device. The ManagerAppScreenHeader bar
+   itself is rendered once by ManagerAppHome, OUTSIDE both of these
+   layers (each pushed screen component renders it with hideHeader
+   instead) — the header never slides, only the content below it
+   does, so .screenBody/.screenExitOverlay start below both the real
+   status bar (40px) and that header (48px) rather than at top:40px
+   like ManagerAppNoteComposerModal's own full-bleed overlay. */
+
+/* Always position:fixed and viewport-sized (matching .screenExitOverlay) — NOT a
+   normal-flow block. A pushed screen's own internal .footer is position:fixed
+   too, so it needs its nearest transformed/positioned ancestor's box to already
+   be exactly viewport-tall at every moment, animating or not; a plain block
+   wrapper only gets that box during the slide animation itself (a running
+   transform briefly makes it one), so the footer would compute against the
+   wrapper's full (often taller-than-viewport, scrollable-content) height for
+   that instant and jump to the wrong spot the moment the animation ended — the
+   "footer falls down" glitch. Being permanently fixed avoids that: the box is
+   always viewport-sized, so the footer's position never has to jump. */
+.screenBody {
+  position: fixed;
+  top: 88px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  overflow-y: auto;
+  background-color: var(--color-neutral-900);
+  /* No visible scrollbar — matches AndroidPhoneFrame's own .scrollArea; a real app has no persistent scrollbar chrome. */
+  scrollbar-width: none;
+}
+
+.screenBody::-webkit-scrollbar {
+  display: none;
+}
+
+.screenEnter {
+  animation: screenSlideInRight 260ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes screenSlideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.screenExitOverlay {
+  position: fixed;
+  top: 88px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  overflow-y: auto;
+  background-color: var(--color-neutral-900);
+  animation: screenSlideOutRight 260ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  scrollbar-width: none;
+}
+
+.screenExitOverlay::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes screenSlideOutRight {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screenEnter,
+  .screenExitOverlay {
+    animation: none;
+  }
 }
 
 /* AOSP "Body/Medium" spec (Figma fileKey SWFMjlBJ4u9vSrVaomRe12,
@@ -82,7 +169,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 8px 4px 20px;
+  height: 56px;
+  padding: 0 8px 0 20px;
   flex-shrink: 0;
 }
 
@@ -106,10 +194,6 @@
   color: var(--color-text-dt-default);
   font-size: 20px;
   cursor: pointer;
-}
-
-.bellButton:hover {
-  background-color: rgba(250, 251, 252, 0.06);
 }
 
 /* ---------------- User row ---------------- */
@@ -211,10 +295,6 @@
   cursor: pointer;
 }
 
-.cardButton:hover {
-  background-color: var(--color-neutral-750);
-}
-
 .iconBubble {
   display: flex;
   align-items: center;
@@ -271,10 +351,6 @@
   text-align: center;
   cursor: pointer;
   transition: background-color 120ms ease;
-}
-
-.shiftCard:hover {
-  background-color: var(--color-neutral-700);
 }
 
 .shiftCard:focus-visible {

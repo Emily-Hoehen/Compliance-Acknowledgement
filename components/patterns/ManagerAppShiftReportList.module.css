@@ -1,8 +1,9 @@
 /* ============================================================
    ManagerAppShiftReportList — Day Shift Report section-list screen,
-   reached from Home's "End of Shift Report" tile. Same dark-theme
-   card/tag language as the rest of the Manager App home screen
-   (ManagerAppHome.module.css) — no new visual system introduced.
+   reached from Home's "End of Shift Report" tile. Matches Figma
+   fileKey 0UJDRcrFiXkn16yfc2MUEW, node 134:26579 — same dark-theme
+   card/tag language as the rest of the Manager App (ManagerAppHome.
+   module.css), no new visual system introduced.
    ============================================================ */
 
 .screen {
@@ -17,111 +18,83 @@
 .main {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
   padding: 16px;
+  /* Room for .footer (fixed, ~80px tall) so it never covers the last row. */
+  padding-bottom: 96px;
 }
 
-.groupLabel {
-  font-family: var(--type-h4-family);
-  font-weight: 500;
-  font-size: 14px;
+/* Completed reports render no footer at all — view only, nothing to pin above. */
+.mainNoFooter {
+  padding-bottom: 16px;
+}
+
+/* ---------------- Heading ---------------- */
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.heading {
+  font-family: var(--type-h2-family);
+  font-weight: var(--type-h2-weight);
+  font-size: var(--type-h2-size);
+  line-height: var(--type-h2-leading);
   letter-spacing: -0.02em;
-  color: var(--color-text-dt-grey);
 }
 
-.group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* ---------------- Shift Managers ---------------- */
-
-.managersCard {
-  display: flex;
-  flex-direction: column;
-  border-radius: 12px;
-  background-color: var(--surface-dt-card);
-  box-shadow: var(--shadow-dt-card);
-  overflow: hidden;
-}
-
-.managerRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-}
-
-.managerRow + .managerRow {
-  border-top: 1px solid var(--surface-dt-hairline);
-}
-
-.managerAvatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 100px;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.managerInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.managerNameRow {
+.metaRow {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
-.managerName {
-  font-family: var(--type-h4-family);
-  font-weight: 500;
-  font-size: 15px;
-  letter-spacing: -0.02em;
+.metaTime {
+  font-family: var(--type-h3-family);
+  font-weight: var(--type-h3-weight);
+  font-size: 14px;
+  line-height: 20px;
 }
 
-.responsibleBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 100px;
-  background-color: var(--wash-success-15);
-  color: var(--color-text-dt-success);
-  font-family: var(--type-body-sm-family);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
+.metaDot {
+  font-family: var(--type-h3-family);
+  font-weight: var(--type-h3-weight);
+  font-size: 14px;
+  line-height: 20px;
 }
 
-.managerRole {
-  font-family: var(--type-body-sm-family);
-  font-size: 13px;
+.metaCountdown {
+  font-family: var(--type-body-md-family);
+  font-weight: var(--type-body-md-weight);
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-leading);
+  color: var(--color-text-dt-warning);
+}
+
+.metaEnded {
+  font-family: var(--type-body-md-family);
+  font-weight: var(--type-body-md-weight);
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-leading);
   color: var(--color-text-dt-grey);
 }
 
-.managerTimes {
-  font-family: var(--type-body-sm-family);
-  font-size: 12px;
+.completionHint {
+  font-family: var(--type-body-md-family);
+  font-weight: var(--type-body-md-weight);
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-leading);
   color: var(--color-text-dt-grey);
 }
 
-/* ---------------- Report sections ---------------- */
+/* ---------------- Shift Managers + report sections — each its own card, 16px gap between (not one shared list) ---------------- */
 
-.sectionsCard {
+.sectionsGroup {
   display: flex;
   flex-direction: column;
-  border-radius: 12px;
-  background-color: var(--surface-dt-card);
-  box-shadow: var(--shadow-dt-card);
-  overflow: hidden;
+  gap: 16px;
 }
 
 .sectionRow {
@@ -129,77 +102,112 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 14px 16px;
+  min-height: 74px;
+  padding: 16px;
   border: none;
-  background: transparent;
+  border-radius: 4px;
+  background-color: var(--surface-dt-card);
+  box-shadow: var(--shadow-dt-card);
   color: var(--color-text-dt-default);
   text-align: left;
   cursor: pointer;
+  box-sizing: border-box;
 }
 
-.sectionRow + .sectionRow {
-  border-top: 1px solid var(--surface-dt-hairline);
-}
-
-.sectionRow:hover {
-  background-color: rgba(250, 251, 252, 0.04);
+.sectionIconBubble {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 21px;
+  font-size: 16px;
 }
 
 .sectionRowMain {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   flex: 1;
   min-width: 0;
 }
 
 .sectionRowTitle {
-  font-family: var(--type-h4-family);
-  font-weight: 500;
-  font-size: 15px;
+  font-family: var(--type-h3-family);
+  font-weight: var(--type-h3-weight);
+  font-size: 16px;
+  line-height: 1;
   letter-spacing: -0.02em;
 }
 
 .sectionRowPreview {
   font-family: var(--type-body-sm-family);
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 18px;
+  letter-spacing: -0.02em;
   color: var(--color-text-dt-grey);
 }
 
-.sectionRowMeta {
+/* One per report section — grey until that section has at least one note, then green. Not a navigation affordance (no arrows anywhere on this screen); it's the section's own "done" state. */
+.sectionCheck {
+  flex-shrink: 0;
+  font-size: 20px;
+  color: var(--color-neutral-600);
+}
+
+.sectionCheckDone {
+  color: var(--color-text-dt-success);
+}
+
+/* ---------------- Shift Managers row's avatar stack + expanded roster ---------------- */
+
+.managerAvatarStack {
   display: flex;
-  align-items: center;
-  gap: 8px;
   flex-shrink: 0;
 }
 
-.noteBadge {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
+.managerStackAvatar {
+  width: 36px;
+  height: 36px;
   border-radius: 100px;
-  background-color: var(--color-neutral-700);
-  color: var(--color-text-dt-default);
-  font-family: var(--type-body-sm-family);
-  font-size: 12px;
-  font-weight: 500;
+  object-fit: cover;
+  margin-left: -8px;
+  box-shadow: 0 0 0 2px var(--color-text-dt-blue);
 }
 
-.chevron {
-  font-size: 13px;
-  color: var(--color-text-dt-grey);
+.managerStackAvatar:first-child {
+  margin-left: 0;
 }
 
-/* ---------------- Complete Shift Report ---------------- */
+/* ---------------- Fixed footer: Complete Report ---------------- */
+
+.footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  padding: 16px;
+  background-color: var(--surface-dt-card);
+  box-shadow: 0px -4px 2px rgba(24, 30, 36, 0.15);
+}
 
 .completeCard {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  background-color: var(--surface-dt-card);
+}
+
+/* The completed-report banner at the top of the page (Figma fileKey 0UJDRcrFiXkn16yfc2MUEW, node 168:32963) — unlike .completeCard (a plain row inside the already-surfaced .footer), this is its own success-wash card since the footer is gone entirely once a report is completed. */
+.completedBanner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  border-radius: 4px;
+  background-color: var(--wash-success-light-15);
   box-shadow: var(--shadow-dt-card);
 }
 
@@ -239,21 +247,22 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 14px;
+  height: 48px;
   border: none;
-  border-radius: 100px;
+  border-radius: 4px;
   background-color: var(--color-primary-300);
-  color: var(--color-text-dt-default-inverted);
-  font-family: var(--type-h4-family);
-  font-weight: 600;
-  font-size: 15px;
+  color: var(--color-neutral-900);
+  font-family: var(--type-h3-family);
+  font-weight: var(--type-h3-weight);
+  font-size: 16px;
   letter-spacing: -0.02em;
   cursor: pointer;
-  transition: filter 120ms ease;
 }
 
-.completeButton:hover {
-  filter: brightness(1.08);
+/* Every section needs a note before this is actionable — dimmed and inert until then, same button either way so it reads as "not yet", not a different control. */
+.completeButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .completeButton:focus-visible {
@@ -346,17 +355,9 @@
   color: var(--color-text-dt-default-inverted);
 }
 
-.confirmButton:hover {
-  filter: brightness(1.08);
-}
-
 .cancelButton {
   background-color: var(--color-neutral-700);
   color: var(--color-text-dt-default);
-}
-
-.cancelButton:hover {
-  background-color: var(--color-neutral-600);
 }
 
 .confirmButton:focus-visible,

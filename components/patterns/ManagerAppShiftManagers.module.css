@@ -1,0 +1,125 @@
+/* ============================================================
+   ManagerAppShiftManagers — full-screen Shift Managers detail,
+   pushed from the Day Shift Report's own Shift Managers row.
+   Matches Figma fileKey 0UJDRcrFiXkn16yfc2MUEW, node 148:30165.
+   ============================================================ */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background-color: var(--color-neutral-900);
+  color: var(--color-text-dt-default);
+  font-family: var(--font-family-ui);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  padding: 16px 0;
+  border-radius: 8px;
+  background-color: var(--surface-dt-card);
+}
+
+.cardTopRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+}
+
+.associateTile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 100px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.nameDetails {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.name {
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+.role {
+  font-family: var(--type-body-md-family);
+  font-size: 14px;
+  line-height: var(--type-body-md-leading);
+  color: var(--color-text-dt-grey);
+}
+
+.statusLabel {
+  flex-shrink: 0;
+  font-family: var(--type-h4-family);
+  font-weight: var(--type-h4-weight);
+  font-size: var(--type-h4-size);
+  line-height: var(--type-h4-leading);
+  text-align: right;
+}
+
+.statusLabel[data-checked-in="true"] {
+  color: var(--color-text-dt-warning);
+}
+
+.statusLabel[data-checked-in="false"] {
+  color: var(--color-text-dt-grey);
+}
+
+.timeSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.timeLabel {
+  padding: 0 12px;
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--color-text-dt-grey);
+}
+
+.timeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px;
+  font-family: var(--type-body-md-family);
+  font-size: 14px;
+  line-height: var(--type-body-md-leading);
+  color: var(--color-text-dt-default);
+}

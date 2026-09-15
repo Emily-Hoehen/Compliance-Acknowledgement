@@ -18,6 +18,23 @@
   flex-direction: column;
   gap: 20px;
   padding: 16px;
+  /* Room for .footer (fixed, ~80px tall) so it never covers the last row. */
+  padding-bottom: 96px;
+}
+
+/* Completed (locked) reports render no footer at all — view only, nothing to pin above. */
+.mainNoFooter {
+  padding-bottom: 16px;
+}
+
+/* Shift Notes' own zero state — no auto-captured data to show for this section, so an empty Shift Notes screen replaces the usual data card + Notes group with just this centered prompt. */
+.zeroState {
+  padding-top: 24px;
+  color: var(--color-text-dt-grey);
+  font-family: var(--type-body-md-family);
+  font-size: 14px;
+  line-height: 22px;
+  text-align: center;
 }
 
 .groupLabel {
@@ -50,170 +67,251 @@
   color: var(--color-text-dt-grey);
 }
 
-/* ---------------- Headline stat (percent + count) ---------------- */
+/* ---------------- Shift Captured Data heading (all Auto-Captured Data sections) ---------------- */
 
-.headline {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.headlineValue {
-  font-family: var(--type-h2-family);
-  font-weight: var(--type-h2-weight);
-  font-size: 32px;
-  line-height: 1;
+/* A plain card title used above a rows-group with no ring stat above it (Quality's own Report Its/Safety cards). */
+.cardTitle {
+  font-family: var(--type-h3-family);
+  font-weight: var(--type-h3-weight);
+  font-size: var(--type-h3-size);
+  line-height: var(--type-h3-leading);
   letter-spacing: -0.02em;
+  color: var(--color-text-dt-default);
 }
 
-.headlineCaption {
+.safetyText {
   font-family: var(--type-body-md-family);
   font-size: 14px;
+  color: var(--color-text-dt-default);
+}
+
+.groupLabelBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.groupLabelWhite {
+  font-family: var(--type-h3-family);
+  font-weight: var(--type-h3-weight);
+  font-size: var(--type-h3-size);
+  line-height: var(--type-h3-leading);
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-default);
+}
+
+.groupSubtitle {
+  font-family: var(--type-body-md-family);
+  font-weight: var(--type-body-md-weight);
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-leading);
   color: var(--color-text-dt-grey);
 }
 
-/* ---------------- Stat tile grid (Hours & Headcount) ---------------- */
+.notesLabel {
+  font-family: var(--type-h3-family);
+  font-weight: var(--type-h3-weight);
+  font-size: var(--type-h3-size);
+  line-height: var(--type-h3-leading);
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-default);
+}
 
-.statGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+/* ---------------- Hours Captured ring (Hours & Headcount) ---------------- */
+
+.ringStatRow {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 
-.statTile {
+.ringStatDetails {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background-color: var(--color-neutral-800);
 }
 
-.statValue {
-  font-family: var(--type-h3-family);
+.ringWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ringPercentLabel {
+  position: absolute;
+  font-family: var(--type-h4-family);
   font-weight: 700;
-  font-size: 18px;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-default);
+}
+
+.ringStatLabel {
+  font-family: var(--type-body-lg-family);
+  font-weight: var(--type-body-lg-weight);
+  font-size: var(--type-body-lg-size);
+  line-height: var(--type-body-lg-leading);
+}
+
+.ringStatValueStack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Inline variant (Areas Serviced / Services Completed match the Figma layout as-is: value and caption sit on one baseline, unlike Hours Captured's own stacked request). */
+.ringStatValueRow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.ringStatValue {
+  font-family: var(--type-h2-family);
+  font-weight: var(--type-h2-weight);
+  font-size: 20px;
   letter-spacing: -0.02em;
 }
 
-.statLabel {
-  font-family: var(--type-body-sm-family);
-  font-size: 12px;
+.ringStatCaption {
+  font-family: var(--type-body-md-family);
+  font-weight: var(--type-body-md-weight);
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-leading);
   color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Headcount rows (Hours & Headcount) ----------------
+   Own gap on this wrapper (not .card's own 16px flex gap, and not a
+   margin-top on .headcountRow) since .card is shared with other
+   AutoCapturedData cards elsewhere — this group is the card's one
+   direct child, so its own gap is the only one to affect these rows. */
+
+.headcountRowsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.headcountRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.headcountRowIndented {
+  padding-left: 24px;
+}
+
+.headcountRowMuted .headcountLabel,
+.headcountRowMuted .headcountValue {
+  color: var(--color-text-dt-grey);
+}
+
+.headcountLabel {
+  flex: 1;
+  font-family: var(--type-body-md-family);
+  font-size: 14px;
+}
+
+.headcountValue {
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 16px;
 }
 
 /* ---------------- Area Coverage breakdown ---------------- */
 
+.breakdownRowsGroup {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
 .breakdownRow {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  padding: 12px 0;
 }
 
-.breakdownRow + .breakdownRow {
-  margin-top: 4px;
-}
-
-.breakdownDot {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 100px;
+/* Colored bar (not a dot) — matches Figma's own breakdown-row treatment, colored per category. */
+.breakdownBar {
+  width: 4px;
+  height: 16px;
+  border-radius: 4px;
   flex-shrink: 0;
-  font-size: 11px;
-}
-
-.breakdownDot[data-tone="neutral"] {
-  background-color: var(--wash-neutral-15);
-  color: var(--color-text-dt-grey);
-}
-
-.breakdownDot[data-tone="warning"] {
-  background-color: var(--wash-warning-15);
-  color: var(--color-text-dt-warning);
-}
-
-.breakdownDot[data-tone="success"] {
-  background-color: var(--wash-success-15);
-  color: var(--color-text-dt-success);
 }
 
 .breakdownLabel {
   flex: 1;
-  font-family: var(--type-body-md-family);
+  font-family: var(--type-h4-family);
+  font-weight: 500;
   font-size: 14px;
 }
 
 .breakdownValue {
-  font-family: var(--type-h4-family);
-  font-weight: 600;
+  font-family: var(--type-body-md-family);
   font-size: 14px;
+  text-align: right;
 }
 
-/* ---------------- Quality score cards ---------------- */
+.breakdownPercent {
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Quality score rows ---------------- */
+
+.qualityCardsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
 
 .qualityRow {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
 }
 
-.qualityCard {
+.qualityScoreChip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 56px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background-color: var(--color-success-100);
+  color: var(--color-text-dt-default-inverted);
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.qualityRowDetails {
   display: flex;
   flex-direction: column;
   gap: 2px;
   flex: 1;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background-color: var(--color-neutral-800);
+  min-width: 0;
 }
 
-.qualityScore {
-  font-family: var(--type-h3-family);
-  font-weight: 700;
-  font-size: 18px;
-  color: var(--color-text-dt-success);
+.qualityRowLabel {
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 14px;
 }
 
-.qualityLabel {
-  font-family: var(--type-body-sm-family);
-  font-size: 12px;
-  letter-spacing: -0.02em;
-}
-
-.qualityCaption {
-  font-family: var(--type-body-sm-family);
-  font-size: 11px;
-  color: var(--color-text-dt-grey);
-}
-
-.inlineStatRow {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 0;
-}
-
-.inlineStatRow + .inlineStatRow {
-  border-top: 1px solid var(--surface-dt-hairline);
-  padding-top: 10px;
-}
-
-.inlineStatLabel {
-  flex-shrink: 0;
-  white-space: nowrap;
+.qualityRowCaption {
   font-family: var(--type-body-md-family);
   font-size: 14px;
   color: var(--color-text-dt-grey);
-}
-
-.inlineStatValue {
-  text-align: right;
-  font-family: var(--type-h4-family);
-  font-weight: 600;
-  font-size: 14px;
 }
 
 /* ---------------- Notes list ---------------- */
@@ -225,28 +323,28 @@
 }
 
 .emptyNotes {
-  padding: 14px 16px;
-  border-radius: 12px;
-  background-color: var(--surface-dt-card);
+  width: 100%;
   color: var(--color-text-dt-grey);
   font-family: var(--type-body-md-family);
   font-size: 14px;
+  line-height: 22px;
+  text-align: center;
 }
 
 .noteCard {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  border-left: 4px solid var(--color-neutral-700);
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid var(--color-neutral-750);
   background-color: var(--surface-dt-card);
 }
 
-.noteHeader {
+.noteTopRow {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .noteAvatar {
@@ -257,94 +355,120 @@
   flex-shrink: 0;
 }
 
-.noteAuthor {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  min-width: 0;
-}
-
 .noteName {
   font-family: var(--type-h4-family);
   font-weight: 500;
   font-size: 14px;
   letter-spacing: -0.02em;
-}
-
-.noteRole {
-  font-family: var(--type-body-sm-family);
-  font-size: 12px;
-  color: var(--color-text-dt-grey);
+  color: var(--color-text-dt-default);
 }
 
 .noteTimestamp {
-  margin-left: auto;
-  flex-shrink: 0;
   font-family: var(--type-body-sm-family);
   font-size: 12px;
   color: var(--color-text-dt-grey);
 }
 
 .noteText {
-  font-family: var(--type-body-md-family);
-  font-size: 14px;
-  line-height: 1.5;
+  font-family: var(--type-body-lg-family);
+  font-size: var(--type-body-lg-size);
+  line-height: var(--type-body-lg-leading);
   color: var(--color-text-dt-default);
 }
 
 .noteTagRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 
 .noteTag {
-  padding: 2px 8px;
-  border-radius: 100px;
-  background-color: var(--color-neutral-700);
-  color: var(--color-text-dt-default);
-  font-family: var(--type-body-sm-family);
-  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-family: var(--type-h4-family);
   font-weight: 500;
+  font-size: 14px;
 }
 
-/* ---------------- Add-note trigger (opens ManagerAppNoteComposerModal) ---------------- */
+/* ---------------- Note overflow menu (Edit/Delete — only for the current manager's own notes) ---------------- */
 
-.addNoteTrigger {
+.noteMenuWrap {
+  position: relative;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.noteMenuButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-dt-default);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.noteMenu {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  padding: 4px;
+  border-radius: 8px;
+  background-color: var(--color-neutral-750);
+  box-shadow: var(--shadow-dt-modal);
+}
+
+.noteMenuItem {
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-dt-default);
+  font-family: var(--type-body-md-family);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.noteMenuItemDanger {
+  color: var(--color-text-dt-danger);
+}
+
+/* ---------------- Fixed footer: Add Note (opens ManagerAppNoteComposerModal) ---------------- */
+
+.footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  padding: 16px;
+  background-color: var(--surface-dt-card);
+  box-shadow: 0px -4px 2px rgba(24, 30, 36, 0.15);
+}
+
+.addNoteButton {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   width: 100%;
-  padding: 14px;
-  border: 1px dashed var(--color-neutral-700);
-  border-radius: 12px;
-  background-color: transparent;
-  color: var(--color-text-dt-default);
+  height: 48px;
+  border: none;
+  border-radius: 4px;
+  background-color: var(--color-primary-300);
+  color: var(--color-text-dt-default-inverted);
   font-family: var(--type-h4-family);
-  font-weight: 600;
-  font-size: 14px;
+  font-weight: 500;
+  font-size: 16px;
   letter-spacing: -0.02em;
   cursor: pointer;
-}
-
-.addNoteTrigger:hover {
-  background-color: var(--surface-dt-card);
-}
-
-.lockedNotice {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  background-color: var(--surface-dt-card);
-  color: var(--color-text-dt-grey);
-  font-family: var(--type-body-md-family);
-  font-size: 14px;
-}
-
-.lockedIcon {
-  flex-shrink: 0;
-  font-size: 15px;
 }

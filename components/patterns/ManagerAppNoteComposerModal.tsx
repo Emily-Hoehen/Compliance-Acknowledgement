@@ -8,6 +8,8 @@ export type ManagerAppNoteComposerModalProps = {
   open: boolean;
   sectionTitle: string;
   tagVocabulary: string[];
+  /** When set, the composer opens pre-filled with this note's text/tags and reads "Edit Note" instead of "Add Note". */
+  initialNote?: { text: string; tags: string[] } | null;
   onCancel: () => void;
   onSubmit: (text: string, tags: string[]) => void;
 };
@@ -32,7 +34,7 @@ const KEYBOARD_ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
  * your own keyboard here), but its keys are wired up to actually
  * edit the note text so clicking through the prototype works too.
  */
-export function ManagerAppNoteComposerModal({ open, sectionTitle, tagVocabulary, onCancel, onSubmit }: ManagerAppNoteComposerModalProps) {
+export function ManagerAppNoteComposerModal({ open, tagVocabulary, initialNote, onCancel, onSubmit }: ManagerAppNoteComposerModalProps) {
   const [mounted, setMounted] = useState(open);
   const [closing, setClosing] = useState(false);
   const [text, setText] = useState("");
@@ -44,6 +46,8 @@ export function ManagerAppNoteComposerModal({ open, sectionTitle, tagVocabulary,
     if (open) {
       setMounted(true);
       setClosing(false);
+      setText(initialNote?.text ?? "");
+      setSelectedTags(initialNote?.tags ?? []);
       return;
     }
     if (!mounted) return;
@@ -71,7 +75,7 @@ export function ManagerAppNoteComposerModal({ open, sectionTitle, tagVocabulary,
 
   function handlePost() {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed && selectedTags.length === 0) return;
     onSubmit(trimmed, selectedTags);
   }
 
@@ -125,26 +129,22 @@ export function ManagerAppNoteComposerModal({ open, sectionTitle, tagVocabulary,
           <button type="button" className={styles.iconButton} onClick={onCancel} aria-label="Cancel">
             <XmarkIcon />
           </button>
-          <span className={styles.topBarTitle}>Add Note</span>
-          <button type="button" className={styles.postButton} onClick={handlePost} disabled={text.trim().length === 0}>
-            Post
-          </button>
+          <span className={styles.topBarTitle}>{initialNote ? "Edit Note" : "Add Note"}</span>
+          <span className={styles.iconButton} aria-hidden="true" />
         </div>
 
         <div className={[styles.body, keyboardVisible ? styles.bodyKeyboardPadding : ""].filter(Boolean).join(" ")}>
-          <span className={styles.sectionContext}>Note for {sectionTitle}</span>
-
           <textarea
             ref={textareaRef}
             className={styles.textarea}
-            placeholder="What should the next shift (or the record) know?"
+            placeholder="Add a note to the shift report"
             value={text}
             onChange={(e) => setText(e.target.value)}
             onFocus={() => setKeyboardVisible(true)}
             onBlur={() => setKeyboardVisible(false)}
           />
 
-          <span className={styles.tagPickerLabel}>Tags</span>
+          <span className={styles.tagPickerLabel}>Add tags to your note</span>
           <div className={styles.tagPickerRow}>
             {tagVocabulary.map((tag) => {
               const selected = selectedTags.includes(tag);
@@ -154,6 +154,7 @@ export function ManagerAppNoteComposerModal({ open, sectionTitle, tagVocabulary,
                   type="button"
                   className={[styles.tagOption, selected ? styles.tagOptionSelected : ""].filter(Boolean).join(" ")}
                   aria-pressed={selected}
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => toggleTag(tag)}
                 >
                   {tag}
@@ -163,13 +164,27 @@ export function ManagerAppNoteComposerModal({ open, sectionTitle, tagVocabulary,
           </div>
         </div>
 
-        <AndroidKeyboard
-          visible={keyboardVisible}
-          onKey={(letter) => insertAtCursor(letter)}
-          onSpace={() => insertAtCursor(" ")}
-          onEnter={() => insertAtCursor("\n")}
-          onBackspace={handleBackspace}
-        />
+        <div className={styles.bottomDock}>
+          <div className={styles.footer}>
+            <button
+              type="button"
+              className={styles.saveButton}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={handlePost}
+              disabled={text.trim().length === 0 && selectedTags.length === 0}
+            >
+              Save Note
+            </button>
+          </div>
+
+          <AndroidKeyboard
+            visible={keyboardVisible}
+            onKey={(letter) => insertAtCursor(letter)}
+            onSpace={() => insertAtCursor(" ")}
+            onEnter={() => insertAtCursor("\n")}
+            onBackspace={handleBackspace}
+          />
+        </div>
       </div>
     </div>
   );

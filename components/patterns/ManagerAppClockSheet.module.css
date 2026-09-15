@@ -21,11 +21,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  justify-content: flex-end;
+  gap: 24px;
   width: 100%;
-  padding: 12px 20px 28px;
-  border-radius: 20px 20px 0 0;
-  background-color: var(--surface-dt-card);
+  padding: 40px 16px 32px;
+  border-radius: 16px 16px 0 0;
+  background-color: var(--color-neutral-800);
   box-shadow: var(--shadow-dt-modal);
   color: var(--color-text-dt-default);
   outline: none;
@@ -37,13 +38,6 @@
   animation: sheetSlideDown 260ms cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
-.grabber {
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
-  background-color: var(--color-neutral-600);
-}
-
 .title {
   font-family: var(--type-h2-family);
   font-weight: var(--type-h2-weight);
@@ -53,72 +47,35 @@
   text-align: center;
 }
 
+/* Headers/H3 — Roboto Medium 16/500, 22px leading. */
 .subtitle {
-  margin-top: -8px;
-  font-family: var(--type-body-lg-family);
-  font-size: var(--type-body-lg-size);
-  font-weight: var(--type-body-lg-weight);
-  line-height: var(--type-body-lg-leading);
-  letter-spacing: -0.02em;
-  color: var(--color-text-dt-grey);
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-leading);
   text-align: center;
 }
 
-/* ---------------- Shift picker (check-in only) ---------------- */
-
-.shiftPicker {
+/* Wraps the subtitle and the location+map group — same 24px gap .sheet uses between its own major sections (title / shift picker / divider / this / actions), just also applied within this one. */
+.introGroup {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 24px;
   width: 100%;
 }
 
-.shiftPickerLabel {
-  font-family: var(--type-h4-family);
-  font-weight: 500;
-  font-size: 13px;
-  letter-spacing: -0.02em;
-  color: var(--color-text-dt-grey);
-}
+/* ---------------- Location confirmation + map ---------------- */
 
-.shiftPickerRow {
+.locationGroup {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   width: 100%;
-  padding: 3px;
-  border-radius: 100px;
-  background-color: var(--color-neutral-800);
 }
 
-.shiftOption {
-  flex: 1;
-  padding: 8px 0;
-  border: none;
-  border-radius: 100px;
-  background-color: transparent;
-  color: var(--color-text-dt-grey);
-  font-family: var(--type-h4-family);
-  font-weight: 600;
-  font-size: 13px;
-  letter-spacing: -0.02em;
-  cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease;
-}
-
-.shiftOptionSelected {
-  background-color: var(--color-primary-300);
-  color: var(--color-text-dt-default-inverted);
-}
-
-.shiftPickerCaption {
-  font-family: var(--type-body-sm-family);
-  font-size: 12px;
-  color: var(--color-text-dt-grey);
-}
-
-/* ---------------- Location confirmation ---------------- */
-
-/* Plain checkmark + copy, not a pill/tag — the icon carries its own green color (below) so it still reads as a confirmation even though the row itself has no background. */
+/* Plain checkmark + copy, not a pill/tag — the icon carries its own green color (below) so it still reads as a confirmation even though the row itself has no background. Body/Medium — Roboto Regular 14/400, 22px leading. */
 .locationBadge {
   display: flex;
   align-items: center;
@@ -126,10 +83,10 @@
   gap: 8px;
   width: 100%;
   color: var(--color-text-dt-default);
-  font-family: var(--type-h4-family);
-  font-weight: 500;
-  font-size: 14px;
-  letter-spacing: -0.02em;
+  font-family: var(--type-body-md-family);
+  font-weight: var(--type-body-md-weight);
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-leading);
 }
 
 .locationIcon {
@@ -138,14 +95,75 @@
   color: var(--color-text-dt-success);
 }
 
-/* ---------------- Map preview ---------------- */
-
 .mapPreview {
   display: block;
   width: 100%;
-  height: 140px;
-  border-radius: 12px;
+  height: 159px;
+  border-radius: 4px;
   object-fit: cover;
+}
+
+/* ---------------- Shift picker (check-in only) ---------------- */
+
+.shiftPicker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.shiftPickerLabel {
+  font-family: var(--type-h3-family);
+  font-weight: var(--type-h3-weight);
+  font-size: var(--type-h3-size);
+  line-height: var(--type-h3-leading);
+}
+
+.shiftPickerRow {
+  display: flex;
+  width: 100%;
+  border-radius: 8px;
+  background-color: var(--color-neutral-900);
+}
+
+/* Between the shift picker and the location/map group — plain hairline, same token used for hairlines elsewhere in this app. */
+.divider {
+  width: 100%;
+  height: 1px;
+  flex-shrink: 0;
+  background-color: var(--surface-dt-hairline);
+}
+
+.shiftOption {
+  flex: 1;
+  padding: 16px;
+  border: none;
+  border-radius: 8px;
+  background-color: transparent;
+  color: var(--color-text-dt-grey);
+  font-family: var(--type-h4-clickable-family);
+  font-weight: var(--type-h4-clickable-weight);
+  font-size: var(--type-h4-clickable-size);
+  line-height: var(--type-h4-clickable-leading);
+  letter-spacing: var(--type-h4-clickable-tracking);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.shiftOptionSelected {
+  background-color: var(--color-neutral-850);
+  color: var(--color-text-dt-blue);
+  box-shadow: var(--shadow-dt-card);
+}
+
+/* Body/Medium — Roboto Regular 14/400, 22px leading. */
+.shiftPickerCaption {
+  font-family: var(--type-body-md-family);
+  font-size: var(--type-body-md-size);
+  font-weight: var(--type-body-md-weight);
+  line-height: var(--type-body-md-leading);
+  color: var(--color-text-dt-grey);
 }
 
 /* ---------------- Actions ---------------- */
@@ -153,31 +171,29 @@
 .actions {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
 }
 
+/* Title Medium — Lato Bold 18/700, 24px leading. */
 .confirmButton,
 .cancelButton {
   width: 100%;
-  padding: 14px;
+  height: 52px;
+  padding: 0 24px;
   border: none;
   border-radius: 100px;
-  font-family: var(--type-h4-family);
-  font-weight: 600;
-  font-size: 16px;
-  letter-spacing: -0.02em;
+  font-family: var(--font-family-display);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1.3333;
   cursor: pointer;
-  transition: filter 120ms ease;
+  transition: filter 120ms ease, background-color 120ms ease;
 }
 
 .confirmButton {
   background-color: var(--color-primary-300);
-  color: var(--color-text-dt-default-inverted);
-}
-
-.confirmButton:hover {
-  filter: brightness(1.08);
+  color: var(--color-neutral-800);
 }
 
 .confirmButton:focus-visible,
@@ -187,12 +203,8 @@
 }
 
 .cancelButton {
-  background-color: var(--color-neutral-700);
+  background-color: var(--color-clock-sheet-cancel);
   color: var(--color-text-dt-default);
-}
-
-.cancelButton:hover {
-  background-color: var(--color-neutral-600);
 }
 
 @keyframes sheetRiseIn {

@@ -37,6 +37,10 @@ export function MoreIcon({ className }: IconProps) {
   return fa("solid", "ellipsis-vertical", className);
 }
 
+export function MoreHorizontalIcon({ className }: IconProps) {
+  return fa("solid", "ellipsis", className);
+}
+
 export function BriefcaseIcon({ className }: IconProps) {
   return fa("solid", "briefcase", className);
 }
@@ -192,6 +196,10 @@ export function ChevronLeftIcon({ className }: IconProps) {
   return fa("solid", "chevron-left", className);
 }
 
+export function ArrowLeftIcon({ className }: IconProps) {
+  return fa("solid", "arrow-left", className);
+}
+
 export function ChevronRightIcon({ className }: IconProps) {
   return fa("solid", "chevron-right", className);
 }
@@ -222,6 +230,10 @@ export function NoteStickyIcon({ className }: IconProps) {
 
 export function ClipboardCheckIcon({ className }: IconProps) {
   return fa("solid", "clipboard-check", className);
+}
+
+export function ClipboardListIcon({ className }: IconProps) {
+  return fa("solid", "clipboard-list", className);
 }
 
 export function UserHardHatIcon({ className }: IconProps) {

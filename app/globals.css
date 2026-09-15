@@ -295,6 +295,9 @@
   --color-kpi-complaints: #3c4056;
   --color-kpi-todos: #354b56;
   --color-kpi-reportits: #484343;
+
+  /* ManagerAppClockSheet's Cancel button (Figma fileKey 0UJDRcrFiXkn16yfc2MUEW, node 130:19151) — a specific gray one step off the existing Core/Neutral scale (sits between neutral-600 #5b6671 and neutral-700 #3a434d), not itself a named Core/Neutral step. */
+  --color-clock-sheet-cancel: #474f58;
 }
 
 /* ============================================================

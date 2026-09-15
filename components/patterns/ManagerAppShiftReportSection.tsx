@@ -1,10 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { LockIcon, PlusIcon } from "./icons";
+import { useEffect, useRef, useState } from "react";
+import { MoreHorizontalIcon, PlusIcon } from "./icons";
 import { ManagerAppNoteComposerModal } from "./ManagerAppNoteComposerModal";
 import { ManagerAppScreenHeader } from "./ManagerAppScreenHeader";
-import { getManager, SECTION_TITLES, type SectionKey, type ShiftNote, type ShiftReportState } from "../../lib/managerShiftReportData";
+import { DonutRing, SegmentedDonutRing } from "../ui/Charts";
+import {
+  CURRENT_MANAGER_ID,
+  SECTION_TITLES,
+  formatTightClockTime,
+  getManager,
+  getShiftEndTimeLabel,
+  getShiftMinutesRemaining,
+  getTagColor,
+  type SectionKey,
+  type ShiftNote,
+  type ShiftReportState,
+} from "../../lib/managerShiftReportData";
 import styles from "./ManagerAppShiftReportSection.module.css";
 
 export type ManagerAppShiftReportSectionProps = {
@@ -12,6 +24,10 @@ export type ManagerAppShiftReportSectionProps = {
   sectionKey: SectionKey;
   onBack: () => void;
   onAddNote: (sectionKey: SectionKey, text: string, tags: string[]) => void;
+  onEditNote: (sectionKey: SectionKey, noteId: string, text: string, tags: string[]) => void;
+  onDeleteNote: (sectionKey: SectionKey, noteId: string) => void;
+  /** True while ManagerAppHome renders this screen's header itself (outside the slide-transition layer, so the header bar never slides — only the content beneath it does). */
+  hideHeader?: boolean;
 };
 
 /**
@@ -23,50 +39,97 @@ export type ManagerAppShiftReportSectionProps = {
  * another. Notes are additive: this never edits or removes another
  * manager's note, only appends the current manager's own.
  */
-export function ManagerAppShiftReportSection({ shift, sectionKey, onBack, onAddNote }: ManagerAppShiftReportSectionProps) {
+export function ManagerAppShiftReportSection({ shift, sectionKey, onBack, onAddNote, onEditNote, onDeleteNote, hideHeader }: ManagerAppShiftReportSectionProps) {
   const section = shift.sections[sectionKey];
   const isLocked = Boolean(shift.completedBy);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<ShiftNote | null>(null);
+
+  function openComposerForNew() {
+    setEditingNote(null);
+    setComposerOpen(true);
+  }
+
+  function openComposerForEdit(note: ShiftNote) {
+    setEditingNote(note);
+    setComposerOpen(true);
+  }
 
   return (
     <div className={styles.screen}>
-      <ManagerAppScreenHeader title={SECTION_TITLES[sectionKey]} onBack={onBack} />
-      <div className={styles.main}>
-        <AutoCapturedData shift={shift} sectionKey={sectionKey} />
-
-        <div className={styles.group}>
-          <span className={styles.groupLabel}>Notes</span>
-          {section.notes.length === 0 ? (
-            <p className={styles.emptyNotes}>No notes yet — be the first to add one.</p>
-          ) : (
-            <div className={styles.notesList}>
-              {section.notes.map((note) => (
-                <NoteCard key={note.id} shift={shift} note={note} />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {isLocked ? (
-          <div className={styles.lockedNotice}>
-            <LockIcon className={styles.lockedIcon} />
-            <span>This shift report has been completed and is locked — no further notes can be added.</span>
+      {!hideHeader && <ManagerAppScreenHeader title={SECTION_TITLES[sectionKey]} onBack={onBack} />}
+      <div className={[styles.main, isLocked ? styles.mainNoFooter : ""].filter(Boolean).join(" ")}>
+        {sectionKey === "shiftNotes" && section.notes.length === 0 ? (
+          <p className={styles.zeroState}>
+            No shift notes have been added.
+            <br />
+            Add a note below
+          </p>
+        ) : sectionKey === "shiftNotes" ? (
+          <div className={styles.notesList}>
+            {section.notes.map((note) => (
+              <NoteCard
+                key={note.id}
+                shift={shift}
+                note={note}
+                canManage={!isLocked && note.managerId === CURRENT_MANAGER_ID}
+                onEdit={() => openComposerForEdit(note)}
+                onDelete={() => onDeleteNote(sectionKey, note.id)}
+              />
+            ))}
           </div>
         ) : (
-          <button type="button" className={styles.addNoteTrigger} onClick={() => setComposerOpen(true)}>
-            <PlusIcon />
-            Add a Note
-          </button>
+          <>
+            <AutoCapturedData shift={shift} sectionKey={sectionKey} />
+
+            <div className={styles.group}>
+              <span className={styles.notesLabel}>Notes</span>
+              {section.notes.length === 0 ? (
+                <p className={styles.emptyNotes}>
+                  No notes have been added to this section.
+                  <br />
+                  Add a note below
+                </p>
+              ) : (
+                <div className={styles.notesList}>
+                  {section.notes.map((note) => (
+                    <NoteCard
+                      key={note.id}
+                      shift={shift}
+                      note={note}
+                      canManage={!isLocked && note.managerId === CURRENT_MANAGER_ID}
+                      onEdit={() => openComposerForEdit(note)}
+                      onDelete={() => onDeleteNote(sectionKey, note.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
+
+      {!isLocked && (
+        <div className={styles.footer}>
+          <button type="button" className={styles.addNoteButton} onClick={openComposerForNew}>
+            <PlusIcon />
+            Add Note
+          </button>
+        </div>
+      )}
 
       <ManagerAppNoteComposerModal
         open={composerOpen}
         sectionTitle={SECTION_TITLES[sectionKey]}
         tagVocabulary={section.tagVocabulary}
+        initialNote={editingNote}
         onCancel={() => setComposerOpen(false)}
         onSubmit={(text, tags) => {
-          onAddNote(sectionKey, text, tags);
+          if (editingNote) {
+            onEditNote(sectionKey, editingNote.id, text, tags);
+          } else {
+            onAddNote(sectionKey, text, tags);
+          }
           setComposerOpen(false);
         }}
       />
@@ -74,27 +137,84 @@ export function ManagerAppShiftReportSection({ shift, sectionKey, onBack, onAddN
   );
 }
 
-function NoteCard({ shift, note }: { shift: ShiftReportState; note: ShiftNote }) {
+function NoteCard({
+  shift,
+  note,
+  canManage,
+  onEdit,
+  onDelete,
+}: {
+  shift: ShiftReportState;
+  note: ShiftNote;
+  canManage: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   const author = getManager(shift, note.managerId);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handlePointerDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [menuOpen]);
+
   return (
     <div className={styles.noteCard}>
-      <div className={styles.noteHeader}>
+      <div className={styles.noteTopRow}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={author?.avatar ?? ""} alt="" className={styles.noteAvatar} />
-        <div className={styles.noteAuthor}>
-          <span className={styles.noteName}>{author?.name ?? "Unknown manager"}</span>
-          <span className={styles.noteRole}>{author?.role}</span>
-        </div>
+        <span className={styles.noteName}>{author?.name ?? "Unknown manager"}</span>
         <span className={styles.noteTimestamp}>{note.timestamp}</span>
+        {canManage && (
+          <div className={styles.noteMenuWrap} ref={menuRef}>
+            <button type="button" className={styles.noteMenuButton} aria-label="Note options" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)}>
+              <MoreHorizontalIcon />
+            </button>
+            {menuOpen && (
+              <div className={styles.noteMenu} role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.noteMenuItem}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onEdit();
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={[styles.noteMenuItem, styles.noteMenuItemDanger].join(" ")}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onDelete();
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       <p className={styles.noteText}>{note.text}</p>
       {note.tags.length > 0 && (
         <div className={styles.noteTagRow}>
-          {note.tags.map((tag) => (
-            <span key={tag} className={styles.noteTag}>
-              {tag}
-            </span>
-          ))}
+          {note.tags.map((tag) => {
+            const tagColor = getTagColor(tag);
+            return (
+              <span key={tag} className={styles.noteTag} style={{ backgroundColor: tagColor.wash, color: tagColor.color }}>
+                {tag}
+              </span>
+            );
+          })}
         </div>
       )}
     </div>
@@ -104,37 +224,36 @@ function NoteCard({ shift, note }: { shift: ShiftReportState; note: ShiftNote })
 function AutoCapturedData({ shift, sectionKey }: { shift: ShiftReportState; sectionKey: SectionKey }) {
   const s = shift.sections;
 
-  if (sectionKey === "shiftNotes") {
-    return (
-      <div className={styles.group}>
-        <span className={styles.groupLabel}>Auto-Captured Data</span>
-        <div className={styles.card}>
-          <p className={styles.readOnlyHint}>Shift Notes has no auto-captured data — it&rsquo;s a running log of manager notes only.</p>
-        </div>
-      </div>
-    );
-  }
-
   if (sectionKey === "hoursHeadcount") {
     const d = s.hoursHeadcount;
     return (
       <div className={styles.group}>
-        <span className={styles.groupLabel}>Auto-Captured Data</span>
+        <ShiftCapturedDataHeading shift={shift} />
+
         <div className={styles.card}>
-          <div className={styles.headline}>
-            <span className={styles.headlineValue}>{d.percentCaptured}%</span>
-            <span className={styles.headlineCaption}>
-              {d.hoursCaptured} of {d.totalTime} paid time captured
-            </span>
+          <div className={styles.ringStatRow}>
+            <div className={styles.ringWrap}>
+              <DonutRing percent={d.percentCaptured} color="var(--color-text-dt-warning)" trackColor="var(--color-neutral-700)" size={64} strokeWidth={6} />
+              <span className={styles.ringPercentLabel}>{d.percentCaptured}%</span>
+            </div>
+            <div className={styles.ringStatDetails}>
+              <span className={styles.ringStatLabel}>Hours Captured</span>
+              <div className={styles.ringStatValueStack}>
+                <span className={styles.ringStatValue}>{d.hoursCaptured}</span>
+                <span className={styles.ringStatCaption}>of {d.totalTime} shift time</span>
+              </div>
+            </div>
           </div>
-          <div className={styles.statGrid}>
-            <StatTile label="Scheduled Headcount" value={d.scheduledHeadcount} />
-            <StatTile label="Actual Arrival" value={d.actualArrival} />
-            <StatTile label="Total Absences" value={d.totalAbsences} />
-            <StatTile label="No Call/No Show" value={d.noCallNoShow} />
-            <StatTile label="Call Outs" value={d.callOuts} />
+        </div>
+
+        <div className={styles.card}>
+          <div className={styles.headcountRowsGroup}>
+            <HeadcountRow label="Scheduled Headcount" value={d.scheduledHeadcount} />
+            <HeadcountRow label="Actual Arrival" value={d.actualArrival} />
+            <HeadcountRow label="Total Absences" value={d.totalAbsences} />
+            <HeadcountRow label="No Call/No Show" value={d.noCallNoShow} indented muted />
+            <HeadcountRow label="Call Outs" value={d.callOuts} indented muted />
           </div>
-          <p className={styles.readOnlyHint}>Auto-captured by 4Insite — not editable here.</p>
         </div>
       </div>
     );
@@ -142,25 +261,34 @@ function AutoCapturedData({ shift, sectionKey }: { shift: ShiftReportState; sect
 
   if (sectionKey === "areaCoverage") {
     const d = s.areaCoverage;
+    const rows = [
+      { key: "notServiced", label: "Not serviced", value: d.breakdown.notServiced, color: "var(--color-text-dt-danger)" },
+      { key: "underServiced", label: "Under-serviced", value: d.breakdown.underServiced, color: "var(--color-warning-100)" },
+      { key: "fullyServiced", label: "Fully Serviced", value: d.breakdown.fullyServiced, color: "var(--color-success-100)" },
+      { key: "overServiced", label: "Over Serviced", value: d.breakdown.overServiced, color: "var(--color-success-700)" },
+    ];
     return (
       <div className={styles.group}>
-        <span className={styles.groupLabel}>Auto-Captured Data</span>
+        <ShiftCapturedDataHeading shift={shift} />
         <div className={styles.card}>
-          <div className={styles.headline}>
-            <span className={styles.headlineValue}>{d.percentServiced}%</span>
-            <span className={styles.headlineCaption}>
-              {d.areasServiced.toLocaleString()} of {d.areasTotal.toLocaleString()} areas serviced
-            </span>
+          <div className={styles.ringStatRow}>
+            <div className={styles.ringWrap}>
+              <SegmentedDonutRing segments={rows.map((row) => ({ value: row.value, color: row.color }))} trackColor="var(--color-neutral-700)" size={64} strokeWidth={6} />
+              <span className={styles.ringPercentLabel}>{d.percentServiced}%</span>
+            </div>
+            <div className={styles.ringStatDetails}>
+              <span className={styles.ringStatLabel}>Areas Serviced</span>
+              <div className={styles.ringStatValueRow}>
+                <span className={styles.ringStatValue}>{d.areasServiced.toLocaleString()}</span>
+                <span className={styles.ringStatCaption}>of {d.areasTotal.toLocaleString()} total areas</span>
+              </div>
+            </div>
           </div>
-          <div>
-            <BreakdownRow tone="warning" label="Not Serviced" value={d.breakdown.notServiced} />
-            <BreakdownRow tone="warning" label="Under Serviced" value={d.breakdown.underServiced} />
-            <BreakdownRow tone="success" label="Fully Serviced" value={d.breakdown.fullyServiced} />
-            <BreakdownRow tone="neutral" label="Over Serviced" value={d.breakdown.overServiced} />
+          <div className={styles.breakdownRowsGroup}>
+            {rows.map((row) => (
+              <BreakdownRow key={row.key} label={row.label} value={row.value} total={d.areasTotal} color={row.color} />
+            ))}
           </div>
-          <p className={styles.readOnlyHint}>
-            Calculated automatically by 4Insite — rolls up into the Daily Report&rsquo;s own Areas Serviced breakdown. Not editable here.
-          </p>
         </div>
       </div>
     );
@@ -170,15 +298,21 @@ function AutoCapturedData({ shift, sectionKey }: { shift: ShiftReportState; sect
     const d = s.serviceCoverage;
     return (
       <div className={styles.group}>
-        <span className={styles.groupLabel}>Auto-Captured Data</span>
+        <ShiftCapturedDataHeading shift={shift} />
         <div className={styles.card}>
-          <div className={styles.headline}>
-            <span className={styles.headlineValue}>{d.percentCompleted}%</span>
-            <span className={styles.headlineCaption}>
-              {d.servicesCompleted.toLocaleString()} of {d.servicesExpected.toLocaleString()} services completed
-            </span>
+          <div className={styles.ringStatRow}>
+            <div className={styles.ringWrap}>
+              <DonutRing percent={d.percentCompleted} color="var(--color-datavis-purple-100)" trackColor="var(--color-neutral-700)" size={64} strokeWidth={6} />
+              <span className={styles.ringPercentLabel}>{d.percentCompleted}%</span>
+            </div>
+            <div className={styles.ringStatDetails}>
+              <span className={styles.ringStatLabel}>Services Completed</span>
+              <div className={styles.ringStatValueRow}>
+                <span className={styles.ringStatValue}>{d.servicesCompleted.toLocaleString()}</span>
+                <span className={styles.ringStatCaption}>of {d.servicesExpected.toLocaleString()} expected</span>
+              </div>
+            </div>
           </div>
-          <p className={styles.readOnlyHint}>Auto-captured by 4Insite — not editable here.</p>
         </div>
       </div>
     );
@@ -187,62 +321,81 @@ function AutoCapturedData({ shift, sectionKey }: { shift: ShiftReportState; sect
   const d = s.quality;
   return (
     <div className={styles.group}>
-      <span className={styles.groupLabel}>Auto-Captured Data</span>
+      <ShiftCapturedDataHeading shift={shift} />
       <div className={styles.card}>
-        <div className={styles.qualityRow}>
+        <div className={styles.qualityCardsGroup}>
           <QualityCard label="AI Verification" score={d.aiVerification.score} count={d.aiVerification.count} unit={d.aiVerification.unit} />
           <QualityCard label="Internal Audit" score={d.internalAudit.score} count={d.internalAudit.count} unit={d.internalAudit.unit} />
           <QualityCard label="Customer Audit" score={d.customerAudit.score} count={d.customerAudit.count} unit={d.customerAudit.unit} />
         </div>
-        <div>
-          <div className={styles.inlineStatRow}>
-            <span className={styles.inlineStatLabel}>Report-Its</span>
-            <span className={styles.inlineStatValue}>
-              {d.reportIts.submitted} submitted · {d.reportIts.rejected} rejected · {d.reportIts.acceptanceRate}% accepted
-            </span>
-          </div>
-          <div className={styles.inlineStatRow}>
-            <span className={styles.inlineStatLabel}>Safety</span>
-            <span className={styles.inlineStatValue}>
-              {d.safety.incidents} incident{d.safety.incidents === 1 ? "" : "s"} · {d.safety.reportStatus}
-            </span>
-          </div>
+      </div>
+      <div className={styles.card}>
+        <span className={styles.cardTitle}>Report Its</span>
+        <div className={styles.headcountRowsGroup}>
+          <HeadcountRow label="Submitted" value={d.reportIts.submitted} />
+          <HeadcountRow label="Rejected" value={d.reportIts.rejected} />
+          <HeadcountRow label="Acceptance Rate" value={d.reportIts.acceptanceRate} suffix="%" />
         </div>
-        <p className={styles.readOnlyHint}>Auto-captured by 4Insite — not editable here.</p>
+      </div>
+      <div className={styles.card}>
+        <span className={styles.cardTitle}>Safety</span>
+        <p className={styles.safetyText}>
+          {d.safety.incidents === 0
+            ? "There were no safety issues this shift"
+            : `${d.safety.incidents} incident${d.safety.incidents === 1 ? "" : "s"} reported · ${d.safety.reportStatus}`}
+        </p>
       </div>
     </div>
   );
 }
 
-function StatTile({ label, value }: { label: string; value: number }) {
+function ShiftCapturedDataHeading({ shift }: { shift: ShiftReportState }) {
+  const hasEnded = getShiftMinutesRemaining(shift.shiftKey) <= 0;
   return (
-    <div className={styles.statTile}>
-      <span className={styles.statValue}>{value.toLocaleString()}</span>
-      <span className={styles.statLabel}>{label}</span>
+    <div className={styles.groupLabelBlock}>
+      <span className={styles.groupLabelWhite}>Shift Captured Data</span>
+      <span className={styles.groupSubtitle}>
+        Data captured from {formatTightClockTime(shift.managers[0].clockIn)} - {hasEnded ? getShiftEndTimeLabel(shift.shiftKey) : "Current"}
+      </span>
+    </div>
+  );
+}
+
+function HeadcountRow({ label, value, indented, muted, suffix }: { label: string; value: number; indented?: boolean; muted?: boolean; suffix?: string }) {
+  return (
+    <div className={[styles.headcountRow, indented ? styles.headcountRowIndented : "", muted ? styles.headcountRowMuted : ""].filter(Boolean).join(" ")}>
+      <span className={styles.headcountLabel}>{label}</span>
+      <span className={styles.headcountValue}>
+        {value.toLocaleString()}
+        {suffix ?? ""}
+      </span>
     </div>
   );
 }
 
 function QualityCard({ label, score, count, unit }: { label: string; score: number; count: number; unit: string }) {
   return (
-    <div className={styles.qualityCard}>
-      <span className={styles.qualityScore}>{score.toFixed(2)}</span>
-      <span className={styles.qualityLabel}>{label}</span>
-      <span className={styles.qualityCaption}>
-        {count.toLocaleString()} {unit}
-      </span>
+    <div className={styles.qualityRow}>
+      <span className={styles.qualityScoreChip}>{score.toFixed(2)}</span>
+      <div className={styles.qualityRowDetails}>
+        <span className={styles.qualityRowLabel}>{label}</span>
+        <span className={styles.qualityRowCaption}>
+          {count.toLocaleString()} {unit}
+        </span>
+      </div>
     </div>
   );
 }
 
-function BreakdownRow({ tone, label, value }: { tone: "neutral" | "warning" | "success"; label: string; value: number }) {
+function BreakdownRow({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
+  const percent = total > 0 ? Math.round((value / total) * 100) : 0;
   return (
     <div className={styles.breakdownRow}>
-      <span className={styles.breakdownDot} data-tone={tone} aria-hidden="true">
-        ●
-      </span>
+      <span className={styles.breakdownBar} style={{ backgroundColor: color }} aria-hidden="true" />
       <span className={styles.breakdownLabel}>{label}</span>
-      <span className={styles.breakdownValue}>{value.toLocaleString()}</span>
+      <span className={styles.breakdownValue}>
+        {value.toLocaleString()} areas <span className={styles.breakdownPercent}>({percent}%)</span>
+      </span>
     </div>
   );
 }

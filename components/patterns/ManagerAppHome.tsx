@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BadgeCheckIcon,
   BarsIcon,
   BellIcon,
-  ClipboardCheckIcon,
+  ClipboardListIcon,
   ClockIcon,
   CommentsIcon,
   EnvelopeIcon,
@@ -19,13 +19,17 @@ import {
   UsersIcon,
 } from "./icons";
 import { ManagerAppClockSheet } from "./ManagerAppClockSheet";
+import { ManagerAppScreenHeader } from "./ManagerAppScreenHeader";
+import { ManagerAppShiftManagers } from "./ManagerAppShiftManagers";
 import { ManagerAppShiftReportList } from "./ManagerAppShiftReportList";
 import { ManagerAppShiftReportSection } from "./ManagerAppShiftReportSection";
 import { calendarStrip, clockedInStack, currentManager, managerAppHome } from "../../lib/managerAppData";
 import {
   CURRENT_MANAGER_ID,
   INITIAL_SHIFT_REPORT,
+  SECTION_TITLES,
   SHIFT_LABELS,
+  SHIFT_START_LABEL,
   getDefaultShiftForTime,
   getShiftReportProgressSubtext,
   nextNoteId,
@@ -35,7 +39,10 @@ import {
 } from "../../lib/managerShiftReportData";
 import styles from "./ManagerAppHome.module.css";
 
-type Screen = { type: "home" } | { type: "report" } | { type: "section"; key: SectionKey };
+type Screen = { type: "home" } | { type: "report" } | { type: "section"; key: SectionKey } | { type: "managers" };
+
+/** Matches .screenEnter/.screenExitOverlay's own animation-duration in ManagerAppHome.module.css. */
+const SCREEN_SLIDE_MS = 260;
 
 function formatNowTimestamp() {
   return `${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} EDT`;
@@ -82,6 +89,38 @@ export function ManagerAppHome() {
   const [clockInShift, setClockInShift] = useState<ShiftKey>(() => getDefaultShiftForTime());
   const [activeShift, setActiveShift] = useState<ShiftKey | null>(null);
 
+  // Slide navigation: pushing a screen (navigateForward) mounts it wrapped in .screenEnter,
+  // which slides it in from the right over whatever was there. Going back (navigateBack) instead
+  // keeps the revealed target screen static underneath and mounts the outgoing screen as a fixed
+  // .screenExitOverlay on top, sliding it out to the right — same "reveal" motion as a real device.
+  const navKeyRef = useRef(0);
+  const [entering, setEntering] = useState<{ key: number } | null>(null);
+  const [closing, setClosing] = useState<{ screen: Screen } | null>(null);
+
+  function navigateForward(next: Screen) {
+    navKeyRef.current += 1;
+    setEntering({ key: navKeyRef.current });
+    setScreen(next);
+  }
+
+  function navigateBack(next: Screen) {
+    setClosing({ screen });
+    setEntering(null);
+    setScreen(next);
+  }
+
+  useEffect(() => {
+    if (!entering) return;
+    const timeout = setTimeout(() => setEntering(null), SCREEN_SLIDE_MS);
+    return () => clearTimeout(timeout);
+  }, [entering]);
+
+  useEffect(() => {
+    if (!closing) return;
+    const timeout = setTimeout(() => setClosing(null), SCREEN_SLIDE_MS);
+    return () => clearTimeout(timeout);
+  }, [closing]);
+
   useEffect(() => {
     // Re-defaults every time the sheet opens for a check-in (not a check-out), so the default
     // still reflects "right now" even if it's opened well after the page first loaded.
@@ -96,6 +135,32 @@ export function ManagerAppHome() {
         [sectionKey]: {
           ...prev.sections[sectionKey],
           notes: [...prev.sections[sectionKey].notes, { id: nextNoteId(), managerId: CURRENT_MANAGER_ID, timestamp: formatNowTimestamp(), text, tags }],
+        },
+      },
+    }));
+  }
+
+  function handleEditNote(sectionKey: SectionKey, noteId: string, text: string, tags: string[]) {
+    setShiftReport((prev) => ({
+      ...prev,
+      sections: {
+        ...prev.sections,
+        [sectionKey]: {
+          ...prev.sections[sectionKey],
+          notes: prev.sections[sectionKey].notes.map((note) => (note.id === noteId ? { ...note, text, tags } : note)),
+        },
+      },
+    }));
+  }
+
+  function handleDeleteNote(sectionKey: SectionKey, noteId: string) {
+    setShiftReport((prev) => ({
+      ...prev,
+      sections: {
+        ...prev.sections,
+        [sectionKey]: {
+          ...prev.sections[sectionKey],
+          notes: prev.sections[sectionKey].notes.filter((note) => note.id !== noteId),
         },
       },
     }));
@@ -120,11 +185,68 @@ export function ManagerAppHome() {
       setOnShift(true);
       setElapsedSeconds(0);
       setActiveShift(clockInShift);
+      setShiftReport((prev) => ({
+        ...prev,
+        shiftKey: clockInShift,
+        managers: prev.managers.map((manager) =>
+          manager.id === CURRENT_MANAGER_ID ? { ...manager, clockIn: SHIFT_START_LABEL[clockInShift] } : manager
+        ),
+      }));
     }
     setSheetOpen(false);
   }
 
   const shiftClock = formatShiftClock(elapsedSeconds);
+
+  function renderPushedScreen(s: Screen) {
+    if (s.type === "report") {
+      return (
+        <ManagerAppShiftReportList
+          shift={shiftReport}
+          onBack={() => navigateBack({ type: "home" })}
+          onOpenSection={(key) => navigateForward({ type: "section", key })}
+          onOpenManagers={() => navigateForward({ type: "managers" })}
+          onComplete={handleCompleteShiftReport}
+          hideHeader
+        />
+      );
+    }
+    if (s.type === "section") {
+      return (
+        <ManagerAppShiftReportSection
+          shift={shiftReport}
+          sectionKey={s.key}
+          onBack={() => navigateBack({ type: "report" })}
+          onAddNote={handleAddNote}
+          onEditNote={handleEditNote}
+          onDeleteNote={handleDeleteNote}
+          hideHeader
+        />
+      );
+    }
+    if (s.type === "managers") {
+      return (
+        <ManagerAppShiftManagers
+          shift={shiftReport}
+          onBack={() => navigateBack({ type: "report" })}
+          currentManagerLiveStatus={{ onShift, elapsedLabel: formatElapsedLabel(elapsedSeconds) }}
+          hideHeader
+        />
+      );
+    }
+    return null;
+  }
+
+  /** Title + back target for the persistent header rendered outside the slide-transition layer — same per-screen values renderPushedScreen wires into each component's own (now-suppressed) header. */
+  function getPushedScreenHeader(s: Screen): { title: string; onBack: () => void } | null {
+    if (s.type === "report") return { title: "End of Shift Report", onBack: () => navigateBack({ type: "home" }) };
+    if (s.type === "section") return { title: SECTION_TITLES[s.key], onBack: () => navigateBack({ type: "report" }) };
+    if (s.type === "managers") return { title: "Shift Managers", onBack: () => navigateBack({ type: "report" }) };
+    return null;
+  }
+
+  const pushedScreenKey = screen.type === "section" ? `section:${screen.key}` : screen.type;
+  const pushedHeader = getPushedScreenHeader(screen);
 
   return (
     <div className={styles.page}>
@@ -138,20 +260,12 @@ export function ManagerAppHome() {
         </div>
       </div>
 
-      {screen.type === "report" ? (
-        <ManagerAppShiftReportList
-          shift={shiftReport}
-          onBack={() => setScreen({ type: "home" })}
-          onOpenSection={(key) => setScreen({ type: "section", key })}
-          onComplete={handleCompleteShiftReport}
-        />
-      ) : screen.type === "section" ? (
-        <ManagerAppShiftReportSection
-          shift={shiftReport}
-          sectionKey={screen.key}
-          onBack={() => setScreen({ type: "report" })}
-          onAddNote={handleAddNote}
-        />
+      {pushedHeader && <ManagerAppScreenHeader title={pushedHeader.title} onBack={pushedHeader.onBack} />}
+
+      {screen.type !== "home" ? (
+        <div key={pushedScreenKey} className={[styles.screenBody, entering ? styles.screenEnter : ""].filter(Boolean).join(" ")}>
+          {renderPushedScreen(screen)}
+        </div>
       ) : (
         <>
       <div className={styles.headerCard}>
@@ -212,10 +326,10 @@ export function ManagerAppHome() {
           <button
             type="button"
             className={[styles.card, styles.cardButton].join(" ")}
-            onClick={() => setScreen({ type: "report" })}
+            onClick={() => navigateForward({ type: "report" })}
           >
             <span className={styles.iconBubble} style={{ backgroundColor: "var(--wash-primary-15)", color: "var(--color-text-dt-blue)" }}>
-              <ClipboardCheckIcon />
+              <ClipboardListIcon />
             </span>
             <div className={styles.cardDetails}>
               <span className={styles.cardTitle}>End of Shift Report</span>
@@ -383,6 +497,10 @@ export function ManagerAppHome() {
         </button>
       </div>
         </>
+      )}
+
+      {closing && (
+        <div className={styles.screenExitOverlay}>{renderPushedScreen(closing.screen)}</div>
       )}
 
       <ManagerAppClockSheet
