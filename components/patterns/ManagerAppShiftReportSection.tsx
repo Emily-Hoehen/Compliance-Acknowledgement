@@ -109,7 +109,7 @@ function AutoCapturedData({ shift, sectionKey }: { shift: ShiftReportState; sect
       <div className={styles.group}>
         <span className={styles.groupLabel}>Auto-Captured Data</span>
         <div className={styles.card}>
-          <p className={styles.readOnlyHint}>Shift Notes has no auto-captured data — it's a running log of manager notes only.</p>
+          <p className={styles.readOnlyHint}>Shift Notes has no auto-captured data — it&rsquo;s a running log of manager notes only.</p>
         </div>
       </div>
     );
@@ -159,7 +159,7 @@ function AutoCapturedData({ shift, sectionKey }: { shift: ShiftReportState; sect
             <BreakdownRow tone="neutral" label="Over Serviced" value={d.breakdown.overServiced} />
           </div>
           <p className={styles.readOnlyHint}>
-            Calculated automatically by 4Insite — rolls up into the Daily Report's own Areas Serviced breakdown. Not editable here.
+            Calculated automatically by 4Insite — rolls up into the Daily Report&rsquo;s own Areas Serviced breakdown. Not editable here.
           </p>
         </div>
       </div>
