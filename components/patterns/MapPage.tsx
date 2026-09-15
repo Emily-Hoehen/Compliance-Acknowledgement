@@ -61,8 +61,8 @@ export function MapPage({ contractBuildings }: MapPageProps) {
   const [selectedShiftKey, setSelectedShiftKey] = useState<DailyReportShift["key"] | null>(null);
   const [selectedAreaTypeName, setSelectedAreaTypeName] = useState<string | null>(null);
   const [zoomTarget, setZoomTarget] = useState<ZoomTarget | null>(null);
-  /** null = no filter, every status shown (the default) — clicking one of the status buttons narrows to just that one; clicking the active button again clears back to null. */
-  const [statusFilter, setStatusFilter] = useState<AreaStatus | null>(null);
+  /** Permanently null — the status filter buttons are disabled (no-op onClick below), so every downstream stat/list that branches on "statusFilter === null" always takes its unfiltered path, and the sidebar/map content never changes from clicking them. */
+  const statusFilter: AreaStatus | null = null;
   const [fullReportOpen, setFullReportOpen] = useState(false);
   const [fullDayReportV2Open, setFullDayReportV2Open] = useState(false);
   const areaMenuRef = useRef<HTMLDivElement>(null);
@@ -135,10 +135,8 @@ export function MapPage({ contractBuildings }: MapPageProps) {
     return result;
   }, [activeAreaServices]);
 
-  /** Clicking the already-active status button clears back to "show all"; clicking any other one switches to just that status. */
-  function toggleStatusFilter(status: AreaStatus) {
-    setStatusFilter((prev) => (prev === status ? null : status));
-  }
+  /** Disabled — the status filter buttons are still clickable but intentionally don't change anything on the page (see the `statusFilter` constant above). */
+  function toggleStatusFilter(_status: AreaStatus) {}
 
   useEffect(() => {
     if (!areaMenuOpen) return;
@@ -185,20 +183,6 @@ export function MapPage({ contractBuildings }: MapPageProps) {
         style={zoomPosition ? { transform: "scale(1.6)", transformOrigin: `${zoomPosition.x}% ${zoomPosition.y}%` } : undefined}
       >
         <img src="/map-clean.png" alt="" className={styles.backdrop} />
-        {Array.from(areaTypeStatuses.entries())
-          .filter(([, status]) => statusFilter === null || statusFilter === status)
-          .map(([name, status]) => {
-            const pos = pseudoPositionForArea(name);
-            return (
-              <span
-                key={name}
-                className={styles.statusPin}
-                data-status={status}
-                style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-                title={`${name} — ${status}`}
-              />
-            );
-          })}
         {zoomTarget && zoomPosition && (
           <div className={styles.zoomPin} style={{ left: `${zoomPosition.x}%`, top: `${zoomPosition.y}%` }}>
             <LocationDotIcon className={styles.zoomPinIcon} />

@@ -60,34 +60,6 @@
   white-space: nowrap;
 }
 
-/* One dot per area type, colored by its service-completion status (see MapPage.tsx's areaTypeStatuses) — shown/hidden together by the status-filter dropdown below. Area-type-level rather than one per individual area (714 of them), which would just be noise at these pseudo-random positions. */
-.statusPin {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  border: 2px solid rgba(24, 30, 36, 0.85);
-  box-shadow: 0 1px 3px rgba(24, 30, 36, 0.4);
-  pointer-events: auto;
-}
-
-.statusPin[data-status="missed"] {
-  background-color: var(--color-danger-700);
-}
-
-.statusPin[data-status="incomplete"] {
-  background-color: var(--color-warning-900);
-}
-
-.statusPin[data-status="completed"] {
-  background-color: var(--color-success-700);
-}
-
-.statusPin[data-status="over-serviced"] {
-  background-color: var(--color-success-900);
-}
-
 @keyframes zoomPinDrop {
   from {
     opacity: 0;
