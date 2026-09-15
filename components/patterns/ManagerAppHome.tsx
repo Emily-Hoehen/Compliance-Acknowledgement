@@ -5,6 +5,7 @@ import {
   BadgeCheckIcon,
   BarsIcon,
   BellIcon,
+  ClipboardCheckIcon,
   ClockIcon,
   CommentsIcon,
   EnvelopeIcon,
@@ -18,8 +19,27 @@ import {
   UsersIcon,
 } from "./icons";
 import { ManagerAppClockSheet } from "./ManagerAppClockSheet";
+import { ManagerAppShiftReportList } from "./ManagerAppShiftReportList";
+import { ManagerAppShiftReportSection } from "./ManagerAppShiftReportSection";
 import { calendarStrip, clockedInStack, currentManager, managerAppHome } from "../../lib/managerAppData";
+import {
+  CURRENT_MANAGER_ID,
+  INITIAL_SHIFT_REPORT,
+  SHIFT_LABELS,
+  getDefaultShiftForTime,
+  getShiftReportProgressSubtext,
+  nextNoteId,
+  type SectionKey,
+  type ShiftKey,
+  type ShiftReportState,
+} from "../../lib/managerShiftReportData";
 import styles from "./ManagerAppHome.module.css";
+
+type Screen = { type: "home" } | { type: "report" } | { type: "section"; key: SectionKey };
+
+function formatNowTimestamp() {
+  return `${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} EDT`;
+}
 
 function formatShiftClock(totalSeconds: number) {
   const hours = Math.floor(totalSeconds / 3600);
@@ -57,6 +77,33 @@ export function ManagerAppHome() {
   const [onShift, setOnShift] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [screen, setScreen] = useState<Screen>({ type: "home" });
+  const [shiftReport, setShiftReport] = useState<ShiftReportState>(INITIAL_SHIFT_REPORT);
+  const [clockInShift, setClockInShift] = useState<ShiftKey>(() => getDefaultShiftForTime());
+  const [activeShift, setActiveShift] = useState<ShiftKey | null>(null);
+
+  useEffect(() => {
+    // Re-defaults every time the sheet opens for a check-in (not a check-out), so the default
+    // still reflects "right now" even if it's opened well after the page first loaded.
+    if (sheetOpen && !onShift) setClockInShift(getDefaultShiftForTime());
+  }, [sheetOpen, onShift]);
+
+  function handleAddNote(sectionKey: SectionKey, text: string, tags: string[]) {
+    setShiftReport((prev) => ({
+      ...prev,
+      sections: {
+        ...prev.sections,
+        [sectionKey]: {
+          ...prev.sections[sectionKey],
+          notes: [...prev.sections[sectionKey].notes, { id: nextNoteId(), managerId: CURRENT_MANAGER_ID, timestamp: formatNowTimestamp(), text, tags }],
+        },
+      },
+    }));
+  }
+
+  function handleCompleteShiftReport() {
+    setShiftReport((prev) => ({ ...prev, completedBy: CURRENT_MANAGER_ID, completedAt: formatNowTimestamp() }));
+  }
 
   useEffect(() => {
     if (!onShift) return;
@@ -68,9 +115,11 @@ export function ManagerAppHome() {
     if (onShift) {
       setOnShift(false);
       setElapsedSeconds(0);
+      setActiveShift(null);
     } else {
       setOnShift(true);
       setElapsedSeconds(0);
+      setActiveShift(clockInShift);
     }
     setSheetOpen(false);
   }
@@ -89,40 +138,58 @@ export function ManagerAppHome() {
         </div>
       </div>
 
-      <div className={styles.topRow}>
-        <img src="/brand/4insite-logo-dark.svg" alt="4insite" className={styles.wordmark} />
-        <button type="button" className={styles.bellButton} aria-label="Notifications">
-          <BellIcon />
-        </button>
-      </div>
+      {screen.type === "report" ? (
+        <ManagerAppShiftReportList
+          shift={shiftReport}
+          onBack={() => setScreen({ type: "home" })}
+          onOpenSection={(key) => setScreen({ type: "section", key })}
+          onComplete={handleCompleteShiftReport}
+        />
+      ) : screen.type === "section" ? (
+        <ManagerAppShiftReportSection
+          shift={shiftReport}
+          sectionKey={screen.key}
+          onBack={() => setScreen({ type: "report" })}
+          onAddNote={handleAddNote}
+        />
+      ) : (
+        <>
+      <div className={styles.headerCard}>
+        <div className={styles.topRow}>
+          <span className={styles.wordmark}>4insite</span>
+          <button type="button" className={styles.bellButton} aria-label="Notifications">
+            <BellIcon />
+          </button>
+        </div>
 
-      <div className={styles.userRow}>
-        <img src={currentManager.avatar} alt="" className={styles.userAvatar} />
-        <p className={styles.greeting}>
-          Hello Bob!
-          <br />
-          Here&rsquo;s today&rsquo;s activities!
-        </p>
-      </div>
+        <div className={styles.userRow}>
+          <img src={currentManager.avatar} alt="" className={styles.userAvatar} />
+          <p className={styles.greeting}>
+            Hello William!
+            <br />
+            Here&rsquo;s today&rsquo;s activities!
+          </p>
+        </div>
 
-      <div className={styles.calendar}>
-        {calendarStrip.map((day) => (
-          <div key={day.label} className={styles.calendarDay}>
-            <span className={styles.calendarLabel}>{day.label}</span>
-            {day.isToday ? (
-              <span className={styles.calendarToday}>
+        <div className={styles.calendar}>
+          {calendarStrip.map((day) => (
+            <div key={day.label} className={styles.calendarDay}>
+              <span className={styles.calendarLabel}>{day.label}</span>
+              {day.isToday ? (
+                <span className={styles.calendarToday}>
+                  <span className={styles.calendarDate}>{day.date}</span>
+                </span>
+              ) : (
                 <span className={styles.calendarDate}>{day.date}</span>
-              </span>
-            ) : (
-              <span className={styles.calendarDate}>{day.date}</span>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className={styles.main}>
         <button type="button" className={styles.shiftCard} onClick={() => setSheetOpen(true)} aria-haspopup="dialog">
-          <span className={styles.shiftTitle}>{onShift ? "Shift in Progress" : "Shift not Started"}</span>
+          <span className={styles.shiftTitle}>{onShift && activeShift ? `${SHIFT_LABELS[activeShift]} Shift in Progress` : "Shift not Started"}</span>
           <div className={styles.shiftRow}>
             <div className={styles.shiftUnit}>
               <span className={`${styles.shiftNumber} ${onShift ? styles.shiftNumberActive : ""}`}>{shiftClock.hours}</span>
@@ -140,6 +207,22 @@ export function ManagerAppHome() {
             </div>
           </div>
         </button>
+
+        {onShift && (
+          <button
+            type="button"
+            className={[styles.card, styles.cardButton].join(" ")}
+            onClick={() => setScreen({ type: "report" })}
+          >
+            <span className={styles.iconBubble} style={{ backgroundColor: "var(--wash-primary-15)", color: "var(--color-text-dt-blue)" }}>
+              <ClipboardCheckIcon />
+            </span>
+            <div className={styles.cardDetails}>
+              <span className={styles.cardTitle}>End of Shift Report</span>
+              <span className={styles.cardSubtitle}>{getShiftReportProgressSubtext(shiftReport)}</span>
+            </div>
+          </button>
+        )}
 
         <div className={styles.card}>
           <span className={styles.iconBubble} style={{ backgroundColor: "var(--wash-warning-15)", color: "var(--color-text-dt-warning)" }}>
@@ -167,7 +250,7 @@ export function ManagerAppHome() {
               {clockedInStack.map((person) => (
                 <img key={person.name} src={person.avatar} alt="" className={styles.avatarStackItem} />
               ))}
-              <span className={styles.avatarStackMore}>+7</span>
+              <span className={styles.avatarStackMore}>+{associatesClockedIn.total - clockedInStack.length}</span>
             </div>
           </div>
         </div>
@@ -299,11 +382,15 @@ export function ManagerAppHome() {
           <PlusIcon />
         </button>
       </div>
+        </>
+      )}
 
       <ManagerAppClockSheet
         open={sheetOpen}
         mode={onShift ? "check-out" : "check-in"}
         elapsedLabel={formatElapsedLabel(elapsedSeconds)}
+        selectedShift={clockInShift}
+        onSelectShift={setClockInShift}
         onConfirm={handleConfirmClock}
         onCancel={() => setSheetOpen(false)}
       />

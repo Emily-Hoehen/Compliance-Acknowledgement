@@ -6,6 +6,7 @@
    browser viewport. Design tokens only; respects prefers-reduced-motion.
    ============================================================ */
 
+/* A light, static dim behind the sheet — no transition on this element itself (see .sheet/.sheetClosing for the only thing that actually animates), so it just appears/disappears with the sheet instead of the dashboard visibly fading. */
 .overlay {
   position: fixed;
   inset: 0;
@@ -13,8 +14,7 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background-color: rgba(24, 30, 36, 0.6);
-  animation: sheetFadeIn 200ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  background-color: rgba(24, 30, 36, 0.32);
 }
 
 .sheet {
@@ -32,6 +32,11 @@
   animation: sheetRiseIn 280ms cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
+/* Applied instead of the class above while the sheet is closing (see ManagerAppClockSheet.tsx's closing state) — same motion, reversed, so Cancel/Check In slides the sheet back down instead of just vanishing. */
+.sheetClosing {
+  animation: sheetSlideDown 260ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
 .grabber {
   width: 36px;
   height: 4px;
@@ -40,36 +45,87 @@
 }
 
 .title {
-  font-family: var(--type-h3-family);
-  font-weight: 500;
-  font-size: 16px;
+  font-family: var(--type-h2-family);
+  font-weight: var(--type-h2-weight);
+  font-size: var(--type-h2-size);
+  line-height: var(--type-h2-leading);
   letter-spacing: -0.02em;
-  line-height: 1.375;
   text-align: center;
 }
 
 .subtitle {
   margin-top: -8px;
-  font-family: var(--type-body-md-family);
-  font-size: 14px;
+  font-family: var(--type-body-lg-family);
+  font-size: var(--type-body-lg-size);
+  font-weight: var(--type-body-lg-weight);
+  line-height: var(--type-body-lg-leading);
   letter-spacing: -0.02em;
-  line-height: 1.5714;
   color: var(--color-text-dt-grey);
   text-align: center;
 }
 
-/* ---------------- Location confirmation badge ---------------- */
+/* ---------------- Shift picker (check-in only) ---------------- */
 
+.shiftPicker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.shiftPickerLabel {
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-grey);
+}
+
+.shiftPickerRow {
+  display: flex;
+  width: 100%;
+  padding: 3px;
+  border-radius: 100px;
+  background-color: var(--color-neutral-800);
+}
+
+.shiftOption {
+  flex: 1;
+  padding: 8px 0;
+  border: none;
+  border-radius: 100px;
+  background-color: transparent;
+  color: var(--color-text-dt-grey);
+  font-family: var(--type-h4-family);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.shiftOptionSelected {
+  background-color: var(--color-primary-300);
+  color: var(--color-text-dt-default-inverted);
+}
+
+.shiftPickerCaption {
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Location confirmation ---------------- */
+
+/* Plain checkmark + copy, not a pill/tag — the icon carries its own green color (below) so it still reads as a confirmation even though the row itself has no background. */
 .locationBadge {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   width: 100%;
-  padding: 8px 12px;
-  border-radius: 100px;
-  background-color: var(--wash-success-15);
-  color: var(--color-text-dt-success);
+  color: var(--color-text-dt-default);
   font-family: var(--type-h4-family);
   font-weight: 500;
   font-size: 14px;
@@ -79,61 +135,17 @@
 .locationIcon {
   font-size: 16px;
   flex-shrink: 0;
+  color: var(--color-text-dt-success);
 }
 
-/* ---------------- Stylized map preview ---------------- */
+/* ---------------- Map preview ---------------- */
 
 .mapPreview {
-  position: relative;
+  display: block;
   width: 100%;
   height: 140px;
   border-radius: 12px;
-  overflow: hidden;
-  background: linear-gradient(135deg, var(--color-neutral-700) 0%, var(--color-neutral-900) 100%);
-}
-
-.mapRoads {
-  position: absolute;
-  inset: 0;
-  background-image:
-    repeating-linear-gradient(115deg, rgba(250, 251, 252, 0.07) 0 2px, transparent 2px 46px),
-    repeating-linear-gradient(25deg, rgba(250, 251, 252, 0.05) 0 2px, transparent 2px 60px);
-}
-
-.mapPin {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.mapPinIcon {
-  font-size: 22px;
-  filter: drop-shadow(0 2px 2px rgba(24, 30, 36, 0.4));
-}
-
-.mapPinLabel {
-  padding: 1px 6px;
-  border-radius: 4px;
-  background-color: rgba(24, 30, 36, 0.7);
-  font-family: var(--type-body-sm-family);
-  font-size: 11px;
-  letter-spacing: -0.02em;
-  color: var(--color-text-dt-default);
-  white-space: nowrap;
-}
-
-.mapPinSite {
-  top: 32%;
-  left: 38%;
-  color: var(--color-danger-300);
-}
-
-.mapPinYou {
-  top: 54%;
-  left: 62%;
-  color: var(--color-primary-300);
+  object-fit: cover;
 }
 
 /* ---------------- Actions ---------------- */
@@ -183,29 +195,27 @@
   background-color: var(--color-neutral-600);
 }
 
-@keyframes sheetFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 @keyframes sheetRiseIn {
   from {
-    opacity: 0;
-    transform: translateY(24px);
+    transform: translateY(100%);
   }
   to {
-    opacity: 1;
     transform: translateY(0);
   }
 }
 
+@keyframes sheetSlideDown {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .overlay,
-  .sheet {
+  .sheet,
+  .sheetClosing {
     animation: none;
   }
 }

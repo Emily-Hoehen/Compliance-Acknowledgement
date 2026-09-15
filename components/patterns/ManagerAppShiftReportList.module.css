@@ -1,0 +1,391 @@
+/* ============================================================
+   ManagerAppShiftReportList — Day Shift Report section-list screen,
+   reached from Home's "End of Shift Report" tile. Same dark-theme
+   card/tag language as the rest of the Manager App home screen
+   (ManagerAppHome.module.css) — no new visual system introduced.
+   ============================================================ */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background-color: var(--color-neutral-900);
+  color: var(--color-text-dt-default);
+  font-family: var(--font-family-ui);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 16px;
+}
+
+.groupLabel {
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-grey);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---------------- Shift Managers ---------------- */
+
+.managersCard {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background-color: var(--surface-dt-card);
+  box-shadow: var(--shadow-dt-card);
+  overflow: hidden;
+}
+
+.managerRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.managerRow + .managerRow {
+  border-top: 1px solid var(--surface-dt-hairline);
+}
+
+.managerAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 100px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.managerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.managerNameRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.managerName {
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+
+.responsibleBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background-color: var(--wash-success-15);
+  color: var(--color-text-dt-success);
+  font-family: var(--type-body-sm-family);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.managerRole {
+  font-family: var(--type-body-sm-family);
+  font-size: 13px;
+  color: var(--color-text-dt-grey);
+}
+
+.managerTimes {
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Report sections ---------------- */
+
+.sectionsCard {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background-color: var(--surface-dt-card);
+  box-shadow: var(--shadow-dt-card);
+  overflow: hidden;
+}
+
+.sectionRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-dt-default);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sectionRow + .sectionRow {
+  border-top: 1px solid var(--surface-dt-hairline);
+}
+
+.sectionRow:hover {
+  background-color: rgba(250, 251, 252, 0.04);
+}
+
+.sectionRowMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sectionRowTitle {
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+
+.sectionRowPreview {
+  font-family: var(--type-body-sm-family);
+  font-size: 13px;
+  color: var(--color-text-dt-grey);
+}
+
+.sectionRowMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.noteBadge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 100px;
+  background-color: var(--color-neutral-700);
+  color: var(--color-text-dt-default);
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.chevron {
+  font-size: 13px;
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Complete Shift Report ---------------- */
+
+.completeCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background-color: var(--surface-dt-card);
+  box-shadow: var(--shadow-dt-card);
+}
+
+.completeIconDone {
+  flex-shrink: 0;
+  font-size: 18px;
+  color: var(--color-text-dt-success);
+}
+
+.completeIconLocked {
+  flex-shrink: 0;
+  font-size: 16px;
+  color: var(--color-text-dt-grey);
+}
+
+.completeText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.completeTitle {
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+.completeCaption {
+  font-family: var(--type-body-sm-family);
+  font-size: 13px;
+  color: var(--color-text-dt-grey);
+}
+
+.completeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 100px;
+  background-color: var(--color-primary-300);
+  color: var(--color-text-dt-default-inverted);
+  font-family: var(--type-h4-family);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: filter 120ms ease;
+}
+
+.completeButton:hover {
+  filter: brightness(1.08);
+}
+
+.completeButton:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* ---------------- Confirm sheet ---------------- */
+
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background-color: rgba(24, 30, 36, 0.32);
+}
+
+.confirmSheet {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 20px 28px;
+  border-radius: 20px 20px 0 0;
+  background-color: var(--surface-dt-card);
+  box-shadow: var(--shadow-dt-modal);
+  color: var(--color-text-dt-default);
+  outline: none;
+  animation: confirmSheetRiseIn 280ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.confirmSheetClosing {
+  animation: confirmSheetSlideDown 260ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.confirmGrabber {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--color-neutral-600);
+}
+
+.confirmTitle {
+  font-family: var(--type-h2-family);
+  font-weight: var(--type-h2-weight);
+  font-size: var(--type-h2-size);
+  line-height: var(--type-h2-leading);
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+.confirmSubtitle {
+  margin-top: -4px;
+  font-family: var(--type-body-lg-family);
+  font-size: var(--type-body-lg-size);
+  font-weight: var(--type-body-lg-weight);
+  line-height: var(--type-body-lg-leading);
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-grey);
+  text-align: center;
+}
+
+.confirmActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.confirmButton,
+.cancelButton {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 100px;
+  font-family: var(--type-h4-family);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: filter 120ms ease, background-color 120ms ease;
+}
+
+.confirmButton {
+  background-color: var(--color-primary-300);
+  color: var(--color-text-dt-default-inverted);
+}
+
+.confirmButton:hover {
+  filter: brightness(1.08);
+}
+
+.cancelButton {
+  background-color: var(--color-neutral-700);
+  color: var(--color-text-dt-default);
+}
+
+.cancelButton:hover {
+  background-color: var(--color-neutral-600);
+}
+
+.confirmButton:focus-visible,
+.cancelButton:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+@keyframes confirmSheetRiseIn {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes confirmSheetSlideDown {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirmSheet,
+  .confirmSheetClosing {
+    animation: none;
+  }
+}

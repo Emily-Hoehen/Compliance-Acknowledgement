@@ -3,16 +3,17 @@
  * from Figma "Dashboard" (fileKey gtME8Hrbr497WEZi1U2HeZ, node
  * 4:1289). Copy and figures are the design's own authored content,
  * kept as-is for fidelity — only the avatar photos are swapped for
- * real rows from data/managers.csv and data/associates.csv per
- * this project's sample-data rule.
+ * real rows, and the signed-in manager/headcount now match the LGA
+ * roster used elsewhere in this project (lib/lgaEmployeesData.ts).
  */
 
-import { clockedInAvatars } from "./homeDashboardData";
+import { LGA_ASSOCIATES_BY_SHIFT } from "./lgaEmployeesData";
 
+/** Same lead Day-shift manager as the Map feature's Daily Report (lib/mapPageData.ts's shiftManagers.day[0]), so this is the same William Guy with the same avatar across both surfaces. */
 export const currentManager = {
-  name: "Bruce Charles",
-  position: "Site Mgr",
-  avatar: "https://cdn.4insite.com/assets/r638204abf8a74c6588ae0706550a87bc_Wittekind_Kim_WHT_t.jpg",
+  name: "William Guy",
+  position: "Senior Site Manager",
+  avatar: "/william.png",
 };
 
 export const calendarStrip = [
@@ -25,17 +26,17 @@ export const calendarStrip = [
   { label: "Sat", date: 11 },
 ];
 
-/** Same clocked-in avatar stack as the desktop dashboard — no names shown in the design, so any real roster rows work. */
-export const clockedInStack = clockedInAvatars.slice(0, 5);
+/** No names shown in the design, so any real roster rows work — the LGA Day shift crew (lib/lgaEmployeesData.ts), matching the associatesClockedIn.total below (LGA's own Day-shift headcount). */
+export const clockedInStack = LGA_ASSOCIATES_BY_SHIFT.day.slice(0, 5);
 
 export const managerAppHome = {
   incompleteVerifications: { count: 2 },
-  associatesClockedIn: { total: 12 },
+  associatesClockedIn: { total: LGA_ASSOCIATES_BY_SHIFT.day.length },
   kpis: [
-    { label: "Requests", value: 8, sublabel: "Open", icon: "comments" as const, wash: "var(--wash-primary-15)", color: "var(--color-text-dt-blue)" },
-    { label: "Complaints", value: 2, sublabel: "Open", icon: "message-exclamation" as const, wash: "var(--wash-purple-15)", color: "var(--color-datavis-purple-100)" },
-    { label: "To-Dos", value: 1, sublabel: "Open", icon: "list-check" as const, wash: "var(--wash-sky-blue-15)", color: "var(--color-datavis-sky-blue-100)" },
-    { label: "Report-Its", value: 3, sublabel: "Pending", icon: "triangle-exclamation" as const, wash: "var(--wash-orange-15)", color: "var(--color-datavis-orange-100)" },
+    { label: "Requests", value: 8, sublabel: "Open", icon: "comments" as const, wash: "var(--color-kpi-requests)", color: "var(--color-text-dt-blue)" },
+    { label: "Complaints", value: 2, sublabel: "Open", icon: "message-exclamation" as const, wash: "var(--color-kpi-complaints)", color: "var(--color-datavis-purple-100)" },
+    { label: "To-Dos", value: 1, sublabel: "Open", icon: "list-check" as const, wash: "var(--color-kpi-todos)", color: "var(--color-datavis-sky-blue-100)" },
+    { label: "Report-Its", value: 3, sublabel: "Pending", icon: "triangle-exclamation" as const, wash: "var(--color-kpi-reportits)", color: "var(--color-datavis-orange-100)" },
   ],
   serviceValidation: { verificationsToday: 15, remaining: 400 },
   incompleteRoutes: { count: 0 },

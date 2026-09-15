@@ -247,3 +247,7 @@ export function UpRightAndDownLeftFromCenterIcon({ className }: IconProps) {
 export function XmarkIcon({ className }: IconProps) {
   return fa("solid", "xmark", className);
 }
+
+export function LockIcon({ className }: IconProps) {
+  return fa("solid", "lock", className);
+}

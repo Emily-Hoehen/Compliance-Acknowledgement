@@ -1,0 +1,36 @@
+/* Shared top app bar for pushed screens in the Manager App's Shift Report flow (ManagerAppShiftReportList, ManagerAppShiftReportSection) — replaces the Home screen's own "4insite" header while one of these is on top, same square-corner/full-bleed footprint as ManagerAppHome's .headerCard. */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 10px 16px;
+  background-color: var(--surface-dt-card);
+}
+
+.backButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 100px;
+  background: transparent;
+  color: var(--color-text-dt-default);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.backButton:hover {
+  background-color: rgba(250, 251, 252, 0.06);
+}
+
+.title {
+  font-family: var(--type-h2-family);
+  font-weight: var(--type-h2-weight);
+  font-size: var(--type-h2-size);
+  line-height: var(--type-h2-leading);
+  letter-spacing: -0.02em;
+}

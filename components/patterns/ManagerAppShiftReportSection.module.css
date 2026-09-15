@@ -1,0 +1,350 @@
+/* ============================================================
+   ManagerAppShiftReportSection — full-screen detail for one Day
+   Shift Report section. Same dark-theme card language as
+   ManagerAppShiftReportList/ManagerAppHome — no new visual system.
+   ============================================================ */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background-color: var(--color-neutral-900);
+  color: var(--color-text-dt-default);
+  font-family: var(--font-family-ui);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 16px;
+}
+
+.groupLabel {
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+  color: var(--color-text-dt-grey);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  background-color: var(--surface-dt-card);
+  box-shadow: var(--shadow-dt-card);
+}
+
+.readOnlyHint {
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Headline stat (percent + count) ---------------- */
+
+.headline {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.headlineValue {
+  font-family: var(--type-h2-family);
+  font-weight: var(--type-h2-weight);
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.headlineCaption {
+  font-family: var(--type-body-md-family);
+  font-size: 14px;
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Stat tile grid (Hours & Headcount) ---------------- */
+
+.statGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.statTile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background-color: var(--color-neutral-800);
+}
+
+.statValue {
+  font-family: var(--type-h3-family);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.statLabel {
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  color: var(--color-text-dt-grey);
+}
+
+/* ---------------- Area Coverage breakdown ---------------- */
+
+.breakdownRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.breakdownRow + .breakdownRow {
+  margin-top: 4px;
+}
+
+.breakdownDot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 100px;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.breakdownDot[data-tone="neutral"] {
+  background-color: var(--wash-neutral-15);
+  color: var(--color-text-dt-grey);
+}
+
+.breakdownDot[data-tone="warning"] {
+  background-color: var(--wash-warning-15);
+  color: var(--color-text-dt-warning);
+}
+
+.breakdownDot[data-tone="success"] {
+  background-color: var(--wash-success-15);
+  color: var(--color-text-dt-success);
+}
+
+.breakdownLabel {
+  flex: 1;
+  font-family: var(--type-body-md-family);
+  font-size: 14px;
+}
+
+.breakdownValue {
+  font-family: var(--type-h4-family);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* ---------------- Quality score cards ---------------- */
+
+.qualityRow {
+  display: flex;
+  gap: 10px;
+}
+
+.qualityCard {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background-color: var(--color-neutral-800);
+}
+
+.qualityScore {
+  font-family: var(--type-h3-family);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--color-text-dt-success);
+}
+
+.qualityLabel {
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  letter-spacing: -0.02em;
+}
+
+.qualityCaption {
+  font-family: var(--type-body-sm-family);
+  font-size: 11px;
+  color: var(--color-text-dt-grey);
+}
+
+.inlineStatRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.inlineStatRow + .inlineStatRow {
+  border-top: 1px solid var(--surface-dt-hairline);
+  padding-top: 10px;
+}
+
+.inlineStatLabel {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-family: var(--type-body-md-family);
+  font-size: 14px;
+  color: var(--color-text-dt-grey);
+}
+
+.inlineStatValue {
+  text-align: right;
+  font-family: var(--type-h4-family);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* ---------------- Notes list ---------------- */
+
+.notesList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.emptyNotes {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background-color: var(--surface-dt-card);
+  color: var(--color-text-dt-grey);
+  font-family: var(--type-body-md-family);
+  font-size: 14px;
+}
+
+.noteCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border-left: 4px solid var(--color-neutral-700);
+  background-color: var(--surface-dt-card);
+}
+
+.noteHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.noteAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 100px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.noteAuthor {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+.noteName {
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+.noteRole {
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  color: var(--color-text-dt-grey);
+}
+
+.noteTimestamp {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: var(--type-body-sm-family);
+  font-size: 12px;
+  color: var(--color-text-dt-grey);
+}
+
+.noteText {
+  font-family: var(--type-body-md-family);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-dt-default);
+}
+
+.noteTagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.noteTag {
+  padding: 2px 8px;
+  border-radius: 100px;
+  background-color: var(--color-neutral-700);
+  color: var(--color-text-dt-default);
+  font-family: var(--type-body-sm-family);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* ---------------- Add-note trigger (opens ManagerAppNoteComposerModal) ---------------- */
+
+.addNoteTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  border: 1px dashed var(--color-neutral-700);
+  border-radius: 12px;
+  background-color: transparent;
+  color: var(--color-text-dt-default);
+  font-family: var(--type-h4-family);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+}
+
+.addNoteTrigger:hover {
+  background-color: var(--surface-dt-card);
+}
+
+.lockedNotice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background-color: var(--surface-dt-card);
+  color: var(--color-text-dt-grey);
+  font-family: var(--type-body-md-family);
+  font-size: 14px;
+}
+
+.lockedIcon {
+  flex-shrink: 0;
+  font-size: 15px;
+}

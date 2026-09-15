@@ -66,7 +66,17 @@
   color: var(--color-text-dt-default);
 }
 
-/* ---------------- Top row: wordmark + notifications ---------------- */
+/* ---------------- Header card: wordmark/notifications, user greeting, calendar ---------------- */
+
+/* One card wrapping the top row through the calendar strip — a step lighter than .page's own background so it reads as a distinct surface instead of bleeding into the screen behind it. Square corners, full-bleed edge to edge, flush against the top of the screen right below the status bar. */
+.headerCard {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  margin: 0;
+  border-radius: 0;
+  background-color: var(--surface-dt-card);
+}
 
 .topRow {
   display: flex;
@@ -77,8 +87,11 @@
 }
 
 .wordmark {
-  height: 20px;
-  width: auto;
+  font-family: var(--type-h2-family);
+  font-weight: 900;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  line-height: 1;
 }
 
 .bellButton {
@@ -188,6 +201,18 @@
   border-radius: 4px;
   background-color: var(--surface-dt-card);
   box-shadow: var(--shadow-dt-card);
+}
+
+/* Modifier for a .card that's a <button> (e.g. the "End of Shift Report" tile) instead of a plain <div> — resets button chrome, keeps .card's own look. */
+.cardButton {
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.cardButton:hover {
+  background-color: var(--color-neutral-750);
 }
 
 .iconBubble {
@@ -327,7 +352,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 0px;
   width: 76px;
   flex-shrink: 0;
   background-color: var(--color-success-300);
@@ -336,6 +361,7 @@
 
 .clockIcon {
   font-size: 32px;
+  line-height: 1;
 }
 
 .clockTotal {
@@ -343,21 +369,21 @@
   font-weight: 900;
   font-size: 20px;
   letter-spacing: -0.02em;
-  line-height: normal;
+  line-height: 1;
 }
 
 .clockLabel {
   font-family: var(--type-body-sm-family);
   font-size: 12px;
   letter-spacing: -0.02em;
-  line-height: 18px;
+  line-height: 1;
 }
 
 .associates {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   flex: 1;
   min-width: 0;
   padding: 0 12px;
@@ -373,15 +399,17 @@
 .avatarStack {
   display: flex;
   align-items: center;
+  margin-bottom: 6px;
 }
 
+/* A visibly opaque, solid blue ring so each overlapping circle reads as its own distinct shape instead of blending into the card behind it. */
 .avatarStackItem {
   width: 42px;
   height: 42px;
   border-radius: 100px;
   object-fit: cover;
   margin-right: -4px;
-  box-shadow: 0 0 0 2px var(--surface-dt-card);
+  box-shadow: 0 0 0 2px var(--color-text-dt-blue);
 }
 
 .avatarStackMore {
@@ -397,24 +425,27 @@
   font-weight: 500;
   font-size: 14px;
   letter-spacing: -0.02em;
-  box-shadow: 0 0 0 2px var(--surface-dt-card);
 }
 
 /* ---------------- KPI row ---------------- */
 
+/* Extra margin-top on top of .main's own 16px gap — kpiIconBubble pokes 21px above this row's own top edge (see below), which otherwise eats past that 16px gap and overlaps the clocked-in card above. */
 .kpiRow {
   display: flex;
   gap: 8px;
   width: 100%;
+  margin-top: 16px;
 }
 
+/* height:95px is the gray card itself; kpiIconBubble's -21px top offset (below) pokes above it, so the tile's full visual bounding box (card + overhanging icon) is 116px. */
 .kpiTile {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   flex: 1;
+  height: 95px;
   padding: 25px 4px 4px;
   border-radius: 8px;
   background-color: var(--surface-dt-card);
@@ -443,6 +474,7 @@
   font-weight: 500;
   font-size: 14px;
   letter-spacing: -0.02em;
+  line-height: 1;
 }
 
 .kpiValue {
@@ -450,14 +482,18 @@
   font-weight: 900;
   font-size: 20px;
   letter-spacing: -0.02em;
+  line-height: 1;
   color: var(--color-text-dt-blue);
+  margin-top: 4px;
 }
 
 .kpiSublabel {
   font-family: var(--type-body-sm-family);
   font-size: 12px;
   letter-spacing: -0.02em;
+  line-height: 1;
   color: var(--color-text-dt-grey);
+  margin-top: 4px;
 }
 
 /* ---------------- Service Validation ---------------- */
@@ -616,7 +652,7 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: 96px;
+  gap: 140px;
   padding-bottom: 8px;
 }
 

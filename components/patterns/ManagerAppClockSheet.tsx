@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
-import { CircleCheckIcon, LocationDotIcon } from "./icons";
+import { useEffect, useId, useRef, useState } from "react";
+import { CircleCheckIcon } from "./icons";
+import { SHIFT_OPTIONS, type ShiftKey } from "../../lib/managerShiftReportData";
 import styles from "./ManagerAppClockSheet.module.css";
 
 export type ManagerAppClockSheetMode = "check-in" | "check-out";
@@ -11,33 +12,65 @@ export type ManagerAppClockSheetProps = {
   mode: ManagerAppClockSheetMode;
   /** Elapsed-shift summary shown in the check-out copy, e.g. "2h 14m". Ignored for check-in. */
   elapsedLabel?: string;
+  /** Which shift the manager is clocking into — check-in only, defaulted by the caller off time-of-day (see getDefaultShiftForTime) but changeable here before confirming. */
+  selectedShift: ShiftKey;
+  onSelectShift: (key: ShiftKey) => void;
   onConfirm: () => void;
   onCancel: () => void;
 };
+
+/** Matches .sheetClosing's animation-duration in ManagerAppClockSheet.module.css — how long the slide-down exit runs before this actually unmounts. */
+const EXIT_DURATION_MS = 260;
 
 /**
  * ManagerAppClockSheet — bottom sheet for starting/ending a shift.
  * Opens from the shift-clock card on the Manager App home screen;
  * confirming starts or stops the shift timer. Closes on Escape, a
- * backdrop tap, or Cancel. Rendered as position:fixed, but scoped to
- * the phone screen by AndroidPhoneFrame's .screen transform (see that
- * component), not the real browser viewport.
+ * backdrop tap, Cancel, or Check In/Out — all four slide the sheet
+ * back down instead of just vanishing, so it stays mounted for
+ * EXIT_DURATION_MS after `open` goes false to let that animation play
+ * out before actually unmounting. Rendered as position:fixed, but
+ * scoped to the phone screen by AndroidPhoneFrame's .screen transform
+ * (see that component), not the real browser viewport.
  */
-export function ManagerAppClockSheet({ open, mode, elapsedLabel, onConfirm, onCancel }: ManagerAppClockSheetProps) {
+export function ManagerAppClockSheet({ open, mode, elapsedLabel, selectedShift, onSelectShift, onConfirm, onCancel }: ManagerAppClockSheetProps) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(open);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
-    if (!open) return;
-    dialogRef.current?.focus();
+    if (open) {
+      setMounted(true);
+      setClosing(false);
+      return;
+    }
+    if (!mounted) return;
+    setClosing(true);
+    const timeout = setTimeout(() => {
+      setMounted(false);
+      setClosing(false);
+    }, EXIT_DURATION_MS);
+    return () => clearTimeout(timeout);
+    // Only `open` should retrigger this — `mounted` is read, not depended on, so a close-timeout already in flight isn't restarted by the mounted-state update it itself causes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    if (!mounted || closing) return;
+    // preventScroll: true — without it, focusing this dialog while it's still off-screen
+    // (mid slide-up, via transform) makes the browser scroll .scrollArea (AndroidPhoneFrame's
+    // scroll container, which holds the dashboard behind this fixed overlay) to try to bring
+    // it into view, so the dashboard content visibly jumps/scrolls underneath the sheet.
+    dialogRef.current?.focus({ preventScroll: true });
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onCancel();
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onCancel]);
+  }, [mounted, closing, onCancel]);
 
-  if (!open) return null;
+  if (!mounted) return null;
 
   const isCheckIn = mode === "check-in";
 
@@ -45,7 +78,7 @@ export function ManagerAppClockSheet({ open, mode, elapsedLabel, onConfirm, onCa
     <div className={styles.overlay} onClick={onCancel}>
       <div
         ref={dialogRef}
-        className={styles.sheet}
+        className={[styles.sheet, closing ? styles.sheetClosing : ""].filter(Boolean).join(" ")}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -63,22 +96,33 @@ export function ManagerAppClockSheet({ open, mode, elapsedLabel, onConfirm, onCa
             : `You’re about to end your shift after ${elapsedLabel ?? "0m"}.`}
         </p>
 
+        {isCheckIn && (
+          <div className={styles.shiftPicker}>
+            <span className={styles.shiftPickerLabel}>Clocking in for</span>
+            <div className={styles.shiftPickerRow}>
+              {SHIFT_OPTIONS.map((shift) => (
+                <button
+                  key={shift.key}
+                  type="button"
+                  className={[styles.shiftOption, selectedShift === shift.key ? styles.shiftOptionSelected : ""].filter(Boolean).join(" ")}
+                  aria-pressed={selectedShift === shift.key}
+                  onClick={() => onSelectShift(shift.key)}
+                >
+                  {shift.label}
+                </button>
+              ))}
+            </div>
+            <span className={styles.shiftPickerCaption}>{SHIFT_OPTIONS.find((s) => s.key === selectedShift)?.timeRange}</span>
+          </div>
+        )}
+
         <div className={styles.locationBadge}>
           <CircleCheckIcon className={styles.locationIcon} />
           <span>You&rsquo;re within the service area.</span>
         </div>
 
-        <div className={styles.mapPreview} aria-hidden="true">
-          <div className={styles.mapRoads} />
-          <div className={`${styles.mapPin} ${styles.mapPinSite}`}>
-            <LocationDotIcon className={styles.mapPinIcon} />
-            <span className={styles.mapPinLabel}>Site</span>
-          </div>
-          <div className={`${styles.mapPin} ${styles.mapPinYou}`}>
-            <LocationDotIcon className={styles.mapPinIcon} />
-            <span className={styles.mapPinLabel}>You</span>
-          </div>
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/checkinpic.png" alt="" className={styles.mapPreview} aria-hidden="true" />
 
         <div className={styles.actions}>
           <button type="button" className={styles.confirmButton} onClick={onConfirm}>

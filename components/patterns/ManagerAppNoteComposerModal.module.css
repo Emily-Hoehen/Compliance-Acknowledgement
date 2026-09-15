@@ -1,0 +1,294 @@
+/* ============================================================
+   ManagerAppNoteComposerModal — full-page "Add Note" modal for the
+   Shift Report section detail screen. Presented modally (X to
+   cancel + a Post action in the header) rather than pushed with a
+   back chevron, matching the usual push-vs-modal distinction: this
+   creates a new note rather than drilling into existing content.
+   Includes a purely visual Android soft-keyboard mockup that slides
+   in while the note textarea is focused — the real input still goes
+   through the actual textarea/OS keyboard; this is a prototype of
+   what that looks like on a device where there is no real one.
+   ============================================================ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  background-color: var(--color-neutral-900);
+  animation: modalSlideUp 260ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.overlayClosing {
+  animation: modalSlideDown 220ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes modalSlideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes modalSlideDown {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .overlayClosing {
+    animation: none;
+  }
+}
+
+.modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100%;
+  color: var(--color-text-dt-default);
+  font-family: var(--font-family-ui);
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 10px 12px;
+  background-color: var(--surface-dt-card);
+}
+
+.iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 100px;
+  background: transparent;
+  color: var(--color-text-dt-default);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  background-color: rgba(250, 251, 252, 0.06);
+}
+
+.topBarTitle {
+  flex: 1;
+  font-family: var(--type-h2-family);
+  font-weight: var(--type-h2-weight);
+  font-size: var(--type-h2-size);
+  line-height: var(--type-h2-leading);
+  letter-spacing: -0.02em;
+}
+
+.postButton {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 100px;
+  background-color: var(--color-primary-300);
+  color: var(--color-text-dt-default-inverted);
+  font-family: var(--type-h4-family);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: filter 120ms ease, opacity 120ms ease;
+}
+
+.postButton:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.postButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+  padding: 16px;
+  overflow-y: auto;
+  transition: padding-bottom 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Reserves room for .keyboard (fixed, so it doesn't overlap the tag picker) once the textarea is focused. */
+.bodyKeyboardPadding {
+  padding-bottom: 224px;
+}
+
+.sectionContext {
+  font-family: var(--type-body-sm-family);
+  font-size: 13px;
+  color: var(--color-text-dt-grey);
+}
+
+.textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  border: 1px solid var(--color-neutral-700);
+  border-radius: 8px;
+  background-color: var(--color-neutral-800);
+  color: var(--color-text-dt-default);
+  font-family: var(--type-body-lg-family);
+  font-size: var(--type-body-lg-size);
+  line-height: var(--type-body-lg-leading);
+  resize: none;
+}
+
+.textarea:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 1px;
+}
+
+.tagPickerLabel {
+  font-family: var(--type-h4-family);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+.tagPickerRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tagOption {
+  padding: 6px 12px;
+  border: 1px solid var(--color-neutral-700);
+  border-radius: 100px;
+  background-color: transparent;
+  color: var(--color-text-dt-grey);
+  font-family: var(--type-body-sm-family);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.tagOption:hover {
+  border-color: var(--color-neutral-600);
+}
+
+.tagOptionSelected {
+  border-color: var(--color-primary-300);
+  background-color: var(--wash-primary-15);
+  color: var(--color-text-dt-default);
+}
+
+/* ---------------- Android soft-keyboard mockup ---------------- */
+
+.keyboard {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 81;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 4px calc(8px + env(safe-area-inset-bottom, 0px));
+  background-color: var(--color-neutral-850);
+  border-top: 1px solid var(--surface-dt-hairline);
+  transform: translateY(100%);
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.keyboardVisible {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .keyboard,
+  .body {
+    transition: none;
+  }
+}
+
+.keyboardSuggestionRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 12px 8px;
+  border-bottom: 1px solid var(--surface-dt-hairline);
+}
+
+.keyboardSuggestion {
+  font-family: var(--type-body-sm-family);
+  font-size: 13px;
+  color: var(--color-text-dt-grey);
+}
+
+.keyboardSuggestion:first-child {
+  color: var(--color-text-dt-default);
+  font-weight: 600;
+}
+
+.keyboardRow {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  max-width: 34px;
+  height: 40px;
+  border: none;
+  border-radius: 6px;
+  background-color: var(--color-neutral-750);
+  color: var(--color-text-dt-default);
+  font-family: var(--font-family-ui);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.key:hover {
+  background-color: var(--color-neutral-700);
+}
+
+.keyWide {
+  max-width: 52px;
+  flex: 1.5;
+  font-size: 12px;
+  color: var(--color-text-dt-grey);
+}
+
+.keySpace {
+  flex: 6;
+  max-width: none;
+}
+
+.keyEnter {
+  max-width: 52px;
+  flex: 1.5;
+  background-color: var(--color-primary-300);
+  color: var(--color-text-dt-default-inverted);
+}
+
+.keyEnter:hover {
+  filter: brightness(1.08);
+}
