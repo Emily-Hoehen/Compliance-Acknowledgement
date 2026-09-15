@@ -302,6 +302,8 @@ export function FullDayReportModalV2({
 
 function ShiftCard({ report, expanded, onToggle }: { report: ShiftReport; expanded: boolean; onToggle: () => void }) {
   const reportedNote = report.notes[0];
+  /** The header's "Reported at ... by ..." always credits the shift's lead manager (managers[0]) — the same person the green "Reported at" tag shows next to in Shift Managers below — regardless of which co-manager actually authored reportedNote's text. */
+  const reportedByName = report.managers[0]?.name ?? reportedNote?.author.name;
   const shiftQualityScores = QUALITY_DISPLAY_LABELS.map((label) => report.qualityScores.find((q) => q.label === label)).filter(
     (s): s is NonNullable<typeof s> => Boolean(s)
   );
@@ -322,7 +324,7 @@ function ShiftCard({ report, expanded, onToggle }: { report: ShiftReport; expand
           </span>
           {reportedNote && (
             <span className={styles.shiftCardMeta}>
-              Reported at {reportedNote.timestamp} by {reportedNote.author.name}
+              Reported at {reportedNote.timestamp} by {reportedByName}
             </span>
           )}
         </div>

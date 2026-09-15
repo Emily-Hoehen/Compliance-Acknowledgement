@@ -23,12 +23,14 @@ export type AssociateAttendanceModalProps = {
 
 /**
  * AssociateAttendanceModal — opened from Hours and Headcount's headcount
- * numbers, the real named roster for this shift (data/associates.csv),
- * each with a Scheduled/Arrived/Absent status. A sample of who's really
- * on shift, not a reconciliation of the Scheduled Headcount/Total
- * Absences figures shown above it (see AssociateAttendanceEntry). Same
- * BottomSheet chrome and row/table treatment as ReportItsModal — matches
- * Figma fileKey 0UJDRcrFiXkn16yfc2MUEW, node 98:3539 ("Day Shift
+ * numbers, the real named LGA roster for this shift (data/LGA Employees/
+ * lga_employees.csv), each with a Scheduled/Arrived/Absent status. Its
+ * Arrived/Call Out/No Call-No Show tally always matches the Scheduled
+ * Headcount/Actual Arrival/Total Absences figures shown above it (see
+ * buildAssociateAttendance) — the same day's absences, just attributed to
+ * specific named people. Same BottomSheet chrome and row/table treatment
+ * as ReportItsModal — matches Figma fileKey 0UJDRcrFiXkn16yfc2MUEW, node
+ * 98:3539 ("Day Shift
  * Associates"): filled pill filter buttons, not underline tabs.
  */
 export function AssociateAttendanceModal({ open, onClose, shiftLabel, associates }: AssociateAttendanceModalProps) {

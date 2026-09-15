@@ -22,6 +22,7 @@ import { photoForAreaType } from "./sowImages";
 import { computeShiftAreaServices, computeShiftAreaCoverageBreakdown, type AreaServiceStatus, type AreaCoverageBreakdown } from "./mapAreaServiceData";
 import { dateForDayOffset, hashSeed, pickClockTime, scaleForDay, scoreForDay } from "./sowData";
 import { mapPageData, type DailyReportPerson, type DailyReportShift, type QualityScore } from "./mapPageData";
+import { LGA_ASSOCIATES_BY_SHIFT } from "./lgaEmployeesData";
 
 export type ManagerNote = {
   author: DailyReportPerson;
@@ -87,7 +88,7 @@ export type SafetyIncident = ShiftIssue & {
   stage: SafetyIncidentStage;
 };
 
-/** One roster entry for the Full Shift Report's "Associates on Shift" list — real rows from data/associates.csv (Delta - LaGuardia, NY site), filtered to this shift's own `Shift` column. */
+/** One roster entry for the Full Shift Report's "Associates on Shift" list — the real LGA crew (data/LGA Employees/lga_employees.csv), filtered to this shift's own `shift` column. */
 export type AssociateShiftEntry = {
   name: string;
   position: string;
@@ -103,7 +104,7 @@ export type ReportItemEntry = {
   /** Longer sentence for the Full Day Report's richer Report-Its list — the short `title` above is what the per-shift modal shows instead. */
   description: string;
   location: string;
-  /** Who filed it — a real associate from this shift's own roster (data/associates.csv), not a manager. */
+  /** Who filed it — a real LGA associate from this shift's own roster (data/LGA Employees/lga_employees.csv), not a manager. */
   submittedBy: AssociateShiftEntry;
   status: "Accepted" | "Rejected";
   /** Whether this report-it flagged something proactively rather than a routine complaint — shown in the Report Its modal's own "Good Catch" column. */
@@ -148,7 +149,7 @@ export type ShiftReport = {
   scheduledHeadcount: number;
   actualArrival: number;
   totalAbsences: number;
-  /** Named-associate detail backing the "View Associates" modal on Hours and Headcount — a real, individually-tracked sample of who's on shift, each with their own Arrived/Call Out/No Call/No Show status. Its own counts don't reconcile to scheduledHeadcount/totalAbsences above (see buildAssociateAttendance) — those describe the whole site-wide crew, this is just the roster this project has real names for. */
+  /** Named-associate detail backing the "View Associates" modal on Hours and Headcount — the shift's real roster, each with their own Arrived/Call Out/No Call/No Show status. Its Arrived/Absent tally always reconciles with scheduledHeadcount/actualArrival/totalAbsences above (see buildAssociateAttendance) — the same absences, just attributed to specific named people. */
   associateAttendance: AssociateAttendanceEntry[];
   noCallNoShowCount: number;
   callOutsCount: number;
@@ -165,7 +166,7 @@ export type ShiftReport = {
   attendanceIssues: ShiftIssue[];
   projects: ShiftProject[];
   notes: ManagerNote[];
-  /** Real roster for this shift (data/associates.csv), for the Full Shift Report's "Associates on Shift" list. */
+  /** Real LGA roster for this shift (data/LGA Employees/lga_employees.csv), for the Full Shift Report's "Associates on Shift" list. */
   associates: AssociateShiftEntry[];
   associatesNote: ManagerNote[];
 };
@@ -339,67 +340,16 @@ const ASSOCIATE_NOTES: NoteTemplate[] = [
 
 
 /**
- * Real associate rows from data/associates.csv, filtered to the "Delta - LaGuardia, NY" `Main` site and each
- * shift's own `Shift` column (Day/Swing/Graveyard) — same real-sample-data convention as lib/sowData.ts's
- * ASSOCIATE_POOL, just scoped per shift instead of pooled site-wide. `time` is that CSV row's own scheduled
- * time, shown as a light caption (individual associates aren't clock-tracked the way managers are here).
+ * The real LGA crew (data/LGA Employees/lga_employees.csv, via lib/lgaEmployeesData.ts),
+ * one entry per shift's own roster — this is now the site's actual named associates, not
+ * a hand-picked associates.csv sample. `time` isn't in the source CSV (individual associates
+ * aren't clock-tracked in this data model), so it's a deterministic per-person clock time in
+ * the same spirit as this file's other generators, seeded on the associate's own name.
  */
 const ASSOCIATES_BY_SHIFT: Record<DailyReportShift["key"], AssociateShiftEntry[]> = {
-  day: [
-    { name: "Allison Black", position: "Recycle Tech", avatar: "https://cdn.4insite.com/assets/98e43f08a54d44efb022f444da0a392d_Anthony_t.jpg", time: "7:50 AM" },
-    { name: "Antonio Potts", position: "Maintenence Tech", avatar: "https://cdn.4insite.com/assets/c011422cd51a4c96b3e6e67af1a3ef34_IMG_2627_t.jpg", time: "10:30 AM" },
-    { name: "Brett Knowles", position: "Cust Foreperson", avatar: "https://cdn.4insite.com/assets/b0c36261e68d4e3fb8cd26414edd0af2_IMG_20221104_58325_t.jpg", time: "12:50 PM" },
-    { name: "Claude Hall", position: "CSR, Exterior", avatar: "https://cdn.4insite.com/assets/1614178054.708322_AndreaPerrett_t.jpg", time: "9:05 PM" },
-    { name: "Darren Dickson", position: "Custodian", avatar: "https://cdn.4insite.com/image/c4eca239-09b2-b0e5-fead-226214e743c0_t.png", time: "6:40 PM" },
-    { name: "Edward Marshall", position: "Customer Service Rep", avatar: "https://cdn.4insite.com/image/845bcb1a-47ce-a7a8-f040-22aa690c1c7e_t.png", time: "8:25 PM" },
-    { name: "Glen Larsen", position: "Custodial Lead", avatar: "https://cdn.4insite.com/assets/2aaabfc1c8d34c59ad7e469c4207aad4_AMALIAMATEOS_t.jpg", time: "7:40 AM" },
-    { name: "Jacob Whitney", position: "Sr Custodial Lead", avatar: "https://cdn.4insite.com/assets/r594bbe6a515d4b3bbc5e6b8d9211898a_MicrosoftTeamsimage6_t.png", time: "1:55 PM" },
-    { name: "Josephine McCarthy", position: "GMP Floor Tech", avatar: "https://cdn.4insite.com/image/48e0c0be-23ad-8b1b-abf9-ad8143e5c597_t.png", time: "7:15 PM" },
-    { name: "Kent Chang", position: "Custodial Lead, Safety", avatar: "https://cdn.4insite.com/image/71e06da2-0baf-5fde-7763-c0abd59347e6_t.png", time: "2:30 PM" },
-    { name: "Marcus Frost", position: "CSR Lead", avatar: "https://cdn.4insite.com/image/72e0ab8c-59c4-ad0c-1675-e02b0a26b5be_t.png", time: "7:20 PM" },
-    { name: "Melvin Moran", position: "CSR", avatar: "https://cdn.4insite.com/assets/r2d40f3ab68084c50874cf1163069d0ae_Adelina2_t.jpg", time: "2:15 PM" },
-    { name: "Nicholas Delacruz", position: "Custodial Supervisor", avatar: "https://cdn.4insite.com/assets/5f1644dcb6cb46e5bfded64ea8133307_IMG_2611_t.jpg", time: "6:15 AM" },
-    { name: "Rebecca Jacobson", position: "Cleanroom Tech", avatar: "https://cdn.4insite.com/assets/6089d1e951924c5ebc8f1724c05899d8_EarleneWoodson_t.jpg", time: "12:40 PM" },
-    { name: "Samuel Leblanc", position: "Custodial Supervisor", avatar: "https://cdn.4insite.com/image/b5b7a212-2846-4b11-fd95-50c0642d2563_t.png", time: "1:45 PM" },
-    { name: "Timothy Collier", position: "Floor Tech", avatar: "https://cdn.4insite.com/assets/7f90fd3d4d474a6483c1eccafe02219d_20221202_094143_t.jpg", time: "5:15 PM" },
-    { name: "Willard Good", position: "Custodial Lead II", avatar: "https://cdn.4insite.com/image/3eef672f-3a70-5deb-a1a2-1bba22094b80_t.png", time: "8:30 AM" },
-  ],
-  swing: [
-    { name: "Andrew Austin", position: "Custodial Lead, Safety", avatar: "https://cdn.4insite.com/assets/r14876ff55e7c49cbb37f9ed1db6b0221_IMG_08721_t.jpg", time: "4:25 PM" },
-    { name: "Bobby Davidson", position: "CSR Lead", avatar: "https://cdn.4insite.com/assets/465c0fd23241404e8859de5b43cdc2ce_image_t.jpg", time: "6:30 AM" },
-    { name: "Cheryl Moses", position: "CSR", avatar: "https://cdn.4insite.com/assets/c49499a125c44bfd92aa5a21e982fe57_20221202_094054_t.jpg", time: "10:15 PM" },
-    { name: "Connie Hernandez", position: "Custodial Supervisor", avatar: "https://cdn.4insite.com/image/a148ebfa-65da-2799-1072-9acfae6753e6_t.png", time: "8:45 AM" },
-    { name: "Donald Rodriguez", position: "Cleanroom Tech", avatar: "https://cdn.4insite.com/image/69561eb4-5acb-44ce-3402-320f2adfea88_t.png", time: "11:40 AM" },
-    { name: "Eva Sharp", position: "Custodial Supervisor", avatar: "https://cdn.4insite.com/assets/909695ae86d84dd5917532dd3037af8c_AgustinaGarcia_DB_1_t.jpg", time: "10:10 AM" },
-    { name: "Henry Ballard", position: "Floor Tech", avatar: "https://cdn.4insite.com/assets/586c0dfdb23545119eefda790711d3f8_IMG_1889_t.jpg", time: "7:55 AM" },
-    { name: "Jessica Dunn", position: "Custodial Lead II", avatar: "https://cdn.4insite.com/image/b0392430-487e-69f1-1c81-25005fa16c95_t.png", time: "11:05 AM" },
-    { name: "Julian Booth", position: "Recycle Tech", avatar: "https://cdn.4insite.com/image/f8e5ed6b-be8f-135c-b5e9-23e71de4062d_t.png", time: "9:55 AM" },
-    { name: "Lois Shelton", position: "Maintenence Tech", avatar: "https://cdn.4insite.com/assets/4149e7a1c9884b5790d0816c59232625_PDCpics011_t.jpg", time: "1:15 PM" },
-    { name: "Marsha Burgess", position: "Cust Foreperson", avatar: "https://cdn.4insite.com/assets/1579645815.2171333_EdithBuruca_t.jpg", time: "9:35 AM" },
-    { name: "Naomi Fuentes", position: "CSR, Exterior", avatar: "https://cdn.4insite.com/assets/c82f8a6dab1f409fbcc6128af4742c35_Weston_t.jpg", time: "7:45 PM" },
-    { name: "Ramon Conner", position: "Custodian", avatar: "https://cdn.4insite.com/assets/9ee70832ab44406b9707a4bda77482b7_CAthy_t.jpg", time: "10:25 AM" },
-    { name: "Rosemary Flores", position: "Customer Service Rep", avatar: "https://cdn.4insite.com/assets/1600109314.2572758_ScreenShot20200914at11.48_t.18AM", time: "11:10 AM" },
-    { name: "Stacy Alvarez", position: "Custodial Lead", avatar: "https://cdn.4insite.com/assets/f3d4c5f052e3418d91a87e630d46d25f_2_t.jpg", time: "9:15 PM" },
-    { name: "Viola Huff", position: "Sr Custodial Lead", avatar: "https://cdn.4insite.com/image/cd7aac60-6f50-5751-3ec9-48b7926cab7e_t.png", time: "5:10 PM" },
-  ],
-  graveyard: [
-    { name: "Ana Burnett", position: "Cleanroom Tech", avatar: "https://cdn.4insite.com/assets/50391811774747b08381a4916da1d4c8_20240816_072045_t.jpg", time: "8:20 PM" },
-    { name: "Billie Zamora", position: "Custodial Supervisor", avatar: "https://cdn.4insite.com/assets/r2cbbe1d30f314fdf8281ea25b50625f3_image_t.jpg", time: "2:45 PM" },
-    { name: "Bruce Mullen", position: "Floor Tech", avatar: "https://cdn.4insite.com/assets/56aac24b0c5e4f29813e537865eeca0b_IMG_20210922_160106009_t.jpg", time: "9:15 AM" },
-    { name: "Clyde Hardin", position: "Custodial Lead II", avatar: "https://cdn.4insite.com/assets/503bbc9547a8497cb44bd0cf8cd21841_IMG_20221104_45991_t.jpg", time: "2:55 PM" },
-    { name: "Debra Dunlap", position: "Recycle Tech", avatar: "https://cdn.4insite.com/image/7f6b89e0-04e5-907e-8d03-4c044712fc6e_t.png", time: "3:40 PM" },
-    { name: "Emma Skinner", position: "Maintenence Tech", avatar: "https://cdn.4insite.com/image/64d3d91b-36e2-3cba-3b25-ef668df1dcdf_t.png", time: "11:30 AM" },
-    { name: "Gordon Crawford", position: "Cust Foreperson", avatar: "https://cdn.4insite.com/assets/067d5aee17754d9898db1d1f6d12d927_AlesajaCrayton_t.jpg", time: "8:10 AM" },
-    { name: "Jeffery Hardy", position: "CSR, Exterior", avatar: "https://cdn.4insite.com/assets/ecc3eb7cd1d24059baae90108bbd6513_Resized_R_2_t.jpg", time: "6:55 PM" },
-    { name: "Judith Cabrera", position: "Custodian", avatar: "https://cdn.4insite.com/assets/1594678941.8834553_seraheadshot_t.jpg", time: "12:25 PM" },
-    { name: "Kristina Oliver", position: "Customer Service Rep", avatar: "https://cdn.4insite.com/assets/1577776047.9164042_yes2_t.jpg", time: "9:30 AM" },
-    { name: "Marilyn Wolf", position: "Custodial Lead", avatar: "https://cdn.4insite.com/image/e2841eff-3ff3-a6f7-998d-9c894965fbde_t.png", time: "2:40 PM" },
-    { name: "Misty Summers", position: "Sr Custodial Lead", avatar: "https://cdn.4insite.com/assets/c4a0cedc304a4ce5823e773cfd378cd2_Arnoldo_t.jpg", time: "11:55 AM" },
-    { name: "Norman Rutledge", position: "GMP Floor Tech", avatar: "https://cdn.4insite.com/assets/7c18e2f66942433a9cee39601f83eb7d_20230221_130515_t.jpg", time: "6:00 PM" },
-    { name: "Roberta Warren", position: "Custodial Lead, Safety", avatar: "https://cdn.4insite.com/image/20046cbc-7544-e32a-e889-cd0947769de0_t.png", time: "7:05 AM" },
-    { name: "Shirley Bender", position: "CSR Lead", avatar: "https://cdn.4insite.com/assets/e30999eb4957434692210811489f7f94_ChristyR_t.jpg", time: "8:25 AM" },
-    { name: "Veronica Dejesus", position: "CSR", avatar: "https://cdn.4insite.com/assets/ceaa86784444447f97140fd773a7b7e6_IMG_5952_t.jpg", time: "6:15 PM" },
-  ],
+  day: LGA_ASSOCIATES_BY_SHIFT.day.map((a) => ({ ...a, time: pickClockTime(`lga-associate-time-${a.name}`) })),
+  swing: LGA_ASSOCIATES_BY_SHIFT.swing.map((a) => ({ ...a, time: pickClockTime(`lga-associate-time-${a.name}`) })),
+  graveyard: LGA_ASSOCIATES_BY_SHIFT.graveyard.map((a) => ({ ...a, time: pickClockTime(`lga-associate-time-${a.name}`) })),
 };
 
 /** Category + starting workflow stage for a generated safety incident — a handful of realistic templates, each already assigned a stage so the Full Shift Report's step tracker has something other than "just filed" to show. */
@@ -655,28 +605,35 @@ function buildShiftHoursStat(shift: DailyReportShift, dayOffset: number): { capt
   return { capturedLabel: formatShiftHours(capturedHours), paidLabel: formatShiftHours(paidHours), percent };
 }
 
-/** Scheduled headcount / actual arrival / absence breakdown for one shift — deterministic per shift/day, in the same ~1-in-5 shifts have a couple of absences spirit as the rest of this file's issue rolls. This is a site-wide headcount figure (includes support roles beyond the individually-named roster below), not a 1:1 count of ASSOCIATES_BY_SHIFT — real per-shift rosters only run ~16-17 people, well short of a realistic ~50-person crew. */
+/** Scheduled headcount / actual arrival / absence breakdown for one shift — scheduledHeadcount is the real named-roster size for this shift (ASSOCIATES_BY_SHIFT, the LGA crew), so it moves in lockstep with the roster instead of a made-up number. Absences are still a deterministic per-day roll, in the same ~1-in-5 shifts have a couple of absences spirit as the rest of this file's issue rolls, scaled to this shift's own headcount rather than a flat 4-8. */
 function buildShiftAttendance(shift: DailyReportShift, dayOffset: number) {
   const seed = shift.key;
-  const scheduledHeadcount = Math.round(scaleForDay(`${seed}-scheduled-headcount`, dayOffset, 46, 54));
-  const callOutsCount = Math.round(scaleForDay(`${seed}-absences`, dayOffset, 4, 8));
+  const scheduledHeadcount = ASSOCIATES_BY_SHIFT[shift.key].length;
+  const callOutsCount = Math.round(scaleForDay(`${seed}-absences`, dayOffset, scheduledHeadcount * 0.05, scheduledHeadcount * 0.12));
   const noCallNoShowCount = 0;
   const totalAbsences = callOutsCount + noCallNoShowCount;
   return { scheduledHeadcount, actualArrival: scheduledHeadcount - totalAbsences, totalAbsences, noCallNoShowCount, callOutsCount };
 }
 
-/** One named associate's attendance status for the "View Associates" roster detail — Arrived unless a deterministic roll flags them absent (~1 in 7), in which case it's almost always a Call Out, rarely a No Call/No Show. A separate, independent roll from buildShiftAttendance's own scheduledHeadcount/totalAbsences figures (see AssociateAttendanceEntry), since the named roster here is a sample of real associates.csv rows, not the same headcount the site-wide numbers represent. */
+/** One named associate's attendance status for the "View Associates" roster detail. Exactly `attendance.totalAbsences` of the shift's roster are marked absent (the lowest-ranked names by a deterministic per-person/per-day seed, so who's absent still varies day to day), `attendance.noCallNoShowCount` of those as No Call/No Show and the rest as Call Out — so this roster's own Arrived/Absent tally always reconciles with buildShiftAttendance's scheduledHeadcount/actualArrival/totalAbsences figures (see AssociateAttendanceEntry) instead of drifting from an independent roll. */
 export type AssociateAttendanceEntry = AssociateShiftEntry & {
   status: "Arrived" | "Call Out" | "No Call/No Show";
 };
 
-function buildAssociateAttendance(shift: DailyReportShift, dayOffset: number): AssociateAttendanceEntry[] {
-  return ASSOCIATES_BY_SHIFT[shift.key].map((associate) => {
-    const seed = `${shift.key}-${associate.name}-attendance-${dayOffset}`;
-    const isAbsent = hashSeed(seed) % 100 < 14;
-    if (!isAbsent) return { ...associate, status: "Arrived" };
-    const isNoCallNoShow = hashSeed(`${seed}-type`) % 100 < 15;
-    return { ...associate, status: isNoCallNoShow ? "No Call/No Show" : "Call Out" };
+function buildAssociateAttendance(
+  shift: DailyReportShift,
+  dayOffset: number,
+  attendance: { totalAbsences: number; noCallNoShowCount: number }
+): AssociateAttendanceEntry[] {
+  const roster = ASSOCIATES_BY_SHIFT[shift.key];
+  const ranked = roster
+    .map((associate, index) => ({ index, rank: hashSeed(`${shift.key}-${associate.name}-attendance-${dayOffset}`) }))
+    .sort((a, b) => a.rank - b.rank);
+  const absentIndexes = new Set(ranked.slice(0, attendance.totalAbsences).map((r) => r.index));
+  const noCallNoShowIndexes = new Set(ranked.slice(0, attendance.noCallNoShowCount).map((r) => r.index));
+  return roster.map((associate, index) => {
+    if (!absentIndexes.has(index)) return { ...associate, status: "Arrived" };
+    return { ...associate, status: noCallNoShowIndexes.has(index) ? "No Call/No Show" : "Call Out" };
   });
 }
 
@@ -803,7 +760,7 @@ export function buildShiftReport(shift: DailyReportShift, dayOffset: number, bui
     totalAbsences: attendance.totalAbsences,
     noCallNoShowCount: attendance.noCallNoShowCount,
     callOutsCount: attendance.callOutsCount,
-    associateAttendance: buildAssociateAttendance(shift, dayOffset),
+    associateAttendance: buildAssociateAttendance(shift, dayOffset, attendance),
     scoresNote: buildNotes(shift, `${seed}-scores-note-${dayOffset}`, SCORE_NOTES),
     safetyIssues,
     totalReportIts,
